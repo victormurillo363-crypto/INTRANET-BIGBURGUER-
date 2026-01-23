@@ -1002,9 +1002,13 @@ function App() {
       // Campo correcto: tipocontrato (minúsculas, sin guión)
       const tipoContrato = empleado?.tipocontrato || empleado?.tipo_contrato || empleado?.tipoContrato || 'Término Indefinido';
       // Campo correcto: salariobase (minúsculas, sin guión)
-      const salario = empleado?.salariobase || empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
+      const salarioBase = empleado?.salariobase || empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
+      // Auxilio de transporte legal vigente 2026 Colombia
+      const AUXILIO_TRANSPORTE = 200000;
+      // Total: salario básico + auxilio de transporte
+      const salarioTotal = salarioBase + AUXILIO_TRANSPORTE;
       
-      console.log('📄 Carta Laboral - Salario básico:', salario);
+      console.log('📄 Carta Laboral - Salario:', salarioBase, '+ Aux:', AUXILIO_TRANSPORTE, '= Total:', salarioTotal);
       
       const razonSocial = datosSede?.razonSocial || 'BIG BURGUER S.A.S';
       const nitSede = datosSede?.nit || '';
@@ -1094,7 +1098,7 @@ function App() {
               
               <p style="text-align: center; margin: 25px 0;"><strong>CERTIFICA QUE:</strong></p>
               
-              <p>El (la) Señor(a) <strong>${nombreEmpleado.toUpperCase()}</strong>, identificado(a) con <strong>Cédula de Ciudadanía ${documento}</strong>, labora en nuestra empresa${fechaIngreso ? ` desde el <strong>${new Date(fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>` : ''}, con un contrato <strong>${tipoContrato}</strong>, desempeñando el cargo de <strong>${cargo.toUpperCase()}</strong>${salario > 0 ? `, devengando un salario básico mensual de <strong>${formatearMoneda(salario)}</strong> (${numeroALetras(salario)} PESOS M/CTE)` : ''}.</p>
+              <p>El (la) Señor(a) <strong>${nombreEmpleado.toUpperCase()}</strong>, identificado(a) con <strong>Cédula de Ciudadanía ${documento}</strong>, labora en nuestra empresa${fechaIngreso ? ` desde el <strong>${new Date(fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>` : ''}, con un contrato <strong>${tipoContrato}</strong>, desempeñando el cargo de <strong>${cargo.toUpperCase()}</strong>${salarioBase > 0 ? `, devengando un salario básico mensual de <strong>${formatearMoneda(salarioBase)}</strong> más auxilio de transporte de <strong>${formatearMoneda(AUXILIO_TRANSPORTE)}</strong>, para un total devengado de <strong>${formatearMoneda(salarioTotal)}</strong> (${numeroALetras(salarioTotal)} PESOS M/CTE)` : ''}.</p>
               
               <p>La presente certificación se expide a solicitud del interesado para los fines que estime conveniente.</p>
             </div>
@@ -1138,6 +1142,9 @@ function App() {
 
     // Campo correcto: salariobase (minúsculas, sin guión)
     const salarioEmpleado = empleado?.salariobase || empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
+    // Auxilio de transporte legal vigente 2026 Colombia
+    const AUXILIO_TRANSPORTE = 200000;
+    const salarioTotal = salarioEmpleado + AUXILIO_TRANSPORTE;
     
     // Nombre: combinar nombres y apellidos
     const nombreCompleto = empleado?.nombres && empleado?.apellidos 
@@ -1204,7 +1211,7 @@ function App() {
               )}, con un contrato <strong>{tipoContratoEmpleado}</strong>, 
               desempeñando el cargo de <strong>{(empleado?.cargo || 'COLABORADOR').toUpperCase()}</strong>
               {salarioEmpleado > 0 && (
-                <>, devengando un salario básico mensual de <strong>{formatearMoneda(salarioEmpleado)}</strong></>
+                <>, devengando un salario básico mensual de <strong>{formatearMoneda(salarioEmpleado)}</strong> más auxilio de transporte de <strong>{formatearMoneda(AUXILIO_TRANSPORTE)}</strong>, para un total devengado de <strong>{formatearMoneda(salarioTotal)}</strong></>
               )}.
             </p>
             
