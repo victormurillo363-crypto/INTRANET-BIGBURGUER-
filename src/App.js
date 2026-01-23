@@ -391,12 +391,29 @@ function App() {
         color: 'white',
         padding: 30,
         borderRadius: 16,
-        marginBottom: 24
+        marginBottom: 24,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20
       }}>
-        <h2 style={{ margin: 0 }}>🍔 ¡Bienvenido, {empleado?.nombre || usuario?.nombre || 'Empleado'}!</h2>
-        <p style={{ margin: '10px 0 0', opacity: 0.9 }}>
-          {empleado?.cargo || 'Colaborador'} | {empleado?.sede || configEmpresa?.nombre_empresa || empresa?.nombre || 'Empresa'}
-        </p>
+        <img 
+          src="/logo.jpg" 
+          alt="Big Burguer" 
+          style={{ 
+            width: 70, 
+            height: 70, 
+            borderRadius: '50%', 
+            objectFit: 'cover',
+            border: '3px solid white',
+            flexShrink: 0
+          }} 
+        />
+        <div>
+          <h2 style={{ margin: 0 }}>¡Bienvenido, {empleado?.nombre || usuario?.nombre || 'Empleado'}!</h2>
+          <p style={{ margin: '10px 0 0', opacity: 0.9 }}>
+            {empleado?.cargo || 'Colaborador'} | {empleado?.sede || configEmpresa?.nombre_empresa || empresa?.nombre || 'Empresa'}
+          </p>
+        </div>
       </div>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
