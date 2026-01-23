@@ -4,6 +4,7 @@ import { SUPABASE_CONFIG } from './config';
 
 // ============================================
 // INTRANET DE EMPLEADOS - APLICACIÓN PRINCIPAL
+// v1.3 - Horarios conectados
 // ============================================
 // Esta aplicación se conecta a la misma base de datos Supabase
 // del sistema principal. Los usuarios ingresan con su número
