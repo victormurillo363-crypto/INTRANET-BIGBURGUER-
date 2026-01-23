@@ -543,7 +543,7 @@ function App() {
                       </div>
                     </div>
                     <div style={{ fontWeight: 'bold', color: '#4caf50', fontSize: 18 }}>
-                      {formatearMoneda(nomina.netoapagar)}
+                      {formatearMoneda(nomina.totalneto || nomina.netoapagar)}
                     </div>
                   </button>
                 ))}
@@ -638,20 +638,20 @@ function App() {
                   <tbody>
                     <tr>
                       <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Salario Bruto</td>
-                      <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.bruto)}</td>
+                      <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.salariobase || nominaSeleccionada.bruto)}</td>
                     </tr>
-                    {nominaSeleccionada.auxtransp > 0 && (
+                    {(nominaSeleccionada.auxtransporte || nominaSeleccionada.auxtransp) > 0 && (
                       <tr>
                         <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Auxilio de Transporte</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.auxtransp)}</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.auxtransporte || nominaSeleccionada.auxtransp)}</td>
                       </tr>
                     )}
-                    {nominaSeleccionada.hexvalor > 0 && (
+                    {(nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor) > 0 && (
                       <tr>
                         <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>
-                          Horas Extras ({nominaSeleccionada.hexdia || 0} horas)
+                          Horas Extras ({nominaSeleccionada.horasextras || nominaSeleccionada.hexdia || 0} horas)
                         </td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.hexvalor)}</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor)}</td>
                       </tr>
                     )}
                     {nominaSeleccionada.bonificacion > 0 && (
@@ -675,34 +675,34 @@ function App() {
                 </h4>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <tbody>
-                    {nominaSeleccionada.descsalud > 0 && (
+                    {(nominaSeleccionada.descuentosalud || nominaSeleccionada.descsalud) > 0 && (
                       <tr>
                         <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Salud (4%)</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descsalud)}</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentosalud || nominaSeleccionada.descsalud)}</td>
                       </tr>
                     )}
-                    {nominaSeleccionada.descpension > 0 && (
+                    {(nominaSeleccionada.descuentopension || nominaSeleccionada.descpension) > 0 && (
                       <tr>
                         <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Pensión (4%)</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descpension)}</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentopension || nominaSeleccionada.descpension)}</td>
                       </tr>
                     )}
-                    {nominaSeleccionada.descprestamos > 0 && (
+                    {(nominaSeleccionada.descuentoprestamos || nominaSeleccionada.descprestamos) > 0 && (
                       <tr>
                         <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Préstamos</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descprestamos)}</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentoprestamos || nominaSeleccionada.descprestamos)}</td>
                       </tr>
                     )}
-                    {nominaSeleccionada.desccomida > 0 && (
+                    {(nominaSeleccionada.descuentocomida || nominaSeleccionada.desccomida) > 0 && (
                       <tr>
                         <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Comida</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.desccomida)}</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentocomida || nominaSeleccionada.desccomida)}</td>
                       </tr>
                     )}
-                    {nominaSeleccionada.descotros > 0 && (
+                    {(nominaSeleccionada.otros_descuentos || nominaSeleccionada.descotros) > 0 && (
                       <tr>
                         <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Otros Descuentos</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descotros)}</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.otros_descuentos || nominaSeleccionada.descotros)}</td>
                       </tr>
                     )}
                     <tr style={{ backgroundColor: '#ffebee', fontWeight: 'bold' }}>
@@ -724,7 +724,7 @@ function App() {
                 alignItems: 'center'
               }}>
                 <span style={{ fontSize: 20, fontWeight: 'bold' }}>💰 NETO A PAGAR</span>
-                <span style={{ fontSize: 28, fontWeight: 'bold' }}>{formatearMoneda(nominaSeleccionada.netoapagar)}</span>
+                <span style={{ fontSize: 28, fontWeight: 'bold' }}>{formatearMoneda(nominaSeleccionada.totalneto || nominaSeleccionada.netoapagar)}</span>
               </div>
 
               {/* Pie de página */}
