@@ -996,7 +996,16 @@ function App() {
       const cargo = empleado?.cargo || 'Colaborador';
       const fechaIngreso = empleado?.fecha_ingreso || empleado?.fechaIngreso || '';
       const tipoContrato = empleado?.tipo_contrato || empleado?.tipoContrato || 'Término Indefinido';
-      const salario = empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
+      const salario = empleado?.salario_basico || empleado?.salariobasico || empleado?.salarioBase || empleado?.salario || empleado?.sueldo || 0;
+      
+      console.log('📄 Carta Laboral - Datos empleado:', empleado);
+      console.log('💰 Salario detectado:', salario, '| Campos:', {
+        salario_basico: empleado?.salario_basico,
+        salariobasico: empleado?.salariobasico,
+        salarioBase: empleado?.salarioBase,
+        salario: empleado?.salario,
+        sueldo: empleado?.sueldo
+      });
       
       const razonSocial = datosSede?.razonSocial || 'BIG BURGUER S.A.S';
       const nitSede = datosSede?.nit || '';
@@ -1037,7 +1046,7 @@ function App() {
               .encabezado {
                 text-align: center;
                 margin-bottom: 30px;
-                padding-top: 10px;
+                padding-top: 90px;
               }
               .empresa { font-size: 14pt; font-weight: bold; margin-bottom: 5px; }
               .sede-info { font-size: 10pt; color: #666; }
@@ -1128,7 +1137,9 @@ function App() {
       );
     }
 
-    const salarioEmpleado = empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
+    const salarioEmpleado = empleado?.salario_basico || empleado?.salariobasico || empleado?.salarioBase || empleado?.salario || empleado?.sueldo || 0;
+    
+    console.log('👁️ Vista previa - Salario empleado:', salarioEmpleado);
 
     return (
       <div>
@@ -1145,12 +1156,12 @@ function App() {
           fontSize: 13
         }}>
           {/* Encabezado con logo */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-            <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 20 }}>
+            <div style={{ flex: 1 }}>
               <h3 style={{ margin: 0, color: '#c62828' }}>{datosSede?.razonSocial || 'BIG BURGUER S.A.S'}</h3>
-              <p style={{ margin: '4px 0 0', fontSize: 11, color: '#666' }}>Sede: {empleado?.sede || ''}</p>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#666' }}>Sede: {empleado?.sede || ''}</p>
             </div>
-            <img src="/logo.jpg" alt="Logo" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover' }} />
+            <img src="/logo.jpg" alt="Logo" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
           </div>
           
           <div style={{ borderBottom: '2px solid #c62828', marginBottom: 16 }} />
