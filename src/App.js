@@ -1367,263 +1367,140 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [empleado?.id]);
     
-    // Función para generar e imprimir el contrato como PDF
+    // Función para generar e imprimir el contrato como PDF - IGUAL AL SISTEMA ORIGINAL
     const imprimirContrato = () => {
       if (!contrato?.datos) return;
       
-      const d = contrato.datos;
-      const ventanaImpresion = window.open('', '_blank');
+      const datos = contrato.datos;
+      const win = window.open("", "_blank", "width=900,height=700");
+      if (!win) return;
+
+      // Variables de género
+      const esEmpleadoMujer = datos.generoTrabajador === "Femenino";
+      const elLaTrabajador = esEmpleadoMujer ? "LA" : "EL";
+      const trabajadorNombre = esEmpleadoMujer ? "TRABAJADORA" : "TRABAJADOR";
+      const labelNombreTrabajador = esEmpleadoMujer ? "NOMBRE DE LA TRABAJADORA" : "NOMBRE DEL TRABAJADOR";
+      const ellaEl = esEmpleadoMujer ? "ella" : "él";
       
-      ventanaImpresion.document.write(`
-        <!DOCTYPE html>
+      // Logo Big Burguer desde Supabase Storage
+      const LOGO_BIGBURGUER = "https://nhuxbrlbzrulbncghtim.supabase.co/storage/v1/object/public/imagenes//logo%20BIGBURGUER.jpg.jpg";
+
+      win.document.write(`
         <html>
           <head>
-            <title>Contrato de Trabajo - ${d.nombreTrabajador || ''}</title>
-            <meta charset="UTF-8">
+            <title>${datos.tipoContrato === "Fijo" || datos.tipoContrato === "Término Fijo"
+              ? "Contrato Individual de Trabajo a Término Fijo"
+              : "Contrato Individual de Trabajo a Término Indefinido"} - ${datos.nombreTrabajador || ''}</title>
             <style>
-              @page { 
-                size: letter; 
-                margin: 1.5cm 2cm; 
+              @page {
+                size: letter;
+                margin: 1.8cm 2cm 1.8cm 2cm;
               }
-              * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-              }
-              body { 
-                font-family: Arial, Helvetica, sans-serif; 
-                font-size: 10pt;
-                line-height: 1.5;
-                color: #000;
-                padding: 0;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 20px;
-                border-bottom: 2px solid #c62828;
-                padding-bottom: 15px;
-              }
-              .header h1 {
-                font-size: 16pt;
-                color: #c62828;
-                margin-bottom: 5px;
-                text-transform: uppercase;
-              }
-              .header h2 {
-                font-size: 12pt;
-                font-weight: normal;
-                color: #333;
-              }
-              .info-box {
-                background-color: #f5f5f5;
-                border: 1px solid #ddd;
-                padding: 12px;
-                margin-bottom: 15px;
-                border-radius: 5px;
-              }
-              .info-row {
-                display: flex;
-                margin-bottom: 5px;
-              }
-              .info-label {
-                font-weight: bold;
-                width: 150px;
-                color: #555;
-              }
-              .info-value {
-                flex: 1;
-              }
-              .partes {
-                display: flex;
-                gap: 20px;
-                margin-bottom: 20px;
-              }
-              .parte {
-                flex: 1;
-                border: 1px solid #ddd;
-                padding: 12px;
-                border-radius: 5px;
-              }
-              .parte h3 {
-                color: #c62828;
-                border-bottom: 1px solid #c62828;
-                padding-bottom: 5px;
-                margin-bottom: 10px;
+              body {
+                font-family: 'Times New Roman', Times, serif;
                 font-size: 11pt;
-              }
-              .clausula {
-                margin-bottom: 12px;
+                line-height: 1.4;
+                color: #000;
                 text-align: justify;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                hyphens: auto;
               }
-              .clausula-titulo {
-                font-weight: bold;
-                color: #c62828;
-                margin-bottom: 5px;
-                font-size: 10pt;
-              }
-              .clausula-texto {
-                padding-left: 15px;
-              }
-              .firmas {
-                margin-top: 40px;
-                display: flex;
-                justify-content: space-between;
-              }
-              .firma-box {
-                width: 45%;
-                text-align: center;
-              }
-              .linea-firma {
-                border-top: 1px solid #000;
-                margin-top: 60px;
-                padding-top: 8px;
-              }
-              .firma-nombre {
-                font-weight: bold;
-                font-size: 10pt;
-              }
-              .firma-rol {
-                color: #555;
-                font-size: 9pt;
-              }
-              .footer {
-                margin-top: 30px;
-                text-align: center;
-                font-size: 8pt;
-                color: #999;
-                border-top: 1px solid #ddd;
-                padding-top: 10px;
-              }
-              .highlight {
-                font-weight: bold;
-                color: #c62828;
-              }
-              @media print {
-                body { padding: 0; }
-                .no-print { display: none; }
-              }
+              .header-container { position: relative; margin-bottom: 10px; min-height: 80px; }
+              .logo-header { position: absolute; top: 0; right: 0; width: 80px; height: 80px; }
+              .logo-header img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
+              h1 { text-align: center; font-size: 12pt; font-weight: bold; margin: 10px 90px 15px 0; text-transform: uppercase; letter-spacing: 0.5px; padding-top: 20px; }
+              .tabla-datos { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 9.5pt; table-layout: fixed; }
+              .tabla-datos td { border: 1px solid #333; padding: 4px 6px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
+              .tabla-datos .label { font-weight: bold; width: 40%; background-color: #f5f5f5; }
+              .tabla-datos .valor { width: 60%; }
+              .intro-text { margin: 10px 0; font-size: 10.5pt; }
+              .clausula { margin: 8px 0; text-align: justify; font-size: 10.5pt; }
+              .clausula-titulo { font-weight: bold; text-transform: uppercase; }
+              .paragrafo { margin: 6px 0 6px 15px; font-style: italic; }
+              .firma-container { margin-top: 80px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+              .firma-box { width: 45%; text-align: center; }
+              .espacio-firma { height: 80px; }
+              .linea-firma { border-top: 1px solid #000; margin-bottom: 5px; width: 100%; }
+              .nombre-firma { font-weight: bold; font-size: 10pt; }
+              .cedula-firma { font-size: 9pt; }
+              @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
             </style>
           </head>
           <body>
-            <div class="header">
-              <h1>Contrato Individual de Trabajo</h1>
-              <h2>A Término ${d.tipoContrato === 'Indefinido' ? 'Indefinido' : d.tipoContrato || 'Indefinido'}</h2>
-            </div>
-            
-            <div class="partes">
-              <div class="parte">
-                <h3>👔 EMPLEADOR</h3>
-                <div class="info-row"><span class="info-label">Razón Social:</span><span class="info-value">${d.nombreEmpleador || ''}</span></div>
-                <div class="info-row"><span class="info-label">NIT:</span><span class="info-value">${d.nitEmpleador || ''}</span></div>
-                <div class="info-row"><span class="info-label">Dirección:</span><span class="info-value">${d.direccionEmpleador || ''}</span></div>
-                <div class="info-row"><span class="info-label">Teléfono:</span><span class="info-value">${d.telefonoEmpleador || ''}</span></div>
-                <div class="info-row"><span class="info-label">Representante:</span><span class="info-value">${d.representanteLegal || ''}</span></div>
-              </div>
-              <div class="parte">
-                <h3>👷 TRABAJADOR${d.generoTrabajador === 'Femenino' ? 'A' : ''}</h3>
-                <div class="info-row"><span class="info-label">Nombre:</span><span class="info-value">${d.nombreTrabajador || ''}</span></div>
-                <div class="info-row"><span class="info-label">Cédula:</span><span class="info-value">${d.cedulaTrabajador || ''}</span></div>
-                <div class="info-row"><span class="info-label">Dirección:</span><span class="info-value">${d.direccionTrabajador || ''}</span></div>
-                <div class="info-row"><span class="info-label">Teléfono:</span><span class="info-value">${d.telefonoTrabajador || ''}</span></div>
-                <div class="info-row"><span class="info-label">Nacimiento:</span><span class="info-value">${d.lugarFechaNacimiento || ''}</span></div>
-              </div>
-            </div>
-            
-            <div class="info-box">
-              <div class="info-row"><span class="info-label">Cargo:</span><span class="info-value highlight">${d.cargo || ''}</span></div>
-              <div class="info-row"><span class="info-label">Lugar de Trabajo:</span><span class="info-value">${d.lugarTrabajo || ''}, ${d.ciudad || ''}</span></div>
-              <div class="info-row"><span class="info-label">Fecha de Inicio:</span><span class="info-value highlight">${d.fechaInicio || ''}</span></div>
-              <div class="info-row"><span class="info-label">Tipo de Contrato:</span><span class="info-value">${d.tipoContrato === 'Indefinido' ? 'Término Indefinido' : d.duracionContrato || 'Término Indefinido'}</span></div>
-              <div class="info-row"><span class="info-label">Salario:</span><span class="info-value highlight">${d.remuneracion || ''} (${d.remuneracionLetras || ''} PESOS M/CTE)</span></div>
-              <div class="info-row"><span class="info-label">Forma de Pago:</span><span class="info-value">${d.periodoPago || 'Quincenal'}</span></div>
+            <div class="header-container">
+              <div class="logo-header"><img src="${LOGO_BIGBURGUER}" alt="BigBurguer Logo" /></div>
+              <h1>CONTRATO INDIVIDUAL DE TRABAJO A TÉRMINO ${datos.tipoContrato === "Fijo" || datos.tipoContrato === "Término Fijo" ? "FIJO" : "INDEFINIDO"}</h1>
             </div>
 
-            <div class="clausula">
-              <div class="clausula-titulo">PRIMERA. - OBJETO</div>
-              <div class="clausula-texto">
-                ${d.elLaTrabajador || 'EL'} TRABAJADOR${d.generoTrabajador === 'Femenino' ? 'A' : ''} se obliga a prestar sus servicios personales al EMPLEADOR, desempeñando el cargo de <strong>${d.cargo || ''}</strong>, ejecutando las labores propias del cargo, así como las complementarias que le sean asignadas.
-              </div>
-            </div>
+            <table class="tabla-datos">
+              <tr><td class="label">NOMBRE DEL EMPLEADOR</td><td class="valor">${datos.nombreEmpleador || ''}</td></tr>
+              <tr><td class="label">NIT</td><td class="valor">${datos.nitEmpleador || ''}</td></tr>
+              <tr><td class="label">DIRECCIÓN DEL EMPLEADOR</td><td class="valor">${datos.direccionEmpleador || ''}</td></tr>
+              <tr><td class="label">TELÉFONO</td><td class="valor">${datos.telefonoEmpleador || ''}</td></tr>
+              <tr><td class="label">REPRESENTANTE LEGAL</td><td class="valor">${datos.representanteLegal || ''}</td></tr>
+              <tr><td class="label">${datos.tipoDocRepresentante ? datos.tipoDocRepresentante.toUpperCase() : "CÉDULA DE CIUDADANÍA"}</td><td class="valor">${datos.cedulaRepresentante || ''}</td></tr>
+              <tr><td colspan="2" style="height:8px;border:none;"></td></tr>
+              <tr><td class="label">${labelNombreTrabajador}</td><td class="valor">${datos.nombreTrabajador || ''}</td></tr>
+              <tr><td class="label">${datos.tipoDocTrabajador ? datos.tipoDocTrabajador.toUpperCase() : "CÉDULA DE CIUDADANÍA"}</td><td class="valor">${datos.cedulaTrabajador || ''}</td></tr>
+              <tr><td class="label">LUGAR Y FECHA NACIMIENTO</td><td class="valor">${datos.lugarFechaNacimiento || ''}</td></tr>
+              <tr><td class="label">DIRECCIÓN</td><td class="valor">${datos.direccionTrabajador || ''}</td></tr>
+              <tr><td class="label">TELÉFONO</td><td class="valor">${datos.telefonoTrabajador || ''}</td></tr>
+              <tr><td class="label">CARGO</td><td class="valor">${datos.cargo || ''}</td></tr>
+              <tr><td class="label">TIPO DE SALARIO</td><td class="valor">${datos.tipoSalario || ''}</td></tr>
+              <tr><td class="label">REMUNERACIÓN SALARIAL MENSUAL</td><td class="valor">${datos.remuneracion || ''} (${datos.remuneracionLetras || ''} PESOS M/CTE)</td></tr>
+              <tr><td class="label">PERÍODO DE PAGO</td><td class="valor">${datos.periodoPago || ''}</td></tr>
+              <tr><td class="label">FECHA INICIACIÓN DE LABORES</td><td class="valor">${datos.fechaInicio || ''}</td></tr>
+              <tr><td class="label">FECHA DE TERMINACIÓN DE LABORES</td><td class="valor">${datos.fechaTerminacion || ''}</td></tr>
+              <tr><td class="label">LUGAR DE TRABAJO</td><td class="valor">${datos.lugarTrabajo || ''}</td></tr>
+              <tr><td class="label">LUGAR DE CONTRATACIÓN</td><td class="valor">${datos.lugarContratacion || ''}</td></tr>
+            </table>
+
+            <p class="intro-text">Entre el EMPLEADOR y ${elLaTrabajador} ${trabajadorNombre}, de las condiciones ya dichas, identificados como aparece al pie de sus firmas, se ha celebrado el presente contrato individual de trabajo a término ${datos.tipoContrato === "Fijo" || datos.tipoContrato === "Término Fijo" ? "fijo" : "indefinido"}, regido además por las siguientes <strong>CLÁUSULAS:</strong></p>
             
-            <div class="clausula">
-              <div class="clausula-titulo">SEGUNDA. - LUGAR DE TRABAJO</div>
-              <div class="clausula-texto">
-                ${d.elLaTrabajador || 'EL'} ${d.trabajadorNombre || 'TRABAJADOR'} desarrollará sus funciones en las instalaciones ubicadas en <strong>${d.lugarTrabajo || ''}</strong>, ${d.ciudad || ''}, o en cualquier otro lugar que determine el EMPLEADOR de acuerdo con las necesidades del servicio.
-              </div>
-            </div>
+            <div class="clausula"><span class="clausula-titulo">PRIMERA: OBJETO.</span> EL EMPLEADOR contrata los servicios personales de ${elLaTrabajador} ${trabajadorNombre} en el cargo reseñado y éste se obliga: a) a poner al servicio del EMPLEADOR toda su capacidad normal de trabajo en el desempeño de las funciones propias del oficio mencionado y en las labores descritas en el literal f de la presente cláusula y complementarias del mismo, de conformidad con las órdenes e instrucciones que le imparta EL EMPLEADOR directamente o través de sus representantes. Las funciones serán detalladas en Anexo al presente Contrato; b) a prestar sus servicios en forma exclusiva a EL EMPLEADOR, es decir, a no prestar directa ni indirectamente servicios laborales a otros empleadores, ni trabajar por cuenta propia en el mismo oficio, durante la vigencia de este contrato; y c) a guardar absoluta reserva y confidencialidad sobre los hechos, documentos físicos y/o electrónicos, informaciones y en general, sobre todos los asuntos y materias que lleguen a su conocimiento por causa o por ocasión de su contrato de trabajo y aun después dos (2) años de liquidado el mismo. En caso de incumplimiento de la presente obligación, ${elLaTrabajador} ${trabajadorNombre} responderá legalmente por los daños y/o perjuicios que se causen a la empresa, de conformidad con las normas vigentes en la materia. d) a reportar cualquier orden, solicitud, o novedad que reciba de su jefe inmediato o de cualquier compañero o colaborador, tendiente a realizar o encubrir actos fraudulentos o ilícitos que afecten de cualquier forma a EL EMPLEADOR. e) Dar cumplimiento a las políticas que estipule el Empleador, los cuales constan en los anexos que forman parte integral de este contrato. f) ${elLaTrabajador} ${trabajadorNombre} desempeñará las funciones tales como: Presentar el menú, conocer los ingredientes y las preparaciones, sugerir platos, presentar las recomendaciones del día y las bebidas disponibles, ser enlace entre la cocina y el cliente, debe anotar pedidos y entregarlos al comando de la cocina, cerciorarse que los platos hayan sido preparados de forma correcta, en caso de que el comensal haya hecho una petición especial, mantener comunicación continua con los clientes, prestar atención a las reacciones de los clientes y canalizar quejas o sugerencias que busquen mejorar el servicio, mantener las mesas limpias y desinfectadas antes y después de su uso por parte del cliente, y demás indicaciones que se le asignen o se le requieran, demás instrucciones dadas por el EMPLEADOR.</div>
+
+            <div class="clausula"><span class="clausula-titulo">SEGUNDA: REMUNERACIÓN.</span> ${elLaTrabajador} ${trabajadorNombre} devengará una remuneración de UN (1) SALARIO MÍNIMO LEGAL MENSUAL VIGENTE, equivalente actualmente a la suma de ${datos.remuneracionLetras || ''} PESOS M/CTE (${datos.remuneracion || ''}).<div class="paragrafo"><strong>PARÁGRAFO PRIMERO: SALARIO ORDINARIO.</strong> Dentro del salario ordinario se encuentra incluida la remuneración de los descansos dominicales y festivos de que tratan los Capítulos I, II y III del Título VII del C.S.T. De igual manera se aclara y se conviene que en los casos en que ${elLaTrabajador} ${trabajadorNombre} devengue comisiones o cualquiera otra modalidad de salario variable, el 82.5% de dichos ingresos constituye remuneración de la labor realizada, y el 17.5% restante estará destinado a remunerar el descanso en los días dominicales y festivos de que tratan los Capítulos I y II del Título VIII del C.S.T.</div><div class="paragrafo"><strong>PARÁGRAFO SEGUNDO: SALARIO INTEGRAL.</strong> En la eventualidad en que ${elLaTrabajador} ${trabajadorNombre} devengue salario integral, se entiende de conformidad con el numeral 2 del artículo 132 del C.S.T, subrogado por el artículo 18 de la ley 50/90, que dentro del salario integral convenido se encuentra incorporado el factor prestacional de ${elLaTrabajador} ${trabajadorNombre}, el cual no será inferior al 30% del salario antes mencionado.</div><div class="paragrafo"><strong>PARÁGRAFO TERCERO:</strong> Las partes acuerdan que en los casos en que se le reconozcan a ${elLaTrabajador} ${trabajadorNombre} beneficios diferentes al salario por concepto de alimentación, comunicaciones, habitación o vivienda, transporte, vestuario, auxilios en dinero o en especie o bonificaciones ocasionales, ésos no se considerarán como factor constitutivo de salario y no se tendrán en cuenta como factor prestacional para la liquidación de acreencias laborales, ni para el pago de aportes parafiscales y cotizaciones a la seguridad social, de conformidad con los Arts. 15 y 16 de la ley 50 de 1990, en concordancia el Art. 17 de la ley 344 de 1996.</div></div>
+
+            <div class="clausula"><span class="clausula-titulo">TERCERA: DURACIÓN DEL CONTRATO.</span> ${datos.tipoContrato === "Fijo" || datos.tipoContrato === "Término Fijo" ? "La duración del presente contrato será por el término establecido en la parte inicial del presente documento, contado a partir de la fecha de iniciación de labores. No obstante, si antes de la fecha de vencimiento del término estipulado, ninguna de las partes avisare por escrito a la otra su determinación de no prorrogar el contrato, con una antelación no inferior a treinta (30) días, éste se entenderá renovado por un período igual al inicialmente pactado." : "La duración del presente contrato será de manera indefinida, periodo entre la fecha de iniciación del contrato establecida en la parte inicial del presente documento y terminará según las razones dispuestas por la ley."}</div>
+
+            <div class="clausula"><span class="clausula-titulo">CUARTA: TRABAJO NOCTURNO, SUPLEMENTARIO, DOMINICAL Y/O FESTIVO.</span> Todo trabajo nocturno, suplementario o en horas extras, y todo trabajo en día domingo o festivo en los que legalmente debe concederse descanso, se remunerará conforme los dispone expresamente la ley, salvo acuerdo en contrario contenido en convención, pacto colectivo o laudo arbitral. Para el reconocimiento y pago del trabajo suplementario, nocturno, dominical o festivo, EL EMPLEADOR o sus representantes deberán haberlo autorizado previamente y por escrito.</div>
+
+            <div class="clausula"><span class="clausula-titulo">QUINTA: JORNADA DE TRABAJO.</span> ${elLaTrabajador} ${trabajadorNombre} se obliga a laborar la jornada máxima legal, salvo acuerdo especial, cumpliendo con los turnos y horarios que señale EL EMPLEADOR, quien podrá cambiarlos o ajustarlos cuando lo estime conveniente sin que ello se considere una desmejora en las condiciones laborales ${esEmpleadoMujer ? "de LA TRABAJADORA" : "del TRABAJADOR"}.</div>
+
+            <div class="clausula"><span class="clausula-titulo">SEXTA: PERIODO DE PRUEBA.</span> Los 60 días iniciales del contrato se considera como periodo de prueba sin que exceda los límites permitidos a partir de la fecha de inicio y por consiguiente, cualquiera de las partes podrá terminar el contrato unilateralmente, en cualquier momento durante dicho periodo.</div>
+
+            <div class="clausula"><span class="clausula-titulo">SÉPTIMA: TERMINACIÓN UNILATERAL.</span> Son justas causas para dar terminado unilateralmente este contrato, por cualquiera de las partes, las enumeradas en el Art. 62 del C.S.T., modificado por el Art. 7ª del Decreto 2351 de 1965 y además, por parte de EL EMPLEADOR, las faltas que para el efecto se califiquen como graves en reglamentos, manuales, instructivos y demás documentos que contengan reglamentaciones, órdenes, instrucciones o prohibiciones de carácter general o particular.<div class="paragrafo"><strong>PARÁGRAFO:</strong> Al finalizar el contrato de trabajo por cualquier concepto, ${elLaTrabajador} ${trabajadorNombre} autoriza descontar de su liquidación final de prestaciones sociales el valor correspondiente a los faltantes y/o deterioro anormal de elementos puestos bajo su responsabilidad.</div></div>
+
+            <div class="clausula"><span class="clausula-titulo">OCTAVA: PROPIEDAD INTELECTUAL.</span> Las partes acuerdan que todas las invenciones, descubrimientos y trabajos originales concebidos o hechos por ${elLaTrabajador} ${trabajadorNombre} en vigencia del presente contrato pertenecerán a EL EMPLEADOR, por lo cual ${elLaTrabajador} ${trabajadorNombre} se obliga a informar a EL EMPLEADOR, de forma inmediata, sobre la existencia de dichas invenciones y/o trabajos originales.</div>
+
+            <div class="clausula"><span class="clausula-titulo">NOVENA: MODIFICACIÓN DE LAS CONDICIONES LABORALES.</span> ${elLaTrabajador} ${trabajadorNombre} acepta desde ahora expresamente todas las modificaciones de sus condiciones laborales determinadas por EL EMPLEADOR en ejercicio de su poder subordinante, tales como el horario de trabajo, el lugar de prestación del servicio y el cargo u oficio y/o funciones, siempre que tales modificaciones no afecten su honor, dignidad o sus derechos mínimos, ni impliquen desmejoras sustanciales o graves perjuicios para ${ellaEl}.</div>
+
+            <div class="clausula"><span class="clausula-titulo">DÉCIMA: DIRECCIÓN ${esEmpleadoMujer ? "DE LA TRABAJADORA" : "DEL TRABAJADOR"}.</span> ${elLaTrabajador} ${trabajadorNombre} se compromete a informar por escrito y de manera inmediata a EL EMPLEADOR cualquier cambio en su dirección de residencia, teniéndose en todo caso como suya, la última dirección registrada en su hoja de vida.</div>
+
+            <div class="clausula"><span class="clausula-titulo">DÉCIMA PRIMERA: EFECTOS.</span> El presente contrato reemplaza en su integridad y deja sin efecto cualquiera otro contrato, verbal o escrito, celebrado entre las partes con anterioridad, pudiendo las partes convenir por escrito modificaciones al mismo, las que formarán parte integral de este contrato.</div>
+
+            <div class="clausula"><span class="clausula-titulo">DÉCIMA SEGUNDA: USO DE INTERNET.</span> ${elLaTrabajador} ${trabajadorNombre}, en razón de sus funciones, tendrá acceso a Internet. ${elLaTrabajador} ${trabajadorNombre} se compromete a realizar un uso adecuado del Internet desde su computador o dispositivo móvil o cualquier otro dispositivo de la empresa con conexión a Internet. Se abstiene de usarlo para el ingreso a páginas que no sean del desarrollo de sus funciones.</div>
+
+            <div class="clausula"><span class="clausula-titulo">DÉCIMA TERCERA: HABEAS DATA.</span> Los datos consignados en el presente Contrato serán tratados de acuerdo a lo establecido en la Ley 1581 de 2012, en el Decreto 1377 de 2013 y cualquier otra normatividad en lo que respecta a la protección de la información.</div>
+
+            <div class="clausula"><span class="clausula-titulo">DÉCIMA CUARTA: AUTORIZACIÓN DESCUENTOS.</span> ${elLaTrabajador} ${trabajadorNombre} autoriza desde ahora al EMPLEADOR para que, de sus salarios, prestaciones sociales e indemnizaciones, le descuente, durante la vigencia del contrato o al momento de la terminación del mismo por cualquier causa, las sumas de dinero que por cualquier motivo le llegare a adeudar.</div>
+
+            <div class="clausula"><span class="clausula-titulo">DÉCIMA QUINTA: OBLIGACIONES ESPECIALES DE CONFIDENCIALIDAD ${esEmpleadoMujer ? "DE LA TRABAJADORA" : "DEL TRABAJADOR"}.</span> ${elLaTrabajador} ${trabajadorNombre} se obliga a:<br/>a. Guardar absoluta confidencialidad respecto a: procedimientos, métodos, características, lista de clientes, fórmulas de productos y similares, al igual que claves de seguridad, suministros, software, base de datos de cualquier índole, valores de bienes y servicios, información técnica, financiera, económica o comercial del contratante o sus clientes.<br/>b. No ejercer actos de competencia desleal frente a ${datos.nombreEmpleador || ''}.<br/>c. Adoptar todas las precauciones necesarias y apropiadas para guardar la confidencialidad de la información.<br/>d. Devolver inmediatamente a la terminación de su contrato: la lista de clientes, claves, bases de datos, equipos, información técnica, y demás que tenga del empleador.<div class="paragrafo"><strong>PARÁGRAFO:</strong> El incumplimiento u omisión de cualquiera de las obligaciones aquí acordadas no solo es causal de terminación de los vínculos laborales existentes entre las partes, sino que podría conllevar a iniciar acciones judiciales en contra ${esEmpleadoMujer ? "de la trabajadora" : "del trabajador"} por los perjuicios materiales e inmateriales que cause.</div></div>
+
+            <p style="margin-top: 25px;">Para constancia se firma en dos ejemplares del mismo tenor y valor, ante testigos en la ciudad y fecha que se indican a continuación:</p>
+            <p style="margin: 15px 0;"><strong>CIUDAD:</strong> ${datos.ciudad || ''} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>FECHA:</strong> ${datos.fechaFirma || ''}</p>
             
-            <div class="clausula">
-              <div class="clausula-titulo">TERCERA. - DURACIÓN</div>
-              <div class="clausula-texto">
-                El presente contrato tendrá una duración <strong>${d.tipoContrato === 'Indefinido' ? 'INDEFINIDA' : (d.duracionContrato || 'INDEFINIDA')}</strong>, iniciando labores a partir del <strong>${d.fechaInicio || ''}</strong>.
-              </div>
+            <div class="firma-container">
+              <div class="firma-box"><div class="espacio-firma"></div><div class="linea-firma"></div><div class="nombre-firma">EMPLEADOR</div><div class="nombre-firma">${datos.representanteLegal || ''}</div><div class="cedula-firma">${datos.tipoDocRepresentante || "Cédula de Ciudadanía"} ${datos.cedulaRepresentante || ''}</div><div class="cedula-firma">Representante Legal</div></div>
+              <div class="firma-box"><div class="espacio-firma"></div><div class="linea-firma"></div><div class="nombre-firma">${trabajadorNombre}</div><div class="nombre-firma">${datos.nombreTrabajador || ''}</div><div class="cedula-firma">${datos.tipoDocTrabajador || "Cédula de Ciudadanía"} ${datos.cedulaTrabajador || ''}</div></div>
             </div>
-            
-            <div class="clausula">
-              <div class="clausula-titulo">CUARTA. - REMUNERACIÓN</div>
-              <div class="clausula-texto">
-                El EMPLEADOR pagará al ${d.trabajadorNombre || 'TRABAJADOR'} como contraprestación por sus servicios, un salario de <strong>${d.remuneracion || ''}</strong> (${d.remuneracionLetras || ''} PESOS MCTE), pagaderos de forma <strong>${d.periodoPago || 'Quincenal'}</strong>. Este pago incluirá las prestaciones sociales de ley.
-              </div>
-            </div>
-            
-            <div class="clausula">
-              <div class="clausula-titulo">QUINTA. - JORNADA LABORAL</div>
-              <div class="clausula-texto">
-                ${d.elLaTrabajador || 'EL'} ${d.trabajadorNombre || 'TRABAJADOR'} se obliga a cumplir la jornada máxima legal permitida, de conformidad con la legislación laboral vigente. El horario será establecido por el EMPLEADOR según las necesidades del servicio.
-              </div>
-            </div>
-            
-            <div class="clausula">
-              <div class="clausula-titulo">SEXTA. - OBLIGACIONES DEL TRABAJADOR</div>
-              <div class="clausula-texto">
-                Son obligaciones ${d.delDeLaTrabajador || 'DEL'} ${d.trabajadorNombre || 'TRABAJADOR'}: a) Cumplir con las instrucciones del empleador. b) Guardar absoluta reserva sobre la información de la empresa. c) Cumplir el reglamento interno de trabajo. d) Cuidar los elementos de trabajo. e) Cumplir con las demás obligaciones que establece la ley.
-              </div>
-            </div>
-            
-            <div class="clausula">
-              <div class="clausula-titulo">SÉPTIMA. - OBLIGACIONES DEL EMPLEADOR</div>
-              <div class="clausula-texto">
-                El EMPLEADOR se obliga a: a) Pagar la remuneración pactada en los períodos convenidos. b) Suministrar los elementos necesarios para el trabajo. c) Afiliar al trabajador al Sistema de Seguridad Social. d) Respetar la dignidad del trabajador. e) Cumplir las demás obligaciones establecidas por la ley.
-              </div>
-            </div>
-            
-            <div class="clausula">
-              <div class="clausula-titulo">OCTAVA. - TERMINACIÓN</div>
-              <div class="clausula-texto">
-                El presente contrato podrá darse por terminado por las causales establecidas en los artículos 61, 62, 63 y 64 del Código Sustantivo del Trabajo, y demás normas que lo modifiquen o adicionen.
-              </div>
-            </div>
-            
-            <p style="text-align: center; margin-top: 25px; font-size: 10pt;">
-              Para constancia se firma en <strong>${d.lugarContratacion || 'Pereira, Risaralda'}</strong>, a los <strong>${d.fechaFirma || ''}</strong>.
-            </p>
-            
-            <div class="firmas">
-              <div class="firma-box">
-                <div class="linea-firma">
-                  <div class="firma-nombre">${d.representanteLegal || d.nombreEmpleador || ''}</div>
-                  <div class="firma-rol">EMPLEADOR</div>
-                  <div class="firma-rol">NIT: ${d.nitEmpleador || ''}</div>
-                </div>
-              </div>
-              <div class="firma-box">
-                <div class="linea-firma">
-                  <div class="firma-nombre">${d.nombreTrabajador || ''}</div>
-                  <div class="firma-rol">TRABAJADOR${d.generoTrabajador === 'Femenino' ? 'A' : ''}</div>
-                  <div class="firma-rol">C.C. ${d.cedulaTrabajador || ''}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="footer">
-              Documento generado el ${new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })} | Sistema de Gestión Big Burguer
-            </div>
+
+            <script>window.print()</script>
           </body>
         </html>
       `);
-      
-      ventanaImpresion.document.close();
-      setTimeout(() => ventanaImpresion.print(), 500);
+      win.document.close();
     };
     
     if (cargandoContrato) {
