@@ -63,6 +63,10 @@ function App() {
       if (emp && !error) {
         setEmpleado(emp);
         
+        // Guardar el ID del empleado para buscar nóminas
+        const empleadoId = emp.id || emp.documento;
+        console.log('👤 Empleado encontrado, ID:', empleadoId, 'Documento:', emp.documento);
+        
         // Cargar configuración de empresa
         if (emp.empresa_id || usuarioData.empresa_id) {
           const empresaId = emp.empresa_id || usuarioData.empresa_id;
@@ -84,9 +88,9 @@ function App() {
           if (empresaData) setEmpresa(empresaData);
         }
         
-        // Cargar datos adicionales usando documento
+        // Cargar datos adicionales usando ID para nóminas y documento para el resto
         await Promise.all([
-          cargarNominas(emp.documento),
+          cargarNominas(empleadoId, emp.documento),
           cargarHorarios(emp.documento),
           cargarSolicitudes(emp.documento),
           cargarDocumentosEmp(emp.documento)
@@ -103,7 +107,7 @@ function App() {
         
         // Cargar datos usando el documento del usuario
         await Promise.all([
-          cargarNominas(usuarioData.usuario),
+          cargarNominas(usuarioData.usuario, usuarioData.usuario),
           cargarHorarios(usuarioData.usuario),
           cargarSolicitudes(usuarioData.usuario),
           cargarDocumentosEmp(usuarioData.usuario)
@@ -115,9 +119,9 @@ function App() {
     setCargando(false);
   };
 
-  const cargarNominas = async (doc) => {
+  const cargarNominas = async (empleadoId, documento) => {
     try {
-      console.log('🔍 Buscando nóminas para documento:', doc);
+      console.log('🔍 Buscando nóminas para empleadoId:', empleadoId, 'documento:', documento);
       
       // PRIMERO: Ver cuántas nóminas hay en total en la tabla
       const { data: todasNominas, count, error: errorTotal } = await supabase
@@ -132,34 +136,52 @@ function App() {
         console.log('👥 Empleadoids en la tabla:', todasNominas.map(n => n.empleadoid));
       }
       
-      // Intentar buscar primero por empleadoid (puede ser el documento)
+      // Intentar buscar primero por empleadoid (ID del empleado)
       let { data, error } = await supabase
         .from('nominas')
         .select('*')
-        .eq('empleadoid', doc)
+        .eq('empleadoid', empleadoId)
         .order('periodo', { ascending: false })
         .limit(12);
       
-      console.log('📋 Resultado búsqueda por empleadoid:', data, error);
+      console.log('📋 Resultado búsqueda por empleadoid (ID):', data?.length || 0, error);
       
-      // Si no encuentra, intentar buscar en el campo empleado (si existe como jsonb)
-      if ((!data || data.length === 0) && !error) {
-        console.log('🔄 Intentando búsqueda alternativa con ilike...');
-        // Buscar donde empleadoid contenga el documento
-        const { data: dataAlt } = await supabase
+      // Si no encuentra por ID, intentar por documento
+      if ((!data || data.length === 0) && !error && documento) {
+        console.log('🔄 Intentando búsqueda por documento...');
+        const { data: dataDoc } = await supabase
           .from('nominas')
           .select('*')
-          .ilike('empleadoid', `%${doc}%`)
+          .eq('empleadoid', documento)
           .order('periodo', { ascending: false })
           .limit(12);
         
-        console.log('📋 Resultado búsqueda ilike:', dataAlt);
+        console.log('📋 Resultado búsqueda por documento:', dataDoc?.length || 0);
+        if (dataDoc && dataDoc.length > 0) {
+          data = dataDoc;
+        }
+      }
+      
+      // Si aún no encuentra, buscar con ilike por si hay prefijos/sufijos
+      if ((!data || data.length === 0) && !error) {
+        console.log('🔄 Intentando búsqueda con contains...');
+        const { data: dataAlt } = await supabase
+          .from('nominas')
+          .select('*')
+          .or(`empleadoid.ilike.%${empleadoId}%,empleadoid.ilike.%${documento}%`)
+          .order('periodo', { ascending: false })
+          .limit(12);
+        
+        console.log('📋 Resultado búsqueda ilike:', dataAlt?.length || 0);
         if (dataAlt && dataAlt.length > 0) {
           data = dataAlt;
         }
       }
       
-      if (data) setNominas(data);
+      if (data) {
+        console.log('✅ Nóminas encontradas:', data.length);
+        setNominas(data);
+      }
     } catch (e) {
       console.log('❌ Error cargando nóminas:', e);
     }
