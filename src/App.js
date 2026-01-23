@@ -92,8 +92,7 @@ function App() {
         await Promise.all([
           cargarNominas(empleadoId, emp.documento),
           cargarHorarios(emp.id), // Usar ID del empleado para horarios
-          cargarSolicitudes(emp.documento),
-          cargarDocumentosEmp(emp.documento)
+          cargarSolicitudes(emp.documento)
         ]);
       } else {
         // Si no encuentra en empleados, usar datos del usuario
@@ -109,8 +108,7 @@ function App() {
         await Promise.all([
           cargarNominas(usuarioData.usuario, usuarioData.usuario),
           cargarHorarios(usuarioData.usuario),
-          cargarSolicitudes(usuarioData.usuario),
-          cargarDocumentosEmp(usuarioData.usuario)
+          cargarSolicitudes(usuarioData.usuario)
         ]);
       }
     } catch (error) {
