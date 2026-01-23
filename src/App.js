@@ -518,6 +518,37 @@ function App() {
       });
     };
 
+    const formatearFechaCorta = (fecha) => {
+      if (!fecha) return '';
+      return new Date(fecha).toLocaleDateString('es-CO', {
+        day: '2-digit',
+        month: 'short'
+      });
+    };
+
+    // Función para calcular el rango de la quincena desde una fecha
+    const getRangoQuincena = (fechaISO) => {
+      if (!fechaISO) return { inicio: '', fin: '' };
+      
+      const date = new Date(fechaISO);
+      const yyyy = date.getFullYear();
+      const mm = date.getMonth();
+      const dd = date.getDate();
+      const half = dd <= 15 ? 1 : 2;
+      
+      // Calcular los días de la quincena
+      const lastDay = new Date(yyyy, mm + 1, 0).getDate();
+      const start = half === 1 ? 1 : 16;
+      const end = half === 1 ? 15 : lastDay;
+      
+      return {
+        inicio: new Date(yyyy, mm, start),
+        fin: new Date(yyyy, mm, end),
+        quincena: half === 1 ? 'Primera' : 'Segunda',
+        mes: date.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+      };
+    };
+
     const imprimirDesprendible = () => {
       window.print();
     };
@@ -537,6 +568,7 @@ function App() {
     };
 
     const horasTotales = nominaSeleccionada ? getHorasTotales(nominaSeleccionada) : null;
+    const rangoQuincena = nominaSeleccionada ? getRangoQuincena(nominaSeleccionada.periodo) : null;
 
     return (
       <div>
@@ -561,7 +593,9 @@ function App() {
               </div>
             ) : (
               <div style={{ display: 'grid', gap: 12 }}>
-                {nominas.map(nomina => (
+                {nominas.map(nomina => {
+                  const rango = getRangoQuincena(nomina.periodo);
+                  return (
                   <button
                     key={nomina.id}
                     onClick={() => setNominaSeleccionada(nomina)}
@@ -579,17 +613,18 @@ function App() {
                   >
                     <div>
                       <div style={{ fontWeight: 'bold', color: '#c62828' }}>
-                        Período: {formatearFecha(nomina.periodo)}
+                        {rango.quincena} Quincena - {rango.mes}
                       </div>
                       <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                        Generado: {formatearFecha(nomina.fechageneracion)}
+                        Del {formatearFechaCorta(rango.inicio)} al {formatearFechaCorta(rango.fin)}
                       </div>
                     </div>
                     <div style={{ fontWeight: 'bold', color: '#4caf50', fontSize: 18 }}>
                       {formatearMoneda(nomina.totalneto || nomina.netoapagar)}
                     </div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -644,8 +679,11 @@ function App() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <h4 style={{ margin: 0, fontSize: 14 }}>COMPROBANTE DE PAGO</h4>
-                  <p style={{ margin: 0, fontSize: 11, color: '#666' }}>
-                    Período: {formatearFecha(nominaSeleccionada.periodo)}
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: '#c62828', fontWeight: 'bold' }}>
+                    {rangoQuincena?.quincena} Quincena - {rangoQuincena?.mes}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 10, color: '#666' }}>
+                    Del {formatearFechaCorta(rangoQuincena?.inicio)} al {formatearFechaCorta(rangoQuincena?.fin)}
                   </p>
                 </div>
               </div>
