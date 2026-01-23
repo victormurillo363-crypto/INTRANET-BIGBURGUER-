@@ -307,19 +307,6 @@ function App() {
     }
   };
 
-  const cargarDocumentosEmp = async (doc) => {
-    try {
-      const { data } = await supabase
-        .from('documentos_intranet')
-        .select('*')
-        .eq('documento', doc)
-        .order('fecha_creacion', { ascending: false });
-      if (data) setDocumentos(data);
-    } catch (e) {
-      console.log('Tabla documentos_intranet no disponible');
-    }
-  };
-
   // ============================================
   // FUNCIÓN DE LOGIN - Usa tabla "usuarios" del sistema principal
   // ============================================
@@ -379,7 +366,6 @@ function App() {
     setNominas([]);
     setHorarios([]);
     setSolicitudes([]);
-    setDocumentos([]);
     setSeccionActiva('inicio');
   };
 
