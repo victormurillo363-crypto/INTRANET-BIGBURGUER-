@@ -509,15 +509,6 @@ function App() {
       }).format(valor || 0);
     };
 
-    const formatearFecha = (fecha) => {
-      if (!fecha) return '';
-      return new Date(fecha).toLocaleDateString('es-CO', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      });
-    };
-
     const formatearFechaCorta = (fecha) => {
       if (!fecha) return '';
       return new Date(fecha).toLocaleDateString('es-CO', {
