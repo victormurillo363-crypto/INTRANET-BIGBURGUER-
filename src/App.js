@@ -883,16 +883,44 @@ function App() {
     );
   };
 
-  // CARTA LABORAL
+  // CARTA LABORAL - Automática con datos de sede
   const SeccionCartaLaboral = () => {
-    const [generando, setGenerando] = useState(false);
-    const [cartaGenerada, setCartaGenerada] = useState(false);
-    
-    const fechaHoy = new Date().toLocaleDateString('es-CO', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    const [datosSede, setDatosSede] = useState(null);
+    const [cargandoSede, setCargandoSede] = useState(true);
+
+    // Cargar datos de la sede del empleado al montar
+    useEffect(() => {
+      const cargarDatosSede = async () => {
+        try {
+          // Buscar la sede del empleado
+          const sedeNombre = empleado?.sede;
+          if (sedeNombre) {
+            const { data } = await supabase
+              .from('sedes')
+              .select('*')
+              .ilike('nombre', `%${sedeNombre}%`)
+              .limit(1)
+              .maybeSingle();
+            
+            if (data) {
+              setDatosSede({
+                nombre: data.nombre || '',
+                nit: data.nit || '',
+                razonSocial: data.razonsocial || data.razonSocial || 'BIG BURGUER S.A.S',
+                representanteLegal: data.representantelegal || data.representanteLegal || '',
+                generoRepresentante: data.generorepresentante || data.generoRepresentante || 'Masculino',
+                direccion: data.direccion || '',
+                telefono: data.telefono || ''
+              });
+            }
+          }
+        } catch (e) {
+          console.log('Error cargando sede:', e);
+        }
+        setCargandoSede(false);
+      };
+      cargarDatosSede();
+    }, [empleado?.sede]);
 
     const formatearMoneda = (valor) => {
       return new Intl.NumberFormat('es-CO', {
@@ -902,164 +930,303 @@ function App() {
       }).format(valor || 0);
     };
 
-    const generarCarta = () => {
-      setGenerando(true);
-      setTimeout(() => {
-        setGenerando(false);
-        setCartaGenerada(true);
-      }, 1500);
-    };
-
-    const imprimirCarta = () => {
-      window.print();
-    };
-
-    // Función para convertir número a letras (simplificada)
+    // Función para convertir número a letras
     const numeroALetras = (num) => {
       if (!num || num === 0) return 'CERO';
-      // Versión simplificada - solo formatea con separadores
+      const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+      const especiales = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
+      const decenas = ['', '', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+      const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+      
+      const n = Math.floor(num);
+      if (n === 100) return 'CIEN';
+      if (n === 1000) return 'MIL';
+      if (n === 1000000) return 'UN MILLÓN';
+      
+      const convertirCentena = (c) => {
+        if (c === 0) return '';
+        if (c === 100) return 'CIEN';
+        const cent = Math.floor(c / 100);
+        const dec = c % 100;
+        let texto = centenas[cent];
+        if (dec > 0) {
+          if (dec < 10) texto += ' ' + unidades[dec];
+          else if (dec < 20) texto += ' ' + especiales[dec - 10];
+          else if (dec === 20) texto += ' VEINTE';
+          else if (dec < 30) texto += ' VEINTI' + unidades[dec - 20];
+          else {
+            const d = Math.floor(dec / 10);
+            const u = dec % 10;
+            texto += ' ' + decenas[d] + (u > 0 ? ' Y ' + unidades[u] : '');
+          }
+        }
+        return texto.trim();
+      };
+
+      if (n < 1000) return convertirCentena(n);
+      if (n < 1000000) {
+        const miles = Math.floor(n / 1000);
+        const resto = n % 1000;
+        const milesTexto = miles === 1 ? 'MIL' : convertirCentena(miles) + ' MIL';
+        return resto > 0 ? milesTexto + ' ' + convertirCentena(resto) : milesTexto;
+      }
+      if (n < 1000000000) {
+        const millones = Math.floor(n / 1000000);
+        const resto = n % 1000000;
+        const millonesTexto = millones === 1 ? 'UN MILLÓN' : convertirCentena(millones) + ' MILLONES';
+        if (resto === 0) return millonesTexto;
+        if (resto < 1000) return millonesTexto + ' ' + convertirCentena(resto);
+        const miles = Math.floor(resto / 1000);
+        const restoFinal = resto % 1000;
+        const milesTexto = miles === 1 ? 'MIL' : (miles > 0 ? convertirCentena(miles) + ' MIL' : '');
+        return millonesTexto + ' ' + milesTexto + (restoFinal > 0 ? ' ' + convertirCentena(restoFinal) : '');
+      }
       return new Intl.NumberFormat('es-CO').format(num);
     };
 
-    const nombreEmpresa = configEmpresa?.nombre_empresa || empresa?.nombre || 'EMPRESA';
-    const nitEmpresa = configEmpresa?.nit || empresa?.nit || '';
-    const direccionEmpresa = configEmpresa?.direccion || empresa?.direccion || '';
-    const ciudadEmpresa = configEmpresa?.ciudad || empresa?.ciudad || 'Ciudad';
-    const representanteLegal = configEmpresa?.representante_legal || empresa?.representante_legal || 'REPRESENTANTE LEGAL';
+    const imprimirCarta = () => {
+      const ventanaImpresion = window.open('', '_blank');
+      const fechaActual = new Date();
+      const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+      const fechaTexto = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} de ${fechaActual.getFullYear()}`;
+      
+      const nombreEmpleado = empleado?.nombre || usuario?.nombre || '';
+      const documento = empleado?.documento || usuario?.usuario || '';
+      const cargo = empleado?.cargo || 'Colaborador';
+      const fechaIngreso = empleado?.fecha_ingreso || empleado?.fechaIngreso || '';
+      const tipoContrato = empleado?.tipo_contrato || empleado?.tipoContrato || 'Término Indefinido';
+      const salario = empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
+      
+      const razonSocial = datosSede?.razonSocial || 'BIG BURGUER S.A.S';
+      const nitSede = datosSede?.nit || '';
+      const representante = datosSede?.representanteLegal || 'REPRESENTANTE LEGAL';
+      const genero = datosSede?.generoRepresentante || 'Masculino';
+      const direccionSede = datosSede?.direccion || '';
+      const telefonoSede = datosSede?.telefono || '';
+      const sede = empleado?.sede || '';
+
+      ventanaImpresion.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Certificación Laboral</title>
+            <meta charset="UTF-8">
+            <style>
+              @page { size: letter; margin: 2.5cm 2.5cm 3cm 2.5cm; }
+              body { 
+                font-family: 'Times New Roman', Times, serif; 
+                font-size: 12pt;
+                line-height: 1.8;
+                color: #000;
+                max-width: 21cm;
+                margin: 0 auto;
+                padding: 2cm;
+                position: relative;
+              }
+              .logo-header {
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 80px;
+              }
+              .logo-header img {
+                width: 100%;
+                border-radius: 8px;
+              }
+              .encabezado {
+                text-align: center;
+                margin-bottom: 30px;
+                padding-top: 10px;
+              }
+              .empresa { font-size: 14pt; font-weight: bold; margin-bottom: 5px; }
+              .sede-info { font-size: 10pt; color: #666; }
+              .titulo {
+                font-size: 13pt;
+                font-weight: bold;
+                text-align: center;
+                margin: 30px 0;
+                text-decoration: underline;
+              }
+              .fecha { text-align: left; margin: 30px 0 20px 0; }
+              .contenido { text-align: justify; margin: 20px 0; }
+              .firma {
+                margin-top: 60px;
+                text-align: left;
+              }
+              .linea-firma {
+                border-top: 1px solid #000;
+                width: 250px;
+                margin: 0 0 10px 0;
+              }
+              .nombre-firma { font-weight: bold; margin: 0; }
+              .cargo-firma { margin: 0; font-size: 11pt; }
+              @media print {
+                body { padding: 0; }
+                .logo-header { position: fixed; top: 0; right: 0; width: 70px; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="logo-header">
+              <img src="/logo.jpg" alt="Big Burguer Logo" />
+            </div>
+            
+            <div class="encabezado">
+              <div class="empresa">${razonSocial}</div>
+              <div class="sede-info">Sede: ${sede}</div>
+            </div>
+
+            <div class="fecha">Pereira, ${fechaTexto}</div>
+
+            <div class="titulo">CERTIFICACIÓN LABORAL</div>
+
+            <div class="contenido">
+              <p>${genero === "Femenino" ? "La suscrita" : "El suscrito"} <strong>${representante}</strong>, en calidad de Representante Legal de <strong>${razonSocial}</strong>, identificad${genero === "Femenino" ? "a" : "o"} con NIT <strong>${nitSede}</strong>,</p>
+              
+              <p style="text-align: center; margin: 25px 0;"><strong>CERTIFICA QUE:</strong></p>
+              
+              <p>El (la) Señor(a) <strong>${nombreEmpleado.toUpperCase()}</strong>, identificado(a) con <strong>Cédula de Ciudadanía ${documento}</strong>, labora en nuestra empresa${fechaIngreso ? ` desde el <strong>${new Date(fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>` : ''}, con un contrato <strong>${tipoContrato}</strong>, desempeñando el cargo de <strong>${cargo.toUpperCase()}</strong>${salario > 0 ? `, devengando un salario básico mensual de <strong>${formatearMoneda(salario)}</strong> (${numeroALetras(salario)} PESOS M/CTE)` : ''}.</p>
+              
+              <p>La presente certificación se expide a solicitud del interesado para los fines que estime conveniente.</p>
+            </div>
+
+            <div class="firma">
+              <div class="linea-firma"></div>
+              <div class="nombre-firma">${representante}</div>
+              <div class="cargo-firma">Representante Legal</div>
+              <div class="cargo-firma">NIT ${nitSede}</div>
+              ${direccionSede ? `<div class="cargo-firma">Dirección: ${direccionSede}</div>` : ''}
+              ${telefonoSede ? `<div class="cargo-firma">Teléfono: ${telefonoSede}</div>` : ''}
+            </div>
+          </body>
+        </html>
+      `);
+      ventanaImpresion.document.close();
+      
+      setTimeout(() => {
+        if (ventanaImpresion && !ventanaImpresion.closed) {
+          ventanaImpresion.focus();
+          ventanaImpresion.print();
+        }
+      }, 500);
+    };
+
+    if (cargandoSede) {
+      return (
+        <div style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{
+            width: 50, height: 50,
+            border: '4px solid #e0e0e0',
+            borderTop: '4px solid #c62828',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto'
+          }} />
+          <p style={{ marginTop: 16, color: '#666' }}>Cargando datos...</p>
+        </div>
+      );
+    }
+
+    const salarioEmpleado = empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
 
     return (
       <div>
-        <h2 style={{ color: '#c62828', marginBottom: 20 }}>📄 Carta Laboral</h2>
+        <h2 style={{ color: '#c62828', marginBottom: 20 }}>📄 Certificación Laboral</h2>
         
-        {!cartaGenerada ? (
-          <div style={{
-            padding: 40,
-            backgroundColor: '#f5f5f5',
-            borderRadius: 16,
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: 60, marginBottom: 20 }}>📄</div>
-            <h3 style={{ color: '#c62828' }}>Generar Carta Laboral</h3>
-            <p style={{ color: '#666', marginBottom: 24 }}>
-              Se generará una carta laboral con tu información básica y salario.
+        {/* Vista previa de la carta */}
+        <div id="carta-print" style={{
+          backgroundColor: 'white',
+          border: '1px solid #ddd',
+          borderRadius: 12,
+          padding: '24px 32px',
+          maxWidth: 700,
+          margin: '0 auto',
+          fontSize: 13
+        }}>
+          {/* Encabezado con logo */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div>
+              <h3 style={{ margin: 0, color: '#c62828' }}>{datosSede?.razonSocial || 'BIG BURGUER S.A.S'}</h3>
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: '#666' }}>Sede: {empleado?.sede || ''}</p>
+            </div>
+            <img src="/logo.jpg" alt="Logo" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover' }} />
+          </div>
+          
+          <div style={{ borderBottom: '2px solid #c62828', marginBottom: 16 }} />
+          
+          {/* Fecha */}
+          <p style={{ margin: '16px 0' }}>
+            Pereira, {new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+          
+          {/* Título */}
+          <h4 style={{ textAlign: 'center', margin: '24px 0', textDecoration: 'underline' }}>
+            CERTIFICACIÓN LABORAL
+          </h4>
+          
+          {/* Contenido */}
+          <div style={{ lineHeight: 1.8, textAlign: 'justify' }}>
+            <p>
+              {datosSede?.generoRepresentante === "Femenino" ? "La suscrita" : "El suscrito"}{' '}
+              <strong>{datosSede?.representanteLegal || 'REPRESENTANTE LEGAL'}</strong>, en calidad de 
+              Representante Legal de <strong>{datosSede?.razonSocial || 'BIG BURGUER S.A.S'}</strong>, 
+              identificad{datosSede?.generoRepresentante === "Femenino" ? "a" : "o"} con NIT{' '}
+              <strong>{datosSede?.nit || ''}</strong>,
             </p>
-            <button
-              onClick={generarCarta}
-              disabled={generando}
-              style={{
-                padding: '14px 32px',
-                backgroundColor: '#c62828',
-                color: 'white',
-                border: 'none',
-                borderRadius: 10,
-                fontSize: 16,
-                cursor: generando ? 'wait' : 'pointer',
-                opacity: generando ? 0.7 : 1
-              }}
-            >
-              {generando ? '⏳ Generando...' : '📄 Generar Carta'}
-            </button>
+            
+            <p style={{ textAlign: 'center', margin: '20px 0', fontWeight: 'bold' }}>CERTIFICA QUE:</p>
+            
+            <p>
+              El (la) Señor(a) <strong>{(empleado?.nombre || usuario?.nombre || '').toUpperCase()}</strong>, 
+              identificado(a) con <strong>Cédula de Ciudadanía {empleado?.documento || usuario?.usuario}</strong>, 
+              labora en nuestra empresa
+              {(empleado?.fecha_ingreso || empleado?.fechaIngreso) && (
+                <> desde el <strong>{new Date(empleado?.fecha_ingreso || empleado?.fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></>
+              )}, con un contrato <strong>{empleado?.tipo_contrato || empleado?.tipoContrato || 'Término Indefinido'}</strong>, 
+              desempeñando el cargo de <strong>{(empleado?.cargo || 'COLABORADOR').toUpperCase()}</strong>
+              {salarioEmpleado > 0 && (
+                <>, devengando un salario básico mensual de <strong>{formatearMoneda(salarioEmpleado)}</strong></>
+              )}.
+            </p>
+            
+            <p style={{ marginTop: 16 }}>
+              La presente certificación se expide a solicitud del interesado para los fines que estime conveniente.
+            </p>
           </div>
-        ) : (
-          <div>
-            <button
-              onClick={() => setCartaGenerada(false)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#f5f5f5',
-                border: 'none',
-                borderRadius: 8,
-                cursor: 'pointer',
-                marginBottom: 20
-              }}
-            >
-              ← Volver
-            </button>
-            
-            <div id="carta-print" style={{
-              backgroundColor: 'white',
-              border: '1px solid #ddd',
-              borderRadius: 12,
-              padding: 40,
-              maxWidth: 700,
-              margin: '0 auto'
-            }}>
-              {/* Membrete */}
-              <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                <h2 style={{ margin: 0, color: '#c62828' }}>{nombreEmpresa}</h2>
-                <p style={{ margin: '4px 0', fontSize: 12 }}>NIT: {nitEmpresa}</p>
-                <p style={{ margin: '4px 0', fontSize: 12 }}>{direccionEmpresa}</p>
-              </div>
-              
-              {/* Fecha y destinatario */}
-              <div style={{ marginBottom: 30 }}>
-                <p>{ciudadEmpresa}, {fechaHoy}</p>
-                <br />
-                <p><strong>A QUIEN INTERESE</strong></p>
-              </div>
-              
-              {/* Cuerpo de la carta */}
-              <div style={{ lineHeight: 1.8, textAlign: 'justify' }}>
-                <p>
-                  La empresa <strong>{nombreEmpresa}</strong>, identificada con NIT 
-                  {' '}<strong>{nitEmpresa}</strong>, certifica que:
-                </p>
-                
-                <p style={{ marginTop: 20 }}>
-                  <strong>{(empleado?.nombre || usuario?.nombre || '').toUpperCase()}</strong>, identificado(a) con cédula de ciudadanía 
-                  número <strong>{empleado?.documento || usuario?.usuario}</strong>, labora en nuestra empresa 
-                  {empleado?.fecha_ingreso && ` desde el ${new Date(empleado.fecha_ingreso).toLocaleDateString('es-CO')}`}, 
-                  desempeñando el cargo de <strong>{(empleado?.cargo || 'COLABORADOR').toUpperCase()}</strong>.
-                </p>
-                
-                {empleado?.salario_basico && (
-                  <p style={{ marginTop: 20 }}>
-                    Actualmente devenga un salario básico mensual de <strong>{formatearMoneda(empleado.salario_basico)}</strong> 
-                    {' '}({numeroALetras(empleado.salario_basico)} PESOS M/CTE).
-                  </p>
-                )}
-                
-                <p style={{ marginTop: 20 }}>
-                  El tipo de contrato es <strong>{(empleado?.tipo_contrato || 'TÉRMINO INDEFINIDO').toUpperCase()}</strong>.
-                </p>
-                
-                <p style={{ marginTop: 30 }}>
-                  La presente certificación se expide a solicitud del interesado en la ciudad de 
-                  {' '}{ciudadEmpresa} a los {new Date().getDate()} días del mes de 
-                  {' '}{new Date().toLocaleDateString('es-CO', { month: 'long' })} de {new Date().getFullYear()}.
-                </p>
-              </div>
-              
-              {/* Firma */}
-              <div style={{ marginTop: 60 }}>
-                <p>Cordialmente,</p>
-                <br /><br /><br />
-                <p style={{ borderTop: '1px solid #333', width: 250, paddingTop: 8 }}>
-                  <strong>{representanteLegal}</strong><br />
-                  <span style={{ fontSize: 12 }}>Representante Legal</span><br />
-                  <span style={{ fontSize: 12 }}>{nombreEmpresa}</span>
-                </p>
-              </div>
-            </div>
-            
-            <div style={{ marginTop: 20, textAlign: 'center' }}>
-              <button
-                onClick={imprimirCarta}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#c62828',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontSize: 16
-                }}
-              >
-                🖨️ Imprimir Carta
-              </button>
+          
+          {/* Firma */}
+          <div style={{ marginTop: 50 }}>
+            <div style={{ borderTop: '1px solid #333', width: 220, paddingTop: 8 }}>
+              <p style={{ margin: 0, fontWeight: 'bold' }}>{datosSede?.representanteLegal || 'REPRESENTANTE LEGAL'}</p>
+              <p style={{ margin: '2px 0', fontSize: 11 }}>Representante Legal</p>
+              <p style={{ margin: '2px 0', fontSize: 11 }}>NIT {datosSede?.nit || ''}</p>
+              {datosSede?.direccion && <p style={{ margin: '2px 0', fontSize: 11 }}>Dir: {datosSede.direccion}</p>}
+              {datosSede?.telefono && <p style={{ margin: '2px 0', fontSize: 11 }}>Tel: {datosSede.telefono}</p>}
             </div>
           </div>
-        )}
+        </div>
+        
+        {/* Botón imprimir */}
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <button
+            onClick={imprimirCarta}
+            style={{
+              padding: '14px 32px',
+              backgroundColor: '#c62828',
+              color: 'white',
+              border: 'none',
+              borderRadius: 10,
+              cursor: 'pointer',
+              fontSize: 16,
+              fontWeight: 'bold'
+            }}
+          >
+            🖨️ Imprimir Certificación
+          </button>
+          <p style={{ marginTop: 12, fontSize: 12, color: '#666' }}>
+            La certificación se generará con los datos actuales y podrás imprimirla o guardarla como PDF.
+          </p>
+        </div>
       </div>
     );
   };
