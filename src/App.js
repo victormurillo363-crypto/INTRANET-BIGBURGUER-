@@ -242,7 +242,7 @@ function App() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%)',
+        background: 'linear-gradient(135deg, #b71c1c 0%, #c62828 50%, #d32f2f 100%)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
@@ -257,9 +257,9 @@ function App() {
           boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
         }}>
           <div style={{ textAlign: 'center', marginBottom: 30 }}>
-            <div style={{ fontSize: 60, marginBottom: 10 }}>👤</div>
-            <h1 style={{ color: '#1a237e', margin: 0, fontSize: 24 }}>
-              Portal del Empleado
+            <div style={{ fontSize: 60, marginBottom: 10 }}>🍔</div>
+            <h1 style={{ color: '#b71c1c', margin: 0, fontSize: 24 }}>
+              Big Burguer - Portal del Empleado
             </h1>
             <p style={{ color: '#666', marginTop: 8 }}>
               Ingresa con tus credenciales del sistema
@@ -331,7 +331,7 @@ function App() {
               style={{
                 width: '100%',
                 padding: '14px',
-                backgroundColor: '#1a237e',
+                backgroundColor: '#c62828',
                 color: 'white',
                 border: 'none',
                 borderRadius: 10,
@@ -341,7 +341,7 @@ function App() {
                 opacity: cargando ? 0.7 : 1
               }}
             >
-              {cargando ? '⏳ Ingresando...' : '🔐 Ingresar'}
+              {cargando ? '⏳ Ingresando...' : '🍔 Ingresar'}
             </button>
           </form>
           
@@ -375,13 +375,13 @@ function App() {
   const SeccionInicio = () => (
     <div>
       <div style={{
-        background: 'linear-gradient(135deg, #1a237e, #0d47a1)',
+        background: 'linear-gradient(135deg, #b71c1c, #c62828)',
         color: 'white',
         padding: 30,
         borderRadius: 16,
         marginBottom: 24
       }}>
-        <h2 style={{ margin: 0 }}>👋 ¡Bienvenido, {empleado?.nombre || usuario?.nombre || 'Empleado'}!</h2>
+        <h2 style={{ margin: 0 }}>🍔 ¡Bienvenido, {empleado?.nombre || usuario?.nombre || 'Empleado'}!</h2>
         <p style={{ margin: '10px 0 0', opacity: 0.9 }}>
           {empleado?.cargo || 'Colaborador'} | {empleado?.sede || configEmpresa?.nombre_empresa || empresa?.nombre || 'Empresa'}
         </p>
@@ -403,7 +403,7 @@ function App() {
             }}
           >
             <div style={{ fontSize: 40, marginBottom: 12 }}>{item.icono}</div>
-            <div style={{ fontWeight: 'bold', color: '#1a237e' }}>{item.nombre}</div>
+            <div style={{ fontWeight: 'bold', color: '#c62828' }}>{item.nombre}</div>
           </button>
         ))}
       </div>
@@ -428,7 +428,7 @@ function App() {
 
     return (
       <div>
-        <h2 style={{ color: '#1a237e', marginBottom: 20 }}>💰 Desprendible de Pago</h2>
+        <h2 style={{ color: '#c62828', marginBottom: 20 }}>💰 Desprendible de Pago</h2>
         
         {!nominaSeleccionada ? (
           <div>
@@ -466,7 +466,7 @@ function App() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 'bold', color: '#1a237e' }}>
+                      <div style={{ fontWeight: 'bold', color: '#c62828' }}>
                         {nomina.periodo_nombre || `${nomina.periodo_inicio} - ${nomina.periodo_fin}`}
                       </div>
                       <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
@@ -504,8 +504,8 @@ function App() {
               padding: 24
             }}>
               {/* Encabezado */}
-              <div style={{ textAlign: 'center', marginBottom: 24, borderBottom: '2px solid #1a237e', paddingBottom: 16 }}>
-                <h3 style={{ margin: 0, color: '#1a237e' }}>{configEmpresa?.nombre_empresa || empresa?.nombre || 'EMPRESA'}</h3>
+              <div style={{ textAlign: 'center', marginBottom: 24, borderBottom: '2px solid #c62828', paddingBottom: 16 }}>
+                <h3 style={{ margin: 0, color: '#c62828' }}>{configEmpresa?.nombre_empresa || empresa?.nombre || 'EMPRESA'}</h3>
                 <p style={{ margin: '4px 0', fontSize: 12 }}>NIT: {configEmpresa?.nit || empresa?.nit || ''}</p>
                 <h4 style={{ margin: '16px 0 0' }}>COMPROBANTE DE PAGO</h4>
                 <p style={{ margin: '4px 0', fontSize: 12 }}>
@@ -598,7 +598,7 @@ function App() {
               {/* Neto a pagar */}
               <div style={{
                 padding: 16,
-                backgroundColor: '#1a237e',
+                backgroundColor: '#c62828',
                 color: 'white',
                 borderRadius: 8,
                 display: 'flex',
@@ -615,7 +615,7 @@ function App() {
                 onClick={imprimirDesprendible}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: '#1a237e',
+                  backgroundColor: '#c62828',
                   color: 'white',
                   border: 'none',
                   borderRadius: 8,
@@ -678,7 +678,7 @@ function App() {
 
     return (
       <div>
-        <h2 style={{ color: '#1a237e', marginBottom: 20 }}>📄 Carta Laboral</h2>
+        <h2 style={{ color: '#c62828', marginBottom: 20 }}>📄 Carta Laboral</h2>
         
         {!cartaGenerada ? (
           <div style={{
@@ -688,7 +688,7 @@ function App() {
             textAlign: 'center'
           }}>
             <div style={{ fontSize: 60, marginBottom: 20 }}>📄</div>
-            <h3 style={{ color: '#1a237e' }}>Generar Carta Laboral</h3>
+            <h3 style={{ color: '#c62828' }}>Generar Carta Laboral</h3>
             <p style={{ color: '#666', marginBottom: 24 }}>
               Se generará una carta laboral con tu información básica y salario.
             </p>
@@ -697,7 +697,7 @@ function App() {
               disabled={generando}
               style={{
                 padding: '14px 32px',
-                backgroundColor: '#1a237e',
+                backgroundColor: '#c62828',
                 color: 'white',
                 border: 'none',
                 borderRadius: 10,
@@ -735,7 +735,7 @@ function App() {
             }}>
               {/* Membrete */}
               <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                <h2 style={{ margin: 0, color: '#1a237e' }}>{nombreEmpresa}</h2>
+                <h2 style={{ margin: 0, color: '#c62828' }}>{nombreEmpresa}</h2>
                 <p style={{ margin: '4px 0', fontSize: 12 }}>NIT: {nitEmpresa}</p>
                 <p style={{ margin: '4px 0', fontSize: 12 }}>{direccionEmpresa}</p>
               </div>
@@ -796,7 +796,7 @@ function App() {
                 onClick={imprimirCarta}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: '#1a237e',
+                  backgroundColor: '#c62828',
                   color: 'white',
                   border: 'none',
                   borderRadius: 8,
@@ -819,7 +819,7 @@ function App() {
     
     return (
       <div>
-        <h2 style={{ color: '#1a237e', marginBottom: 20 }}>📋 Contrato de Trabajo</h2>
+        <h2 style={{ color: '#c62828', marginBottom: 20 }}>📋 Contrato de Trabajo</h2>
         
         {contratoDoc ? (
           <div style={{
@@ -840,7 +840,7 @@ function App() {
               style={{
                 display: 'inline-block',
                 padding: '12px 24px',
-                backgroundColor: '#1a237e',
+                backgroundColor: '#c62828',
                 color: 'white',
                 textDecoration: 'none',
                 borderRadius: 8
@@ -873,7 +873,7 @@ function App() {
           border: '1px solid #e0e0e0',
           borderRadius: 12
         }}>
-          <h4 style={{ color: '#1a237e', marginBottom: 16 }}>📊 Información de tu contrato</h4>
+          <h4 style={{ color: '#c62828', marginBottom: 16 }}>📊 Información de tu contrato</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <span style={{ color: '#666', fontSize: 12 }}>Tipo de contrato</span>
@@ -905,7 +905,7 @@ function App() {
     
     return (
       <div>
-        <h2 style={{ color: '#1a237e', marginBottom: 20 }}>🕐 Mis Horarios</h2>
+        <h2 style={{ color: '#c62828', marginBottom: 20 }}>🕐 Mis Horarios</h2>
         
         {horarios.length === 0 ? (
           <div style={{
@@ -933,8 +933,8 @@ function App() {
                   key={idx}
                   style={{
                     padding: 16,
-                    backgroundColor: esHoy ? '#e3f2fd' : 'white',
-                    border: esHoy ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                    backgroundColor: esHoy ? '#ffebee' : 'white',
+                    border: esHoy ? '2px solid #d32f2f' : '1px solid #e0e0e0',
                     borderRadius: 12,
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -942,7 +942,7 @@ function App() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 'bold', color: esHoy ? '#1976d2' : '#1a237e' }}>
+                    <div style={{ fontWeight: 'bold', color: esHoy ? '#d32f2f' : '#c62828' }}>
                       {diaSemana} {esHoy && '(HOY)'}
                     </div>
                     <div style={{ fontSize: 12, color: '#666' }}>
@@ -962,7 +962,7 @@ function App() {
                       </span>
                     ) : (
                       <>
-                        <div style={{ fontWeight: 'bold', fontSize: 18, color: '#1a237e' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: 18, color: '#c62828' }}>
                           {horario.hora_inicio} - {horario.hora_fin}
                         </div>
                         <div style={{ fontSize: 12, color: '#666' }}>
@@ -1048,13 +1048,13 @@ function App() {
     return (
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ color: '#1a237e', margin: 0 }}>📝 Solicitudes</h2>
+          <h2 style={{ color: '#c62828', margin: 0 }}>📝 Solicitudes</h2>
           {modo === 'lista' && (
             <button
               onClick={() => setModo('nueva')}
               style={{
                 padding: '10px 20px',
-                backgroundColor: '#1a237e',
+                backgroundColor: '#c62828',
                 color: 'white',
                 border: 'none',
                 borderRadius: 8,
@@ -1087,7 +1087,7 @@ function App() {
               ← Volver
             </button>
             
-            <h3 style={{ color: '#1a237e', marginBottom: 20 }}>Nueva Solicitud</h3>
+            <h3 style={{ color: '#c62828', marginBottom: 20 }}>Nueva Solicitud</h3>
             
             <form onSubmit={enviarSolicitud}>
               <div style={{ marginBottom: 20 }}>
@@ -1102,8 +1102,8 @@ function App() {
                       onClick={() => setTipoSolicitud(tipo.id)}
                       style={{
                         padding: 16,
-                        backgroundColor: tipoSolicitud === tipo.id ? '#e3f2fd' : '#f5f5f5',
-                        border: tipoSolicitud === tipo.id ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                        backgroundColor: tipoSolicitud === tipo.id ? '#ffebee' : '#f5f5f5',
+                        border: tipoSolicitud === tipo.id ? '2px solid #d32f2f' : '1px solid #e0e0e0',
                         borderRadius: 8,
                         cursor: 'pointer',
                         textAlign: 'center'
@@ -1181,7 +1181,7 @@ function App() {
                 disabled={!tipoSolicitud || !descripcion || enviando}
                 style={{
                   padding: '14px 32px',
-                  backgroundColor: '#1a237e',
+                  backgroundColor: '#c62828',
                   color: 'white',
                   border: 'none',
                   borderRadius: 8,
@@ -1237,7 +1237,7 @@ function App() {
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 20 }}>{tipo.icono}</span>
-                            <span style={{ fontWeight: 'bold', color: '#1a237e' }}>
+                            <span style={{ fontWeight: 'bold', color: '#c62828' }}>
                               {tipo.nombre}
                             </span>
                           </div>
@@ -1288,7 +1288,7 @@ function App() {
     
     return (
       <div>
-        <h2 style={{ color: '#1a237e', marginBottom: 20 }}>📖 Reglamento Interno de Trabajo</h2>
+        <h2 style={{ color: '#c62828', marginBottom: 20 }}>📖 Reglamento Interno de Trabajo</h2>
         
         {reglamentoUrl ? (
           <div style={{
@@ -1309,7 +1309,7 @@ function App() {
               style={{
                 display: 'inline-block',
                 padding: '12px 24px',
-                backgroundColor: '#1a237e',
+                backgroundColor: '#c62828',
                 color: 'white',
                 textDecoration: 'none',
                 borderRadius: 8
@@ -1342,7 +1342,7 @@ function App() {
           border: '1px solid #e0e0e0',
           borderRadius: 12
         }}>
-          <h4 style={{ color: '#1a237e', marginBottom: 16 }}>ℹ️ Información Importante</h4>
+          <h4 style={{ color: '#c62828', marginBottom: 16 }}>ℹ️ Información Importante</h4>
           <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 2 }}>
             <li>Todos los empleados deben conocer y cumplir el reglamento interno.</li>
             <li>El incumplimiento del reglamento puede generar sanciones disciplinarias.</li>
@@ -1383,7 +1383,7 @@ function App() {
 
     return (
       <div>
-        <h2 style={{ color: '#1a237e', marginBottom: 20 }}>📁 Formatos</h2>
+        <h2 style={{ color: '#c62828', marginBottom: 20 }}>📁 Formatos</h2>
         
         <p style={{ color: '#666', marginBottom: 20 }}>
           Descarga los formatos que necesites para tus trámites internos.
@@ -1420,7 +1420,7 @@ function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 32 }}>{formato.icono || '📄'}</span>
                   <div>
-                    <span style={{ fontWeight: 'bold', color: '#1a237e' }}>{formato.nombre}</span>
+                    <span style={{ fontWeight: 'bold', color: '#c62828' }}>{formato.nombre}</span>
                     {formato.descripcion && (
                       <p style={{ margin: '4px 0 0', fontSize: 12, color: '#666' }}>{formato.descripcion}</p>
                     )}
@@ -1433,8 +1433,8 @@ function App() {
                     rel="noopener noreferrer"
                     style={{
                       padding: '8px 16px',
-                      backgroundColor: '#e3f2fd',
-                      color: '#1976d2',
+                      backgroundColor: '#ffebee',
+                      color: '#d32f2f',
                       border: 'none',
                       borderRadius: 8,
                       textDecoration: 'none'
@@ -1486,7 +1486,7 @@ function App() {
     <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       {/* Header */}
       <header style={{
-        backgroundColor: '#1a237e',
+        backgroundColor: '#c62828',
         color: 'white',
         padding: '12px 20px',
         display: 'flex',
@@ -1513,7 +1513,7 @@ function App() {
             ☰
           </button>
           <h1 style={{ margin: 0, fontSize: 18 }}>
-            👤 Portal del Empleado
+            🍔 Big Burguer - Portal del Empleado
           </h1>
         </div>
         
@@ -1552,15 +1552,15 @@ function App() {
                 style={{
                   width: '100%',
                   padding: '14px 20px',
-                  backgroundColor: seccionActiva === item.id ? '#e3f2fd' : 'transparent',
+                  backgroundColor: seccionActiva === item.id ? '#ffebee' : 'transparent',
                   border: 'none',
-                  borderLeft: seccionActiva === item.id ? '4px solid #1976d2' : '4px solid transparent',
+                  borderLeft: seccionActiva === item.id ? '4px solid #c62828' : '4px solid transparent',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
                   textAlign: 'left',
-                  color: seccionActiva === item.id ? '#1976d2' : '#333',
+                  color: seccionActiva === item.id ? '#c62828' : '#333',
                   fontWeight: seccionActiva === item.id ? 'bold' : 'normal'
                 }}
               >
@@ -1597,7 +1597,7 @@ function App() {
                 width: 50,
                 height: 50,
                 border: '4px solid #e0e0e0',
-                borderTop: '4px solid #1a237e',
+                borderTop: '4px solid #c62828',
                 borderRadius: '50%',
                 animation: 'spin 1s linear infinite',
                 margin: '0 auto'
