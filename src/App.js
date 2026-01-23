@@ -32,7 +32,6 @@ function App() {
   const [nominas, setNominas] = useState([]);
   const [horarios, setHorarios] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
-  const [documentos, setDocumentos] = useState([]);
   const [empresa, setEmpresa] = useState(null);
   const [configEmpresa, setConfigEmpresa] = useState(null);
 
@@ -1381,6 +1380,7 @@ function App() {
       };
       
       cargarContrato();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [empleado?.id]);
     
     // Función para generar e imprimir el contrato como PDF
