@@ -127,6 +127,11 @@ function App() {
       
       console.log('📊 TOTAL nóminas en tabla:', count, 'Primeras 10:', todasNominas, errorTotal);
       
+      // Mostrar los empleadoid para debug
+      if (todasNominas && todasNominas.length > 0) {
+        console.log('👥 Empleadoids en la tabla:', todasNominas.map(n => n.empleadoid));
+      }
+      
       // Intentar buscar primero por empleadoid (puede ser el documento)
       let { data, error } = await supabase
         .from('nominas')
