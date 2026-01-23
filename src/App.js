@@ -117,15 +117,16 @@ function App() {
 
   const cargarNominas = async (doc) => {
     try {
+      // Cargar nóminas de la tabla principal del sistema
       const { data } = await supabase
-        .from('nominas_intranet')
+        .from('nominas')
         .select('*')
-        .eq('documento', doc)
-        .order('periodo_fin', { ascending: false })
+        .eq('empleadoid', doc)
+        .order('periodo', { ascending: false })
         .limit(12);
       if (data) setNominas(data);
     } catch (e) {
-      console.log('Tabla nominas_intranet no disponible');
+      console.log('Tabla nominas no disponible:', e);
     }
   };
 
@@ -439,7 +440,7 @@ function App() {
     </div>
   );
 
-  // DESPRENDIBLE DE PAGO
+  // DESPRENDIBLE DE PAGO - Conectado a la tabla nominas del sistema principal
   const SeccionDesprendible = () => {
     const [nominaSeleccionada, setNominaSeleccionada] = useState(null);
     
@@ -449,6 +450,15 @@ function App() {
         currency: 'COP',
         minimumFractionDigits: 0
       }).format(valor || 0);
+    };
+
+    const formatearFecha = (fecha) => {
+      if (!fecha) return '';
+      return new Date(fecha).toLocaleDateString('es-CO', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
     };
 
     const imprimirDesprendible = () => {
@@ -474,7 +484,7 @@ function App() {
               }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
                 <p style={{ color: '#666' }}>No hay desprendibles disponibles</p>
-                <p style={{ color: '#999', fontSize: 12 }}>Los desprendibles aparecerán aquí cuando Recursos Humanos los cargue al sistema.</p>
+                <p style={{ color: '#999', fontSize: 12 }}>Los desprendibles aparecerán aquí cuando se procese la nómina en el sistema.</p>
               </div>
             ) : (
               <div style={{ display: 'grid', gap: 12 }}>
@@ -496,14 +506,14 @@ function App() {
                   >
                     <div>
                       <div style={{ fontWeight: 'bold', color: '#c62828' }}>
-                        {nomina.periodo_nombre || `${nomina.periodo_inicio} - ${nomina.periodo_fin}`}
+                        Período: {formatearFecha(nomina.periodo)}
                       </div>
                       <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                        Pagado: {new Date(nomina.fecha_pago || nomina.periodo_fin).toLocaleDateString('es-CO')}
+                        Generado: {formatearFecha(nomina.fechageneracion)}
                       </div>
                     </div>
                     <div style={{ fontWeight: 'bold', color: '#4caf50', fontSize: 18 }}>
-                      {formatearMoneda(nomina.neto_pagar)}
+                      {formatearMoneda(nomina.netoapagar)}
                     </div>
                   </button>
                 ))}
@@ -532,13 +542,18 @@ function App() {
               borderRadius: 12,
               padding: 24
             }}>
-              {/* Encabezado */}
+              {/* Encabezado con Logo */}
               <div style={{ textAlign: 'center', marginBottom: 24, borderBottom: '2px solid #c62828', paddingBottom: 16 }}>
-                <h3 style={{ margin: 0, color: '#c62828' }}>{configEmpresa?.nombre_empresa || empresa?.nombre || 'EMPRESA'}</h3>
+                <img 
+                  src="/logo.jpg" 
+                  alt="Big Burguer" 
+                  style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 10 }} 
+                />
+                <h3 style={{ margin: 0, color: '#c62828' }}>{configEmpresa?.nombre_empresa || empresa?.nombre || 'BIG BURGUER'}</h3>
                 <p style={{ margin: '4px 0', fontSize: 12 }}>NIT: {configEmpresa?.nit || empresa?.nit || ''}</p>
                 <h4 style={{ margin: '16px 0 0' }}>COMPROBANTE DE PAGO</h4>
                 <p style={{ margin: '4px 0', fontSize: 12 }}>
-                  Período: {nominaSeleccionada.periodo_inicio} al {nominaSeleccionada.periodo_fin}
+                  Período: {formatearFecha(nominaSeleccionada.periodo)}
                 </p>
               </div>
               
@@ -552,44 +567,72 @@ function App() {
                 backgroundColor: '#f5f5f5',
                 borderRadius: 8
               }}>
-                <div><strong>Nombre:</strong> {empleado?.nombre || usuario?.nombre}</div>
-                <div><strong>Documento:</strong> {empleado?.documento || usuario?.usuario}</div>
-                <div><strong>Cargo:</strong> {empleado?.cargo || 'Colaborador'}</div>
-                <div><strong>Sede:</strong> {empleado?.sede || ''}</div>
+                <div><strong>Nombre:</strong> {nominaSeleccionada.empleado?.nombre || empleado?.nombre || usuario?.nombre}</div>
+                <div><strong>Documento:</strong> {nominaSeleccionada.empleadoid || empleado?.documento || usuario?.usuario}</div>
+                <div><strong>Cargo:</strong> {nominaSeleccionada.empleado?.cargo || empleado?.cargo || 'Colaborador'}</div>
+                <div><strong>Sede:</strong> {nominaSeleccionada.empleado?.sede || empleado?.sede || ''}</div>
               </div>
+
+              {/* Resumen de Horas si existe */}
+              {nominaSeleccionada.resumenHoras && (
+                <div style={{ marginBottom: 20 }}>
+                  <h4 style={{ color: '#1565c0', borderBottom: '1px solid #1565c0', paddingBottom: 8 }}>
+                    📅 RESUMEN DE HORAS
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontSize: 13 }}>
+                    {nominaSeleccionada.resumenHoras.horasNormales > 0 && (
+                      <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
+                        <strong>H. Normales:</strong> {nominaSeleccionada.resumenHoras.horasNormales}
+                      </div>
+                    )}
+                    {nominaSeleccionada.resumenHoras.horasNocturnas > 0 && (
+                      <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
+                        <strong>H. Nocturnas:</strong> {nominaSeleccionada.resumenHoras.horasNocturnas}
+                      </div>
+                    )}
+                    {nominaSeleccionada.resumenHoras.horasFestivas > 0 && (
+                      <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
+                        <strong>H. Festivas:</strong> {nominaSeleccionada.resumenHoras.horasFestivas}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
               {/* Devengados */}
               <div style={{ marginBottom: 20 }}>
                 <h4 style={{ color: '#4caf50', borderBottom: '1px solid #4caf50', paddingBottom: 8 }}>
-                  DEVENGADOS
+                  💵 DEVENGADOS
                 </h4>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <tbody>
                     <tr>
-                      <td style={{ padding: 8 }}>Salario Básico</td>
-                      <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.salario_basico)}</td>
+                      <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Salario Bruto</td>
+                      <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.bruto)}</td>
                     </tr>
-                    {nominaSeleccionada.auxilio_transporte > 0 && (
+                    {nominaSeleccionada.auxtransp > 0 && (
                       <tr>
-                        <td style={{ padding: 8 }}>Auxilio de Transporte</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.auxilio_transporte)}</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Auxilio de Transporte</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.auxtransp)}</td>
                       </tr>
                     )}
-                    {nominaSeleccionada.horas_extras > 0 && (
+                    {nominaSeleccionada.hexvalor > 0 && (
                       <tr>
-                        <td style={{ padding: 8 }}>Horas Extras</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.horas_extras)}</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>
+                          Horas Extras ({nominaSeleccionada.hexdia || 0} horas)
+                        </td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.hexvalor)}</td>
                       </tr>
                     )}
-                    {nominaSeleccionada.bonificaciones > 0 && (
+                    {nominaSeleccionada.bonificacion > 0 && (
                       <tr>
-                        <td style={{ padding: 8 }}>Bonificaciones</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.bonificaciones)}</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Bonificación</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.bonificacion)}</td>
                       </tr>
                     )}
                     <tr style={{ backgroundColor: '#e8f5e9', fontWeight: 'bold' }}>
-                      <td style={{ padding: 8 }}>TOTAL DEVENGADO</td>
-                      <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.total_devengado)}</td>
+                      <td style={{ padding: 10 }}>TOTAL DEVENGADO</td>
+                      <td style={{ padding: 10, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.totaldevengado)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -598,27 +641,43 @@ function App() {
               {/* Deducciones */}
               <div style={{ marginBottom: 20 }}>
                 <h4 style={{ color: '#f44336', borderBottom: '1px solid #f44336', paddingBottom: 8 }}>
-                  DEDUCCIONES
+                  📉 DEDUCCIONES
                 </h4>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <tbody>
-                    <tr>
-                      <td style={{ padding: 8 }}>Salud (4%)</td>
-                      <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.deduccion_salud)}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: 8 }}>Pensión (4%)</td>
-                      <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.deduccion_pension)}</td>
-                    </tr>
-                    {nominaSeleccionada.otros_descuentos > 0 && (
+                    {nominaSeleccionada.descsalud > 0 && (
                       <tr>
-                        <td style={{ padding: 8 }}>Otros Descuentos</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.otros_descuentos)}</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Salud (4%)</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descsalud)}</td>
+                      </tr>
+                    )}
+                    {nominaSeleccionada.descpension > 0 && (
+                      <tr>
+                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Pensión (4%)</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descpension)}</td>
+                      </tr>
+                    )}
+                    {nominaSeleccionada.descprestamos > 0 && (
+                      <tr>
+                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Préstamos</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descprestamos)}</td>
+                      </tr>
+                    )}
+                    {nominaSeleccionada.desccomida > 0 && (
+                      <tr>
+                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Comida</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.desccomida)}</td>
+                      </tr>
+                    )}
+                    {nominaSeleccionada.descotros > 0 && (
+                      <tr>
+                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Otros Descuentos</td>
+                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descotros)}</td>
                       </tr>
                     )}
                     <tr style={{ backgroundColor: '#ffebee', fontWeight: 'bold' }}>
-                      <td style={{ padding: 8 }}>TOTAL DEDUCCIONES</td>
-                      <td style={{ padding: 8, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.total_deducciones)}</td>
+                      <td style={{ padding: 10 }}>TOTAL DEDUCCIONES</td>
+                      <td style={{ padding: 10, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.totaldescuentos)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -626,16 +685,22 @@ function App() {
               
               {/* Neto a pagar */}
               <div style={{
-                padding: 16,
+                padding: 20,
                 backgroundColor: '#c62828',
                 color: 'white',
-                borderRadius: 8,
+                borderRadius: 12,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span style={{ fontSize: 18, fontWeight: 'bold' }}>NETO A PAGAR</span>
-                <span style={{ fontSize: 24, fontWeight: 'bold' }}>{formatearMoneda(nominaSeleccionada.neto_pagar)}</span>
+                <span style={{ fontSize: 20, fontWeight: 'bold' }}>💰 NETO A PAGAR</span>
+                <span style={{ fontSize: 28, fontWeight: 'bold' }}>{formatearMoneda(nominaSeleccionada.netoapagar)}</span>
+              </div>
+
+              {/* Pie de página */}
+              <div style={{ marginTop: 20, textAlign: 'center', fontSize: 11, color: '#999' }}>
+                <p>Documento generado desde el Portal del Empleado - Big Burguer</p>
+                <p>Fecha de impresión: {new Date().toLocaleDateString('es-CO')}</p>
               </div>
             </div>
             
@@ -643,13 +708,14 @@ function App() {
               <button
                 onClick={imprimirDesprendible}
                 style={{
-                  padding: '12px 24px',
+                  padding: '14px 32px',
                   backgroundColor: '#c62828',
                   color: 'white',
                   border: 'none',
-                  borderRadius: 8,
+                  borderRadius: 10,
                   cursor: 'pointer',
-                  fontSize: 16
+                  fontSize: 16,
+                  fontWeight: 'bold'
                 }}
               >
                 🖨️ Imprimir Desprendible
