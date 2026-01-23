@@ -1381,102 +1381,242 @@ function App() {
             <title>Contrato de Trabajo - ${d.nombreTrabajador || ''}</title>
             <meta charset="UTF-8">
             <style>
-              @page { size: letter; margin: 2cm 2.5cm; }
-              body { 
-                font-family: 'Times New Roman', Times, serif; 
-                font-size: 11pt;
-                line-height: 1.6;
-                color: #000;
-                max-width: 21cm;
-                margin: 0 auto;
-                padding: 1cm;
+              @page { 
+                size: letter; 
+                margin: 1.5cm 2cm; 
               }
-              h1 { text-align: center; font-size: 14pt; margin-bottom: 20px; }
-              h2 { font-size: 12pt; margin: 15px 0 10px; }
-              .clausula { margin-bottom: 15px; text-align: justify; }
-              .firma-container { margin-top: 50px; display: flex; justify-content: space-between; }
-              .firma-box { width: 45%; text-align: center; }
-              .linea-firma { border-top: 1px solid #000; margin-bottom: 5px; padding-top: 5px; }
-              .negrita { font-weight: bold; }
-              .centro { text-align: center; }
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              body { 
+                font-family: Arial, Helvetica, sans-serif; 
+                font-size: 10pt;
+                line-height: 1.5;
+                color: #000;
+                padding: 0;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #c62828;
+                padding-bottom: 15px;
+              }
+              .header h1 {
+                font-size: 16pt;
+                color: #c62828;
+                margin-bottom: 5px;
+                text-transform: uppercase;
+              }
+              .header h2 {
+                font-size: 12pt;
+                font-weight: normal;
+                color: #333;
+              }
+              .info-box {
+                background-color: #f5f5f5;
+                border: 1px solid #ddd;
+                padding: 12px;
+                margin-bottom: 15px;
+                border-radius: 5px;
+              }
+              .info-row {
+                display: flex;
+                margin-bottom: 5px;
+              }
+              .info-label {
+                font-weight: bold;
+                width: 150px;
+                color: #555;
+              }
+              .info-value {
+                flex: 1;
+              }
+              .partes {
+                display: flex;
+                gap: 20px;
+                margin-bottom: 20px;
+              }
+              .parte {
+                flex: 1;
+                border: 1px solid #ddd;
+                padding: 12px;
+                border-radius: 5px;
+              }
+              .parte h3 {
+                color: #c62828;
+                border-bottom: 1px solid #c62828;
+                padding-bottom: 5px;
+                margin-bottom: 10px;
+                font-size: 11pt;
+              }
+              .clausula {
+                margin-bottom: 12px;
+                text-align: justify;
+              }
+              .clausula-titulo {
+                font-weight: bold;
+                color: #c62828;
+                margin-bottom: 5px;
+                font-size: 10pt;
+              }
+              .clausula-texto {
+                padding-left: 15px;
+              }
+              .firmas {
+                margin-top: 40px;
+                display: flex;
+                justify-content: space-between;
+              }
+              .firma-box {
+                width: 45%;
+                text-align: center;
+              }
+              .linea-firma {
+                border-top: 1px solid #000;
+                margin-top: 60px;
+                padding-top: 8px;
+              }
+              .firma-nombre {
+                font-weight: bold;
+                font-size: 10pt;
+              }
+              .firma-rol {
+                color: #555;
+                font-size: 9pt;
+              }
+              .footer {
+                margin-top: 30px;
+                text-align: center;
+                font-size: 8pt;
+                color: #999;
+                border-top: 1px solid #ddd;
+                padding-top: 10px;
+              }
+              .highlight {
+                font-weight: bold;
+                color: #c62828;
+              }
+              @media print {
+                body { padding: 0; }
+                .no-print { display: none; }
+              }
             </style>
           </head>
           <body>
-            <h1>CONTRATO INDIVIDUAL DE TRABAJO A TÉRMINO ${(d.tipoContrato || 'INDEFINIDO').toUpperCase()}</h1>
-            
-            <div class="clausula">
-              <p>Entre <strong>${d.nombreEmpleador || ''}</strong>, identificado con NIT <strong>${d.nitEmpleador || ''}</strong>, 
-              actuando como empleador, y <strong>${d.nombreTrabajador || ''}</strong>, identificado(a) con 
-              cédula de ciudadanía número <strong>${d.cedulaTrabajador || ''}</strong>, actuando como trabajador(a), 
-              se celebra el presente contrato de trabajo, regido por las siguientes cláusulas:</p>
+            <div class="header">
+              <h1>Contrato Individual de Trabajo</h1>
+              <h2>A Término ${d.tipoContrato === 'Indefinido' ? 'Indefinido' : d.tipoContrato || 'Indefinido'}</h2>
             </div>
             
-            <h2>PRIMERA. OBJETO</h2>
-            <div class="clausula">
-              <p>${d.elLaTrabajador || 'El'} TRABAJADOR se obliga a prestar sus servicios personales al EMPLEADOR, 
-              desempeñando el cargo de <strong>${d.cargo || ''}</strong>, cumpliendo las funciones propias del cargo 
-              y las que le sean asignadas por el empleador.</p>
+            <div class="partes">
+              <div class="parte">
+                <h3>👔 EMPLEADOR</h3>
+                <div class="info-row"><span class="info-label">Razón Social:</span><span class="info-value">${d.nombreEmpleador || ''}</span></div>
+                <div class="info-row"><span class="info-label">NIT:</span><span class="info-value">${d.nitEmpleador || ''}</span></div>
+                <div class="info-row"><span class="info-label">Dirección:</span><span class="info-value">${d.direccionEmpleador || ''}</span></div>
+                <div class="info-row"><span class="info-label">Teléfono:</span><span class="info-value">${d.telefonoEmpleador || ''}</span></div>
+                <div class="info-row"><span class="info-label">Representante:</span><span class="info-value">${d.representanteLegal || ''}</span></div>
+              </div>
+              <div class="parte">
+                <h3>👷 TRABAJADOR${d.generoTrabajador === 'Femenino' ? 'A' : ''}</h3>
+                <div class="info-row"><span class="info-label">Nombre:</span><span class="info-value">${d.nombreTrabajador || ''}</span></div>
+                <div class="info-row"><span class="info-label">Cédula:</span><span class="info-value">${d.cedulaTrabajador || ''}</span></div>
+                <div class="info-row"><span class="info-label">Dirección:</span><span class="info-value">${d.direccionTrabajador || ''}</span></div>
+                <div class="info-row"><span class="info-label">Teléfono:</span><span class="info-value">${d.telefonoTrabajador || ''}</span></div>
+                <div class="info-row"><span class="info-label">Nacimiento:</span><span class="info-value">${d.lugarFechaNacimiento || ''}</span></div>
+              </div>
             </div>
             
-            <h2>SEGUNDA. LUGAR DE TRABAJO</h2>
+            <div class="info-box">
+              <div class="info-row"><span class="info-label">Cargo:</span><span class="info-value highlight">${d.cargo || ''}</span></div>
+              <div class="info-row"><span class="info-label">Lugar de Trabajo:</span><span class="info-value">${d.lugarTrabajo || ''}, ${d.ciudad || ''}</span></div>
+              <div class="info-row"><span class="info-label">Fecha de Inicio:</span><span class="info-value highlight">${d.fechaInicio || ''}</span></div>
+              <div class="info-row"><span class="info-label">Tipo de Contrato:</span><span class="info-value">${d.tipoContrato === 'Indefinido' ? 'Término Indefinido' : d.duracionContrato || 'Término Indefinido'}</span></div>
+              <div class="info-row"><span class="info-label">Salario:</span><span class="info-value highlight">${d.remuneracion || ''} (${d.remuneracionLetras || ''} PESOS M/CTE)</span></div>
+              <div class="info-row"><span class="info-label">Forma de Pago:</span><span class="info-value">${d.periodoPago || 'Quincenal'}</span></div>
+            </div>
+
             <div class="clausula">
-              <p>El trabajador desarrollará sus funciones en: <strong>${d.lugarTrabajo || ''}</strong>, 
-              ${d.ciudad || 'Pereira'}, Colombia, o en el lugar que el empleador determine según las necesidades del servicio.</p>
+              <div class="clausula-titulo">PRIMERA. - OBJETO</div>
+              <div class="clausula-texto">
+                ${d.elLaTrabajador || 'EL'} TRABAJADOR${d.generoTrabajador === 'Femenino' ? 'A' : ''} se obliga a prestar sus servicios personales al EMPLEADOR, desempeñando el cargo de <strong>${d.cargo || ''}</strong>, ejecutando las labores propias del cargo, así como las complementarias que le sean asignadas.
+              </div>
             </div>
             
-            <h2>TERCERA. DURACIÓN</h2>
             <div class="clausula">
-              <p>El presente contrato tendrá una duración <strong>${d.tipoContrato === 'Indefinido' ? 'INDEFINIDA' : d.duracionContrato || 'INDEFINIDA'}</strong>, 
-              contada a partir del <strong>${d.fechaInicio || ''}</strong>.</p>
+              <div class="clausula-titulo">SEGUNDA. - LUGAR DE TRABAJO</div>
+              <div class="clausula-texto">
+                ${d.elLaTrabajador || 'EL'} ${d.trabajadorNombre || 'TRABAJADOR'} desarrollará sus funciones en las instalaciones ubicadas en <strong>${d.lugarTrabajo || ''}</strong>, ${d.ciudad || ''}, o en cualquier otro lugar que determine el EMPLEADOR de acuerdo con las necesidades del servicio.
+              </div>
             </div>
             
-            <h2>CUARTA. REMUNERACIÓN</h2>
             <div class="clausula">
-              <p>${d.elLaTrabajador || 'El'} TRABAJADOR devengará un salario de <strong>${d.remuneracion || ''}</strong> 
-              (${d.remuneracionLetras || ''} PESOS M/CTE), pagaderos de forma <strong>${d.periodoPago || 'quincenal'}</strong>.</p>
+              <div class="clausula-titulo">TERCERA. - DURACIÓN</div>
+              <div class="clausula-texto">
+                El presente contrato tendrá una duración <strong>${d.tipoContrato === 'Indefinido' ? 'INDEFINIDA' : (d.duracionContrato || 'INDEFINIDA')}</strong>, iniciando labores a partir del <strong>${d.fechaInicio || ''}</strong>.
+              </div>
             </div>
             
-            <h2>QUINTA. JORNADA DE TRABAJO</h2>
             <div class="clausula">
-              <p>La jornada de trabajo será la máxima legal permitida, de conformidad con las normas laborales vigentes.</p>
+              <div class="clausula-titulo">CUARTA. - REMUNERACIÓN</div>
+              <div class="clausula-texto">
+                El EMPLEADOR pagará al ${d.trabajadorNombre || 'TRABAJADOR'} como contraprestación por sus servicios, un salario de <strong>${d.remuneracion || ''}</strong> (${d.remuneracionLetras || ''} PESOS MCTE), pagaderos de forma <strong>${d.periodoPago || 'Quincenal'}</strong>. Este pago incluirá las prestaciones sociales de ley.
+              </div>
             </div>
             
-            <h2>SEXTA. OBLIGACIONES DEL TRABAJADOR</h2>
             <div class="clausula">
-              <p>${d.elLaTrabajador || 'El'} TRABAJADOR se obliga a: cumplir el reglamento interno de trabajo, 
-              obedecer las órdenes del empleador, guardar reserva de la información de la empresa, 
-              y demás obligaciones contenidas en el Código Sustantivo del Trabajo.</p>
+              <div class="clausula-titulo">QUINTA. - JORNADA LABORAL</div>
+              <div class="clausula-texto">
+                ${d.elLaTrabajador || 'EL'} ${d.trabajadorNombre || 'TRABAJADOR'} se obliga a cumplir la jornada máxima legal permitida, de conformidad con la legislación laboral vigente. El horario será establecido por el EMPLEADOR según las necesidades del servicio.
+              </div>
             </div>
             
-            <h2>SÉPTIMA. OBLIGACIONES DEL EMPLEADOR</h2>
             <div class="clausula">
-              <p>El EMPLEADOR se obliga a: pagar la remuneración pactada, afiliar al trabajador al sistema de seguridad social, 
-              respetar la dignidad del trabajador, y cumplir las demás obligaciones legales.</p>
+              <div class="clausula-titulo">SEXTA. - OBLIGACIONES DEL TRABAJADOR</div>
+              <div class="clausula-texto">
+                Son obligaciones ${d.delDeLaTrabajador || 'DEL'} ${d.trabajadorNombre || 'TRABAJADOR'}: a) Cumplir con las instrucciones del empleador. b) Guardar absoluta reserva sobre la información de la empresa. c) Cumplir el reglamento interno de trabajo. d) Cuidar los elementos de trabajo. e) Cumplir con las demás obligaciones que establece la ley.
+              </div>
             </div>
             
-            <h2>OCTAVA. TERMINACIÓN</h2>
             <div class="clausula">
-              <p>El presente contrato podrá terminarse por las causas establecidas en la ley.</p>
+              <div class="clausula-titulo">SÉPTIMA. - OBLIGACIONES DEL EMPLEADOR</div>
+              <div class="clausula-texto">
+                El EMPLEADOR se obliga a: a) Pagar la remuneración pactada en los períodos convenidos. b) Suministrar los elementos necesarios para el trabajo. c) Afiliar al trabajador al Sistema de Seguridad Social. d) Respetar la dignidad del trabajador. e) Cumplir las demás obligaciones establecidas por la ley.
+              </div>
             </div>
             
-            <p class="centro" style="margin-top: 30px;">
-              Para constancia se firma en <strong>${d.lugarContratacion || 'Pereira, Risaralda'}</strong>, 
-              a los <strong>${d.fechaFirma || ''}</strong>.
+            <div class="clausula">
+              <div class="clausula-titulo">OCTAVA. - TERMINACIÓN</div>
+              <div class="clausula-texto">
+                El presente contrato podrá darse por terminado por las causales establecidas en los artículos 61, 62, 63 y 64 del Código Sustantivo del Trabajo, y demás normas que lo modifiquen o adicionen.
+              </div>
+            </div>
+            
+            <p style="text-align: center; margin-top: 25px; font-size: 10pt;">
+              Para constancia se firma en <strong>${d.lugarContratacion || 'Pereira, Risaralda'}</strong>, a los <strong>${d.fechaFirma || ''}</strong>.
             </p>
             
-            <div class="firma-container">
+            <div class="firmas">
               <div class="firma-box">
                 <div class="linea-firma">
-                  <strong>${d.representanteLegal || d.nombreEmpleador || ''}</strong>
+                  <div class="firma-nombre">${d.representanteLegal || d.nombreEmpleador || ''}</div>
+                  <div class="firma-rol">EMPLEADOR</div>
+                  <div class="firma-rol">NIT: ${d.nitEmpleador || ''}</div>
                 </div>
-                <p>EMPLEADOR<br/>NIT: ${d.nitEmpleador || ''}</p>
               </div>
               <div class="firma-box">
                 <div class="linea-firma">
-                  <strong>${d.nombreTrabajador || ''}</strong>
+                  <div class="firma-nombre">${d.nombreTrabajador || ''}</div>
+                  <div class="firma-rol">TRABAJADOR${d.generoTrabajador === 'Femenino' ? 'A' : ''}</div>
+                  <div class="firma-rol">C.C. ${d.cedulaTrabajador || ''}</div>
                 </div>
-                <p>TRABAJADOR<br/>C.C.: ${d.cedulaTrabajador || ''}</p>
               </div>
+            </div>
+            
+            <div class="footer">
+              Documento generado el ${new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })} | Sistema de Gestión Big Burguer
             </div>
           </body>
         </html>
@@ -1814,13 +1954,14 @@ function App() {
                   }}>
                     {/* Número del día */}
                     <div style={{
-                      fontWeight: esHoy || esFestivo || esDomingo ? 'bold' : 'normal',
-                      fontSize: esHoy ? 16 : 13,
-                      color: esHoy ? '#ff9800' : esFestivo ? '#f9a825' : esDomingo ? '#d32f2f' : '#333',
-                      marginBottom: 2
+                      fontWeight: '900',
+                      fontSize: 22,
+                      color: esHoy ? '#ff9800' : esFestivo ? '#f9a825' : esDomingo ? '#d32f2f' : '#555',
+                      marginBottom: 4,
+                      textShadow: '0 1px 1px rgba(0,0,0,0.1)'
                     }}>
                       {fecha.getDate()}
-                      {esHoy && <span style={{ fontSize: 10, marginLeft: 4 }}>HOY</span>}
+                      {esHoy && <span style={{ fontSize: 11, marginLeft: 4, fontWeight: 'bold' }}>HOY</span>}
                     </div>
                     
                     {/* Indicador de festivo */}
