@@ -226,7 +226,6 @@ function App() {
           
           if (horarioEmpleado) {
             // horarioEmpleado tiene formato: { "0": {turno lunes}, "1": {turno martes}, etc }
-            const diasSemanaMap = [0, 1, 2, 3, 4, 5, 6]; // 0=Lunes en el sistema
             const fechaInicioSemana = new Date(semana.semana_inicio + 'T00:00:00');
             
             for (const [diaIndex, turno] of Object.entries(horarioEmpleado)) {
