@@ -117,16 +117,42 @@ function App() {
 
   const cargarNominas = async (doc) => {
     try {
-      // Cargar nóminas de la tabla principal del sistema
-      const { data } = await supabase
+      console.log('🔍 Buscando nóminas para documento:', doc);
+      
+      // Intentar buscar primero por empleadoid (puede ser el documento)
+      let { data, error } = await supabase
         .from('nominas')
         .select('*')
         .eq('empleadoid', doc)
         .order('periodo', { ascending: false })
         .limit(12);
+      
+      console.log('📋 Resultado búsqueda por empleadoid:', data, error);
+      
+      // Si no encuentra, intentar buscar en el campo empleado (si existe como jsonb)
+      if ((!data || data.length === 0) && !error) {
+        console.log('🔄 Intentando búsqueda alternativa...');
+        const { data: dataAlt } = await supabase
+          .from('nominas')
+          .select('*')
+          .order('periodo', { ascending: false })
+          .limit(100);
+        
+        if (dataAlt) {
+          // Filtrar las que coincidan con el documento
+          const nominasFiltradas = dataAlt.filter(n => {
+            const empId = String(n.empleadoid || '');
+            const empDoc = n.empleado?.documento || '';
+            return empId === doc || empDoc === doc;
+          });
+          console.log('📋 Nóminas filtradas:', nominasFiltradas.length);
+          data = nominasFiltradas;
+        }
+      }
+      
       if (data) setNominas(data);
     } catch (e) {
-      console.log('Tabla nominas no disponible:', e);
+      console.log('❌ Error cargando nóminas:', e);
     }
   };
 
