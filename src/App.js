@@ -1434,33 +1434,210 @@ function App() {
     );
   };
 
-  // MIS HORARIOS
+  // MIS HORARIOS - Vista tipo Calendario
   const SeccionHorarios = () => {
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diasSemanaCorto = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const diasSemanaLargo = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     
-    // Agrupar horarios por mes
-    const horariosAgrupados = {};
+    // Crear mapa de horarios por fecha para acceso rápido
+    const horariosPorFecha = {};
     horarios.forEach(h => {
-      const fecha = new Date(h.fecha + 'T00:00:00');
-      const mesKey = `${fecha.getFullYear()}-${fecha.getMonth()}`;
-      const mesNombre = `${meses[fecha.getMonth()]} ${fecha.getFullYear()}`;
-      if (!horariosAgrupados[mesKey]) {
-        horariosAgrupados[mesKey] = { nombre: mesNombre, items: [] };
-      }
-      horariosAgrupados[mesKey].items.push(h);
+      horariosPorFecha[h.fecha] = h;
     });
     
-    // Ordenar grupos por fecha (más reciente primero)
-    const gruposOrdenados = Object.entries(horariosAgrupados)
-      .sort((a, b) => b[0].localeCompare(a[0]));
+    // Generar semanas para el mes actual y anterior
+    const generarSemanasDelMes = (year, month) => {
+      const semanas = [];
+      const primerDia = new Date(year, month, 1);
+      const ultimoDia = new Date(year, month + 1, 0);
+      
+      // Empezar desde el domingo de la semana del primer día
+      const inicioSemana = new Date(primerDia);
+      inicioSemana.setDate(primerDia.getDate() - primerDia.getDay());
+      
+      let semanaActual = [];
+      const fechaIterador = new Date(inicioSemana);
+      
+      while (fechaIterador <= ultimoDia || semanaActual.length > 0) {
+        semanaActual.push(new Date(fechaIterador));
+        
+        if (semanaActual.length === 7) {
+          semanas.push(semanaActual);
+          semanaActual = [];
+          if (fechaIterador > ultimoDia) break;
+        }
+        
+        fechaIterador.setDate(fechaIterador.getDate() + 1);
+      }
+      
+      return semanas;
+    };
+    
+    const hoy = new Date();
+    const mesActual = { year: hoy.getFullYear(), month: hoy.getMonth() };
+    const mesAnterior = hoy.getMonth() === 0 
+      ? { year: hoy.getFullYear() - 1, month: 11 }
+      : { year: hoy.getFullYear(), month: hoy.getMonth() - 1 };
+    
+    const semanasActual = generarSemanasDelMes(mesActual.year, mesActual.month);
+    const semanasAnterior = generarSemanasDelMes(mesAnterior.year, mesAnterior.month);
+    
+    const renderizarCalendario = (semanas, year, month) => {
+      const hoyStr = hoy.toISOString().split('T')[0];
+      
+      return (
+        <div style={{ marginBottom: 30 }}>
+          <h3 style={{ 
+            color: '#c62828', 
+            fontSize: 20,
+            marginBottom: 15,
+            textAlign: 'center',
+            backgroundColor: '#ffebee',
+            padding: '12px 0',
+            borderRadius: 8
+          }}>
+            📆 {meses[month]} {year}
+          </h3>
+          
+          {/* Encabezados de días */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(7, 1fr)', 
+            gap: 2,
+            marginBottom: 2
+          }}>
+            {diasSemanaCorto.map((dia, idx) => (
+              <div key={dia} style={{
+                padding: '10px 4px',
+                backgroundColor: idx === 0 ? '#ffcdd2' : '#c62828',
+                color: idx === 0 ? '#c62828' : 'white',
+                textAlign: 'center',
+                fontWeight: 'bold',
+                fontSize: 14
+              }}>
+                {dia}
+              </div>
+            ))}
+          </div>
+          
+          {/* Semanas */}
+          {semanas.map((semana, semanaIdx) => (
+            <div key={semanaIdx} style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(7, 1fr)', 
+              gap: 2,
+              marginBottom: 2
+            }}>
+              {semana.map((fecha, diaIdx) => {
+                const fechaStr = fecha.toISOString().split('T')[0];
+                const esDelMes = fecha.getMonth() === month;
+                const esHoy = fechaStr === hoyStr;
+                const horario = horariosPorFecha[fechaStr];
+                const esPasado = fechaStr < hoyStr;
+                
+                return (
+                  <div key={diaIdx} style={{
+                    minHeight: 90,
+                    padding: 6,
+                    backgroundColor: !esDelMes ? '#f5f5f5' : esHoy ? '#fff3e0' : 'white',
+                    border: esHoy ? '3px solid #ff9800' : '1px solid #e0e0e0',
+                    opacity: !esDelMes ? 0.4 : esPasado ? 0.6 : 1,
+                    position: 'relative'
+                  }}>
+                    {/* Número del día */}
+                    <div style={{
+                      fontWeight: esHoy ? 'bold' : 'normal',
+                      fontSize: esHoy ? 16 : 13,
+                      color: esHoy ? '#ff9800' : diaIdx === 0 ? '#d32f2f' : '#333',
+                      marginBottom: 4
+                    }}>
+                      {fecha.getDate()}
+                      {esHoy && <span style={{ fontSize: 10, marginLeft: 4 }}>HOY</span>}
+                    </div>
+                    
+                    {/* Contenido del horario */}
+                    {horario && esDelMes && (
+                      <div style={{ fontSize: 11 }}>
+                        {horario.es_descanso ? (
+                          <div style={{
+                            backgroundColor: '#e8f5e9',
+                            color: '#2e7d32',
+                            padding: '4px 6px',
+                            borderRadius: 4,
+                            textAlign: 'center',
+                            fontWeight: 'bold'
+                          }}>
+                            🌴 Descanso
+                          </div>
+                        ) : horario.turno_partido ? (
+                          <div>
+                            <div style={{
+                              backgroundColor: '#ffebee',
+                              color: '#c62828',
+                              padding: '3px 4px',
+                              borderRadius: 3,
+                              marginBottom: 2,
+                              fontWeight: 'bold',
+                              fontSize: 10
+                            }}>
+                              {horario.hora_inicio}-{horario.hora_fin}
+                            </div>
+                            <div style={{
+                              backgroundColor: '#e3f2fd',
+                              color: '#1565c0',
+                              padding: '3px 4px',
+                              borderRadius: 3,
+                              fontWeight: 'bold',
+                              fontSize: 10
+                            }}>
+                              {horario.segundo_turno.hora_inicio}-{horario.segundo_turno.hora_fin}
+                            </div>
+                            <div style={{ 
+                              fontSize: 8, 
+                              color: '#ff9800', 
+                              textAlign: 'center',
+                              marginTop: 2 
+                            }}>
+                              ⚡ Partido
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{
+                            backgroundColor: '#ffebee',
+                            color: '#c62828',
+                            padding: '4px 6px',
+                            borderRadius: 4,
+                            textAlign: 'center',
+                            fontWeight: 'bold'
+                          }}>
+                            {horario.hora_inicio}
+                            <br/>
+                            {horario.hora_fin}
+                            {horario.sede && (
+                              <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+                                {horario.sede}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      );
+    };
     
     return (
       <div>
-        <h2 style={{ color: '#c62828', marginBottom: 20 }}>🕐 Mis Horarios</h2>
+        <h2 style={{ color: '#c62828', marginBottom: 10 }}>🕐 Mis Horarios</h2>
         
         <p style={{ color: '#666', marginBottom: 20, fontSize: 14 }}>
-          📅 Mostrando horarios del mes actual y mes anterior
+          📅 Calendario de horarios - Mes actual y mes anterior
         </p>
         
         {horarios.length === 0 ? (
@@ -1478,88 +1655,41 @@ function App() {
             </p>
           </div>
         ) : (
-          <div>
-            {gruposOrdenados.map(([mesKey, grupo]) => (
-              <div key={mesKey} style={{ marginBottom: 24 }}>
-                <h3 style={{ 
-                  color: '#c62828', 
-                  borderBottom: '2px solid #c62828', 
-                  paddingBottom: 8,
-                  marginBottom: 12 
-                }}>
-                  📆 {grupo.nombre}
-                </h3>
-                <div style={{ display: 'grid', gap: 10 }}>
-                  {grupo.items.map((horario, idx) => {
-                    const fecha = new Date(horario.fecha + 'T00:00:00');
-                    const diaSemana = diasSemana[fecha.getDay()];
-                    const hoy = new Date().toISOString().split('T')[0];
-                    const esHoy = horario.fecha === hoy;
-                    const esPasado = horario.fecha < hoy;
-                    
-                    return (
-                      <div
-                        key={idx}
-                        style={{
-                          padding: 14,
-                          backgroundColor: esHoy ? '#ffebee' : esPasado ? '#fafafa' : 'white',
-                          border: esHoy ? '2px solid #d32f2f' : '1px solid #e0e0e0',
-                          borderRadius: 10,
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          opacity: esPasado ? 0.7 : 1
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 'bold', color: esHoy ? '#d32f2f' : '#c62828', fontSize: 15 }}>
-                            {diaSemana} {esHoy && '(HOY)'}
-                          </div>
-                          <div style={{ fontSize: 12, color: '#666' }}>
-                            {fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          {horario.es_descanso ? (
-                            <span style={{
-                              padding: '6px 14px',
-                              backgroundColor: '#e8f5e9',
-                              color: '#2e7d32',
-                              borderRadius: 20,
-                              fontSize: 14,
-                              fontWeight: 'bold'
-                            }}>
-                              🌴 Descanso
-                            </span>
-                          ) : horario.turno_partido ? (
-                            <div>
-                              <div style={{ fontWeight: 'bold', fontSize: 14, color: '#c62828' }}>
-                                {horario.hora_inicio} - {horario.hora_fin}
-                                <span style={{ fontSize: 11, color: '#666', marginLeft: 4 }}>({horario.sede})</span>
-                              </div>
-                              <div style={{ fontWeight: 'bold', fontSize: 14, color: '#1565c0', marginTop: 2 }}>
-                                {horario.segundo_turno.hora_inicio} - {horario.segundo_turno.hora_fin}
-                                <span style={{ fontSize: 11, color: '#666', marginLeft: 4 }}>({horario.segundo_turno.sede})</span>
-                              </div>
-                              <div style={{ fontSize: 10, color: '#ff9800', marginTop: 2 }}>⚡ Turno Partido</div>
-                            </div>
-                          ) : (
-                            <>
-                              <div style={{ fontWeight: 'bold', fontSize: 16, color: '#c62828' }}>
-                                {horario.hora_inicio} - {horario.hora_fin}
-                              </div>
-                              <div style={{ fontSize: 12, color: '#666' }}>
-                                {horario.sede || empleado?.sede || ''}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+          <div style={{ overflowX: 'auto' }}>
+            {/* Leyenda */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 20, 
+              marginBottom: 20,
+              flexWrap: 'wrap',
+              padding: '10px 15px',
+              backgroundColor: '#fafafa',
+              borderRadius: 8
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 20, height: 20, backgroundColor: '#ffebee', border: '1px solid #c62828', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 12 }}>Turno normal</span>
               </div>
-            ))}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 20, height: 20, backgroundColor: '#e8f5e9', border: '1px solid #2e7d32', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 12 }}>Descanso</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 20, height: 20, backgroundColor: '#fff3e0', border: '3px solid #ff9800', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 12 }}>Hoy</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 10, height: 10, backgroundColor: '#c62828', borderRadius: 2 }}></div>
+                <div style={{ width: 10, height: 10, backgroundColor: '#1565c0', borderRadius: 2 }}></div>
+                <span style={{ fontSize: 12 }}>Turno partido</span>
+              </div>
+            </div>
+            
+            {/* Mes Actual */}
+            {renderizarCalendario(semanasActual, mesActual.year, mesActual.month)}
+            
+            {/* Mes Anterior */}
+            {renderizarCalendario(semanasAnterior, mesAnterior.year, mesAnterior.month)}
           </div>
         )}
       </div>
