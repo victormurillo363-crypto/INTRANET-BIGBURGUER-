@@ -1439,6 +1439,17 @@ function App() {
     const diasSemanaCorto = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     
+    // Función para convertir hora 24h a formato AM/PM
+    const formatearHora = (hora) => {
+      if (!hora) return '';
+      const [h, m] = hora.split(':');
+      const hora24 = parseInt(h);
+      const minutos = m || '00';
+      const periodo = hora24 >= 12 ? 'PM' : 'AM';
+      const hora12 = hora24 === 0 ? 12 : hora24 > 12 ? hora24 - 12 : hora24;
+      return `${hora12}:${minutos}${periodo}`;
+    };
+    
     // Crear mapa de horarios por fecha para acceso rápido
     const horariosPorFecha = {};
     horarios.forEach(h => {
@@ -1580,7 +1591,7 @@ function App() {
                               fontWeight: 'bold',
                               fontSize: 10
                             }}>
-                              {horario.hora_inicio}-{horario.hora_fin}
+                              {formatearHora(horario.hora_inicio)}-{formatearHora(horario.hora_fin)}
                             </div>
                             <div style={{
                               backgroundColor: '#e3f2fd',
@@ -1590,7 +1601,7 @@ function App() {
                               fontWeight: 'bold',
                               fontSize: 10
                             }}>
-                              {horario.segundo_turno.hora_inicio}-{horario.segundo_turno.hora_fin}
+                              {formatearHora(horario.segundo_turno.hora_inicio)}-{formatearHora(horario.segundo_turno.hora_fin)}
                             </div>
                             <div style={{ 
                               fontSize: 8, 
@@ -1610,9 +1621,9 @@ function App() {
                             textAlign: 'center',
                             fontWeight: 'bold'
                           }}>
-                            {horario.hora_inicio}
+                            {formatearHora(horario.hora_inicio)}
                             <br/>
-                            {horario.hora_fin}
+                            {formatearHora(horario.hora_fin)}
                             {horario.sede && (
                               <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
                                 {horario.sede}
