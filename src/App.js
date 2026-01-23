@@ -47,6 +47,7 @@ function App() {
         localStorage.removeItem('intranet_usuario');
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const cargarDatosEmpleado = async (usuarioData) => {
