@@ -887,18 +887,19 @@ function App() {
   const SeccionCartaLaboral = () => {
     const [datosSede, setDatosSede] = useState(null);
     const [cargandoSede, setCargandoSede] = useState(true);
+    
+    const sedeEmpleado = empleado?.sede;
 
     // Cargar datos de la sede del empleado al montar
     useEffect(() => {
       const cargarDatosSede = async () => {
         try {
           // Buscar la sede del empleado
-          const sedeNombre = empleado?.sede;
-          if (sedeNombre) {
+          if (sedeEmpleado) {
             const { data } = await supabase
               .from('sedes')
               .select('*')
-              .ilike('nombre', `%${sedeNombre}%`)
+              .ilike('nombre', `%${sedeEmpleado}%`)
               .limit(1)
               .maybeSingle();
             
@@ -920,7 +921,7 @@ function App() {
         setCargandoSede(false);
       };
       cargarDatosSede();
-    }, [empleado?.sede]);
+    }, [sedeEmpleado]);
 
     const formatearMoneda = (valor) => {
       return new Intl.NumberFormat('es-CO', {
