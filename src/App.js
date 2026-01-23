@@ -522,6 +522,22 @@ function App() {
       window.print();
     };
 
+    // Parsear horas_totales (puede venir como string JSON o objeto)
+    const getHorasTotales = (nomina) => {
+      if (!nomina) return null;
+      let horas = nomina.horas_totales || nomina.detalle_horas_completo;
+      if (typeof horas === 'string') {
+        try {
+          horas = JSON.parse(horas);
+        } catch {
+          return null;
+        }
+      }
+      return horas;
+    };
+
+    const horasTotales = nominaSeleccionada ? getHorasTotales(nominaSeleccionada) : null;
+
     return (
       <div>
         <h2 style={{ color: '#c62828', marginBottom: 20 }}>💰 Desprendible de Pago</h2>
@@ -587,191 +603,227 @@ function App() {
                 border: 'none',
                 borderRadius: 8,
                 cursor: 'pointer',
-                marginBottom: 20
+                marginBottom: 16
               }}
+              className="no-print"
             >
               ← Volver
             </button>
             
+            {/* DESPRENDIBLE - Diseño compacto para una sola hoja */}
             <div id="desprendible-print" style={{
               backgroundColor: 'white',
               border: '1px solid #ddd',
-              borderRadius: 12,
-              padding: 24
+              borderRadius: 8,
+              padding: '16px 20px',
+              fontSize: 12,
+              maxWidth: 700,
+              margin: '0 auto'
             }}>
-              {/* Encabezado con Logo */}
-              <div style={{ textAlign: 'center', marginBottom: 24, borderBottom: '2px solid #c62828', paddingBottom: 16 }}>
-                <img 
-                  src="/logo.jpg" 
-                  alt="Big Burguer" 
-                  style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', marginBottom: 10 }} 
-                />
-                <h3 style={{ margin: 0, color: '#c62828' }}>{configEmpresa?.nombre_empresa || empresa?.nombre || 'BIG BURGUER'}</h3>
-                <p style={{ margin: '4px 0', fontSize: 12 }}>NIT: {configEmpresa?.nit || empresa?.nit || ''}</p>
-                <h4 style={{ margin: '16px 0 0' }}>COMPROBANTE DE PAGO</h4>
-                <p style={{ margin: '4px 0', fontSize: 12 }}>
-                  Período: {formatearFecha(nominaSeleccionada.periodo)}
-                </p>
+              {/* Encabezado con Logo y Datos de Sede */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                borderBottom: '2px solid #c62828', 
+                paddingBottom: 12,
+                marginBottom: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <img 
+                    src="/logo.jpg" 
+                    alt="Big Burguer" 
+                    style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover' }} 
+                  />
+                  <div>
+                    <h3 style={{ margin: 0, color: '#c62828', fontSize: 16 }}>BIG BURGUER</h3>
+                    <p style={{ margin: 0, fontSize: 11, color: '#666' }}>
+                      Sede: {empleado?.sede || 'Principal'}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <h4 style={{ margin: 0, fontSize: 14 }}>COMPROBANTE DE PAGO</h4>
+                  <p style={{ margin: 0, fontSize: 11, color: '#666' }}>
+                    Período: {formatearFecha(nominaSeleccionada.periodo)}
+                  </p>
+                </div>
               </div>
               
-              {/* Datos empleado */}
+              {/* Datos del empleado - Documento real */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 12,
-                marginBottom: 24,
-                padding: 16,
-                backgroundColor: '#f5f5f5',
-                borderRadius: 8
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '4px 16px',
+                marginBottom: 12,
+                padding: 10,
+                backgroundColor: '#f8f8f8',
+                borderRadius: 6,
+                fontSize: 11
               }}>
-                <div><strong>Nombre:</strong> {nominaSeleccionada.empleado?.nombre || empleado?.nombre || usuario?.nombre}</div>
-                <div><strong>Documento:</strong> {nominaSeleccionada.empleadoid || empleado?.documento || usuario?.usuario}</div>
-                <div><strong>Cargo:</strong> {nominaSeleccionada.empleado?.cargo || empleado?.cargo || 'Colaborador'}</div>
-                <div><strong>Sede:</strong> {nominaSeleccionada.empleado?.sede || empleado?.sede || ''}</div>
+                <div><strong>Nombre:</strong> {empleado?.nombre || usuario?.nombre}</div>
+                <div><strong>Documento:</strong> {empleado?.documento || usuario?.usuario}</div>
+                <div><strong>Cargo:</strong> {empleado?.cargo || 'Colaborador'}</div>
+                <div><strong>Sede:</strong> {empleado?.sede || ''}</div>
               </div>
 
-              {/* Resumen de Horas si existe */}
-              {nominaSeleccionada.resumenHoras && (
-                <div style={{ marginBottom: 20 }}>
-                  <h4 style={{ color: '#1565c0', borderBottom: '1px solid #1565c0', paddingBottom: 8 }}>
-                    📅 RESUMEN DE HORAS
+              {/* RESUMEN DE HORAS TRABAJADAS */}
+              {horasTotales && (
+                <div style={{ marginBottom: 12 }}>
+                  <h4 style={{ color: '#1565c0', borderBottom: '1px solid #1565c0', paddingBottom: 4, margin: '0 0 8px', fontSize: 12 }}>
+                    ⏰ HORAS TRABAJADAS
                   </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontSize: 13 }}>
-                    {nominaSeleccionada.resumenHoras.horasNormales > 0 && (
-                      <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
-                        <strong>H. Normales:</strong> {nominaSeleccionada.resumenHoras.horasNormales}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, fontSize: 11 }}>
+                    {(horasTotales.hNorm > 0 || horasTotales.horasNormales > 0) && (
+                      <div style={{ padding: 6, backgroundColor: '#e3f2fd', borderRadius: 4, textAlign: 'center' }}>
+                        <strong>Normales</strong><br/>{horasTotales.hNorm || horasTotales.horasNormales || 0}h
                       </div>
                     )}
-                    {nominaSeleccionada.resumenHoras.horasNocturnas > 0 && (
-                      <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
-                        <strong>H. Nocturnas:</strong> {nominaSeleccionada.resumenHoras.horasNocturnas}
+                    {(horasTotales.hNoct > 0 || horasTotales.horasNocturnas > 0) && (
+                      <div style={{ padding: 6, backgroundColor: '#e8eaf6', borderRadius: 4, textAlign: 'center' }}>
+                        <strong>Nocturnas</strong><br/>{horasTotales.hNoct || horasTotales.horasNocturnas || 0}h
                       </div>
                     )}
-                    {nominaSeleccionada.resumenHoras.horasFestivas > 0 && (
-                      <div style={{ padding: 8, backgroundColor: '#e3f2fd', borderRadius: 6 }}>
-                        <strong>H. Festivas:</strong> {nominaSeleccionada.resumenHoras.horasFestivas}
+                    {(horasTotales.hFest > 0 || horasTotales.horasFestivas > 0) && (
+                      <div style={{ padding: 6, backgroundColor: '#fce4ec', borderRadius: 4, textAlign: 'center' }}>
+                        <strong>Festivas</strong><br/>{horasTotales.hFest || horasTotales.horasFestivas || 0}h
+                      </div>
+                    )}
+                    {(horasTotales.hExDia > 0 || horasTotales.horasExtrasDia > 0) && (
+                      <div style={{ padding: 6, backgroundColor: '#fff3e0', borderRadius: 4, textAlign: 'center' }}>
+                        <strong>Extra Diurna</strong><br/>{horasTotales.hExDia || horasTotales.horasExtrasDia || 0}h
+                      </div>
+                    )}
+                    {(horasTotales.hExNoc > 0 || horasTotales.horasExtrasNoc > 0) && (
+                      <div style={{ padding: 6, backgroundColor: '#ede7f6', borderRadius: 4, textAlign: 'center' }}>
+                        <strong>Extra Nocturna</strong><br/>{horasTotales.hExNoc || horasTotales.horasExtrasNoc || 0}h
+                      </div>
+                    )}
+                    {(horasTotales.hExFest > 0 || horasTotales.horasExtrasFest > 0) && (
+                      <div style={{ padding: 6, backgroundColor: '#ffebee', borderRadius: 4, textAlign: 'center' }}>
+                        <strong>Extra Festiva</strong><br/>{horasTotales.hExFest || horasTotales.horasExtrasFest || 0}h
                       </div>
                     )}
                   </div>
                 </div>
               )}
-              
-              {/* Devengados */}
-              <div style={{ marginBottom: 20 }}>
-                <h4 style={{ color: '#4caf50', borderBottom: '1px solid #4caf50', paddingBottom: 8 }}>
-                  💵 DEVENGADOS
-                </h4>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Salario Bruto</td>
-                      <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.salariobase || nominaSeleccionada.bruto)}</td>
-                    </tr>
-                    {(nominaSeleccionada.auxtransporte || nominaSeleccionada.auxtransp) > 0 && (
+
+              {/* Tabla de dos columnas: Devengados y Deducciones lado a lado */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 12 }}>
+                {/* Devengados */}
+                <div>
+                  <h4 style={{ color: '#4caf50', borderBottom: '1px solid #4caf50', paddingBottom: 4, margin: '0 0 6px', fontSize: 12 }}>
+                    💵 DEVENGADOS
+                  </h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                    <tbody>
                       <tr>
-                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Auxilio de Transporte</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.auxtransporte || nominaSeleccionada.auxtransp)}</td>
+                        <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Salario Base</td>
+                        <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.salariobase || nominaSeleccionada.bruto)}</td>
                       </tr>
-                    )}
-                    {(nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor) > 0 && (
-                      <tr>
-                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>
-                          Horas Extras ({nominaSeleccionada.horasextras || nominaSeleccionada.hexdia || 0} horas)
-                        </td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor)}</td>
+                      {(nominaSeleccionada.auxtransporte || nominaSeleccionada.auxtransp) > 0 && (
+                        <tr>
+                          <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Aux. Transporte</td>
+                          <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.auxtransporte || nominaSeleccionada.auxtransp)}</td>
+                        </tr>
+                      )}
+                      {(nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor) > 0 && (
+                        <tr>
+                          <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Horas Extras</td>
+                          <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor)}</td>
+                        </tr>
+                      )}
+                      {nominaSeleccionada.bonificacion > 0 && (
+                        <tr>
+                          <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Bonificación</td>
+                          <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.bonificacion)}</td>
+                        </tr>
+                      )}
+                      <tr style={{ backgroundColor: '#e8f5e9', fontWeight: 'bold' }}>
+                        <td style={{ padding: 6 }}>TOTAL</td>
+                        <td style={{ padding: 6, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.totaldevengado)}</td>
                       </tr>
-                    )}
-                    {nominaSeleccionada.bonificacion > 0 && (
-                      <tr>
-                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Bonificación</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.bonificacion)}</td>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Deducciones */}
+                <div>
+                  <h4 style={{ color: '#f44336', borderBottom: '1px solid #f44336', paddingBottom: 4, margin: '0 0 6px', fontSize: 12 }}>
+                    📉 DEDUCCIONES
+                  </h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                    <tbody>
+                      {(nominaSeleccionada.descuentosalud || nominaSeleccionada.descsalud) > 0 && (
+                        <tr>
+                          <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Salud (4%)</td>
+                          <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentosalud || nominaSeleccionada.descsalud)}</td>
+                        </tr>
+                      )}
+                      {(nominaSeleccionada.descuentopension || nominaSeleccionada.descpension) > 0 && (
+                        <tr>
+                          <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Pensión (4%)</td>
+                          <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentopension || nominaSeleccionada.descpension)}</td>
+                        </tr>
+                      )}
+                      {(nominaSeleccionada.descuentoprestamos || nominaSeleccionada.descprestamos) > 0 && (
+                        <tr>
+                          <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Préstamos</td>
+                          <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentoprestamos || nominaSeleccionada.descprestamos)}</td>
+                        </tr>
+                      )}
+                      {(nominaSeleccionada.descuentocomida || nominaSeleccionada.desccomida) > 0 && (
+                        <tr>
+                          <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Comida</td>
+                          <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentocomida || nominaSeleccionada.desccomida)}</td>
+                        </tr>
+                      )}
+                      {(nominaSeleccionada.otros_descuentos || nominaSeleccionada.descotros) > 0 && (
+                        <tr>
+                          <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Otros</td>
+                          <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.otros_descuentos || nominaSeleccionada.descotros)}</td>
+                        </tr>
+                      )}
+                      <tr style={{ backgroundColor: '#ffebee', fontWeight: 'bold' }}>
+                        <td style={{ padding: 6 }}>TOTAL</td>
+                        <td style={{ padding: 6, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.totaldescuentos)}</td>
                       </tr>
-                    )}
-                    <tr style={{ backgroundColor: '#e8f5e9', fontWeight: 'bold' }}>
-                      <td style={{ padding: 10 }}>TOTAL DEVENGADO</td>
-                      <td style={{ padding: 10, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.totaldevengado)}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               </div>
               
-              {/* Deducciones */}
-              <div style={{ marginBottom: 20 }}>
-                <h4 style={{ color: '#f44336', borderBottom: '1px solid #f44336', paddingBottom: 8 }}>
-                  📉 DEDUCCIONES
-                </h4>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <tbody>
-                    {(nominaSeleccionada.descuentosalud || nominaSeleccionada.descsalud) > 0 && (
-                      <tr>
-                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Salud (4%)</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentosalud || nominaSeleccionada.descsalud)}</td>
-                      </tr>
-                    )}
-                    {(nominaSeleccionada.descuentopension || nominaSeleccionada.descpension) > 0 && (
-                      <tr>
-                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Pensión (4%)</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentopension || nominaSeleccionada.descpension)}</td>
-                      </tr>
-                    )}
-                    {(nominaSeleccionada.descuentoprestamos || nominaSeleccionada.descprestamos) > 0 && (
-                      <tr>
-                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Préstamos</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentoprestamos || nominaSeleccionada.descprestamos)}</td>
-                      </tr>
-                    )}
-                    {(nominaSeleccionada.descuentocomida || nominaSeleccionada.desccomida) > 0 && (
-                      <tr>
-                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Comida</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.descuentocomida || nominaSeleccionada.desccomida)}</td>
-                      </tr>
-                    )}
-                    {(nominaSeleccionada.otros_descuentos || nominaSeleccionada.descotros) > 0 && (
-                      <tr>
-                        <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>Otros Descuentos</td>
-                        <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.otros_descuentos || nominaSeleccionada.descotros)}</td>
-                      </tr>
-                    )}
-                    <tr style={{ backgroundColor: '#ffebee', fontWeight: 'bold' }}>
-                      <td style={{ padding: 10 }}>TOTAL DEDUCCIONES</td>
-                      <td style={{ padding: 10, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.totaldescuentos)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Neto a pagar */}
+              {/* Neto a pagar - Destacado */}
               <div style={{
-                padding: 20,
+                padding: 12,
                 backgroundColor: '#c62828',
                 color: 'white',
-                borderRadius: 12,
+                borderRadius: 8,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span style={{ fontSize: 20, fontWeight: 'bold' }}>💰 NETO A PAGAR</span>
-                <span style={{ fontSize: 28, fontWeight: 'bold' }}>{formatearMoneda(nominaSeleccionada.totalneto || nominaSeleccionada.netoapagar)}</span>
+                <span style={{ fontSize: 14, fontWeight: 'bold' }}>💰 NETO A PAGAR</span>
+                <span style={{ fontSize: 20, fontWeight: 'bold' }}>{formatearMoneda(nominaSeleccionada.totalneto || nominaSeleccionada.netoapagar)}</span>
               </div>
 
               {/* Pie de página */}
-              <div style={{ marginTop: 20, textAlign: 'center', fontSize: 11, color: '#999' }}>
-                <p>Documento generado desde el Portal del Empleado - Big Burguer</p>
-                <p>Fecha de impresión: {new Date().toLocaleDateString('es-CO')}</p>
+              <div style={{ marginTop: 12, textAlign: 'center', fontSize: 9, color: '#999', borderTop: '1px solid #eee', paddingTop: 8 }}>
+                <p style={{ margin: 0 }}>Portal del Empleado - Big Burguer | Impreso: {new Date().toLocaleDateString('es-CO')}</p>
               </div>
             </div>
             
-            <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <div style={{ marginTop: 16, textAlign: 'center' }} className="no-print">
               <button
                 onClick={imprimirDesprendible}
                 style={{
-                  padding: '14px 32px',
+                  padding: '12px 28px',
                   backgroundColor: '#c62828',
                   color: 'white',
                   border: 'none',
-                  borderRadius: 10,
+                  borderRadius: 8,
                   cursor: 'pointer',
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: 'bold'
                 }}
               >
@@ -780,6 +832,24 @@ function App() {
             </div>
           </div>
         )}
+        
+        {/* Estilos para impresión */}
+        <style>{`
+          @media print {
+            body * { visibility: hidden; }
+            #desprendible-print, #desprendible-print * { visibility: visible; }
+            #desprendible-print { 
+              position: absolute; 
+              left: 0; 
+              top: 0; 
+              width: 100%;
+              padding: 20px;
+              border: none !important;
+            }
+            .no-print { display: none !important; }
+            @page { margin: 1cm; }
+          }
+        `}</style>
       </div>
     );
   };
