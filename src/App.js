@@ -1433,7 +1433,7 @@ function App() {
           </head>
           <body>
             <div class="header-container">
-              <div class="logo-header"><img id="logoImg" src="${LOGO_BIGBURGUER_BASE64}" alt="BigBurguer Logo" /></div>
+              <div class="logo-header"><img id="logoImg" src="/logo.jpg" alt="BigBurguer Logo" /></div>
               <h1>CONTRATO INDIVIDUAL DE TRABAJO A TÉRMINO ${datos.tipoContrato === "Fijo" || datos.tipoContrato === "Término Fijo" ? "FIJO" : "INDEFINIDO"}</h1>
             </div>
 
