@@ -1350,39 +1350,267 @@ function App() {
 
   // CONTRATO DE TRABAJO
   const SeccionContrato = () => {
-    const contratoDoc = documentos.find(d => d.tipo === 'contrato');
+    const [contrato, setContrato] = useState(null);
+    const [cargandoContrato, setCargandoContrato] = useState(true);
+    
+    // Cargar contrato desde la tabla contratos
+    useEffect(() => {
+      const cargarContrato = async () => {
+        try {
+          const empleadoId = empleado?.id;
+          if (!empleadoId) {
+            setCargandoContrato(false);
+            return;
+          }
+          
+          const { data, error } = await supabase
+            .from('contratos')
+            .select('*')
+            .eq('empleadoid', empleadoId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (data && !error) {
+            setContrato(data);
+          }
+        } catch (e) {
+          console.error('Error cargando contrato:', e);
+        }
+        setCargandoContrato(false);
+      };
+      
+      cargarContrato();
+    }, [empleado?.id]);
+    
+    // Función para generar e imprimir el contrato como PDF
+    const imprimirContrato = () => {
+      if (!contrato?.datos) return;
+      
+      const d = contrato.datos;
+      const ventanaImpresion = window.open('', '_blank');
+      
+      ventanaImpresion.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Contrato de Trabajo - ${d.nombreTrabajador || ''}</title>
+            <meta charset="UTF-8">
+            <style>
+              @page { size: letter; margin: 2cm 2.5cm; }
+              body { 
+                font-family: 'Times New Roman', Times, serif; 
+                font-size: 11pt;
+                line-height: 1.6;
+                color: #000;
+                max-width: 21cm;
+                margin: 0 auto;
+                padding: 1cm;
+              }
+              h1 { text-align: center; font-size: 14pt; margin-bottom: 20px; }
+              h2 { font-size: 12pt; margin: 15px 0 10px; }
+              .clausula { margin-bottom: 15px; text-align: justify; }
+              .firma-container { margin-top: 50px; display: flex; justify-content: space-between; }
+              .firma-box { width: 45%; text-align: center; }
+              .linea-firma { border-top: 1px solid #000; margin-bottom: 5px; padding-top: 5px; }
+              .negrita { font-weight: bold; }
+              .centro { text-align: center; }
+            </style>
+          </head>
+          <body>
+            <h1>CONTRATO INDIVIDUAL DE TRABAJO A TÉRMINO ${(d.tipoContrato || 'INDEFINIDO').toUpperCase()}</h1>
+            
+            <div class="clausula">
+              <p>Entre <strong>${d.nombreEmpleador || ''}</strong>, identificado con NIT <strong>${d.nitEmpleador || ''}</strong>, 
+              actuando como empleador, y <strong>${d.nombreTrabajador || ''}</strong>, identificado(a) con 
+              cédula de ciudadanía número <strong>${d.cedulaTrabajador || ''}</strong>, actuando como trabajador(a), 
+              se celebra el presente contrato de trabajo, regido por las siguientes cláusulas:</p>
+            </div>
+            
+            <h2>PRIMERA. OBJETO</h2>
+            <div class="clausula">
+              <p>${d.elLaTrabajador || 'El'} TRABAJADOR se obliga a prestar sus servicios personales al EMPLEADOR, 
+              desempeñando el cargo de <strong>${d.cargo || ''}</strong>, cumpliendo las funciones propias del cargo 
+              y las que le sean asignadas por el empleador.</p>
+            </div>
+            
+            <h2>SEGUNDA. LUGAR DE TRABAJO</h2>
+            <div class="clausula">
+              <p>El trabajador desarrollará sus funciones en: <strong>${d.lugarTrabajo || ''}</strong>, 
+              ${d.ciudad || 'Pereira'}, Colombia, o en el lugar que el empleador determine según las necesidades del servicio.</p>
+            </div>
+            
+            <h2>TERCERA. DURACIÓN</h2>
+            <div class="clausula">
+              <p>El presente contrato tendrá una duración <strong>${d.tipoContrato === 'Indefinido' ? 'INDEFINIDA' : d.duracionContrato || 'INDEFINIDA'}</strong>, 
+              contada a partir del <strong>${d.fechaInicio || ''}</strong>.</p>
+            </div>
+            
+            <h2>CUARTA. REMUNERACIÓN</h2>
+            <div class="clausula">
+              <p>${d.elLaTrabajador || 'El'} TRABAJADOR devengará un salario de <strong>${d.remuneracion || ''}</strong> 
+              (${d.remuneracionLetras || ''} PESOS M/CTE), pagaderos de forma <strong>${d.periodoPago || 'quincenal'}</strong>.</p>
+            </div>
+            
+            <h2>QUINTA. JORNADA DE TRABAJO</h2>
+            <div class="clausula">
+              <p>La jornada de trabajo será la máxima legal permitida, de conformidad con las normas laborales vigentes.</p>
+            </div>
+            
+            <h2>SEXTA. OBLIGACIONES DEL TRABAJADOR</h2>
+            <div class="clausula">
+              <p>${d.elLaTrabajador || 'El'} TRABAJADOR se obliga a: cumplir el reglamento interno de trabajo, 
+              obedecer las órdenes del empleador, guardar reserva de la información de la empresa, 
+              y demás obligaciones contenidas en el Código Sustantivo del Trabajo.</p>
+            </div>
+            
+            <h2>SÉPTIMA. OBLIGACIONES DEL EMPLEADOR</h2>
+            <div class="clausula">
+              <p>El EMPLEADOR se obliga a: pagar la remuneración pactada, afiliar al trabajador al sistema de seguridad social, 
+              respetar la dignidad del trabajador, y cumplir las demás obligaciones legales.</p>
+            </div>
+            
+            <h2>OCTAVA. TERMINACIÓN</h2>
+            <div class="clausula">
+              <p>El presente contrato podrá terminarse por las causas establecidas en la ley.</p>
+            </div>
+            
+            <p class="centro" style="margin-top: 30px;">
+              Para constancia se firma en <strong>${d.lugarContratacion || 'Pereira, Risaralda'}</strong>, 
+              a los <strong>${d.fechaFirma || ''}</strong>.
+            </p>
+            
+            <div class="firma-container">
+              <div class="firma-box">
+                <div class="linea-firma">
+                  <strong>${d.representanteLegal || d.nombreEmpleador || ''}</strong>
+                </div>
+                <p>EMPLEADOR<br/>NIT: ${d.nitEmpleador || ''}</p>
+              </div>
+              <div class="firma-box">
+                <div class="linea-firma">
+                  <strong>${d.nombreTrabajador || ''}</strong>
+                </div>
+                <p>TRABAJADOR<br/>C.C.: ${d.cedulaTrabajador || ''}</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+      
+      ventanaImpresion.document.close();
+      setTimeout(() => ventanaImpresion.print(), 500);
+    };
+    
+    if (cargandoContrato) {
+      return (
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <div style={{ fontSize: 40 }}>⏳</div>
+          <p>Cargando contrato...</p>
+        </div>
+      );
+    }
     
     return (
       <div>
         <h2 style={{ color: '#c62828', marginBottom: 20 }}>📋 Contrato de Trabajo</h2>
         
-        {contratoDoc ? (
-          <div style={{
-            padding: 24,
-            backgroundColor: '#f5f5f5',
-            borderRadius: 12,
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: 60, marginBottom: 16 }}>📋</div>
-            <h3>Tu contrato está disponible</h3>
-            <p style={{ color: '#666', marginBottom: 20 }}>
-              Haz clic para descargar tu contrato de trabajo.
+        {contrato ? (
+          <div>
+            {/* Vista previa del contrato */}
+            <div style={{
+              padding: 24,
+              backgroundColor: 'white',
+              border: '1px solid #ddd',
+              borderRadius: 12,
+              marginBottom: 20
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                <div>
+                  <h3 style={{ margin: 0, color: '#c62828' }}>Contrato de Trabajo</h3>
+                  <p style={{ margin: '4px 0', color: '#666', fontSize: 13 }}>
+                    {contrato.datos?.tipoContrato || contrato.tipocontrato || 'Término Indefinido'}
+                  </p>
+                </div>
+                <div style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#e8f5e9',
+                  color: '#2e7d32',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 'bold'
+                }}>
+                  ✓ Vigente
+                </div>
+              </div>
+              
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(2, 1fr)', 
+                gap: 16,
+                padding: 16,
+                backgroundColor: '#fafafa',
+                borderRadius: 8,
+                marginBottom: 20
+              }}>
+                <div>
+                  <span style={{ color: '#666', fontSize: 11 }}>Empleado</span>
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{contrato.datos?.nombreTrabajador || contrato.empleadonombre}</p>
+                </div>
+                <div>
+                  <span style={{ color: '#666', fontSize: 11 }}>Documento</span>
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{contrato.datos?.cedulaTrabajador || ''}</p>
+                </div>
+                <div>
+                  <span style={{ color: '#666', fontSize: 11 }}>Cargo</span>
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{contrato.datos?.cargo || empleado?.cargo || ''}</p>
+                </div>
+                <div>
+                  <span style={{ color: '#666', fontSize: 11 }}>Fecha inicio</span>
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{contrato.datos?.fechaInicio || ''}</p>
+                </div>
+                <div>
+                  <span style={{ color: '#666', fontSize: 11 }}>Salario</span>
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14, color: '#2e7d32' }}>{contrato.datos?.remuneracion || ''}</p>
+                </div>
+                <div>
+                  <span style={{ color: '#666', fontSize: 11 }}>Sede</span>
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 14 }}>{contrato.sedename || ''}</p>
+                </div>
+              </div>
+              
+              {/* Botón para imprimir/descargar */}
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  onClick={imprimirContrato}
+                  style={{
+                    padding: '14px 30px',
+                    backgroundColor: '#c62828',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  📄 Ver / Imprimir Contrato (PDF)
+                </button>
+                <p style={{ color: '#666', fontSize: 12, marginTop: 10 }}>
+                  Se abrirá una ventana con tu contrato listo para imprimir o guardar como PDF
+                </p>
+              </div>
+            </div>
+            
+            {/* Fecha de generación */}
+            <p style={{ textAlign: 'center', color: '#999', fontSize: 12 }}>
+              Contrato generado el {new Date(contrato.fechageneracion || contrato.created_at).toLocaleDateString('es-CO', {
+                day: 'numeric', month: 'long', year: 'numeric'
+              })}
             </p>
-            <a
-              href={contratoDoc.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-block',
-                padding: '12px 24px',
-                backgroundColor: '#c62828',
-                color: 'white',
-                textDecoration: 'none',
-                borderRadius: 8
-              }}
-            >
-              📥 Descargar Contrato
-            </a>
           </div>
         ) : (
           <div style={{
@@ -1394,50 +1622,84 @@ function App() {
             <div style={{ fontSize: 60, marginBottom: 16 }}>📭</div>
             <h3 style={{ color: '#e65100' }}>Contrato no disponible</h3>
             <p style={{ color: '#666' }}>
-              Tu contrato aún no ha sido cargado al sistema.<br />
+              Tu contrato aún no ha sido generado en el sistema.<br />
               Por favor, contacta al área de Recursos Humanos.
             </p>
           </div>
         )}
-        
-        {/* Información del contrato */}
-        <div style={{
-          marginTop: 24,
-          padding: 20,
-          backgroundColor: 'white',
-          border: '1px solid #e0e0e0',
-          borderRadius: 12
-        }}>
-          <h4 style={{ color: '#c62828', marginBottom: 16 }}>📊 Información de tu contrato</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <span style={{ color: '#666', fontSize: 12 }}>Tipo de contrato</span>
-              <p style={{ margin: 0, fontWeight: 'bold' }}>{empleado?.tipo_contrato || 'No especificado'}</p>
-            </div>
-            <div>
-              <span style={{ color: '#666', fontSize: 12 }}>Fecha de ingreso</span>
-              <p style={{ margin: 0, fontWeight: 'bold' }}>
-                {empleado?.fecha_ingreso ? new Date(empleado.fecha_ingreso).toLocaleDateString('es-CO') : 'No especificada'}
-              </p>
-            </div>
-            <div>
-              <span style={{ color: '#666', fontSize: 12 }}>Cargo</span>
-              <p style={{ margin: 0, fontWeight: 'bold' }}>{empleado?.cargo || 'No especificado'}</p>
-            </div>
-            <div>
-              <span style={{ color: '#666', fontSize: 12 }}>Sede</span>
-              <p style={{ margin: 0, fontWeight: 'bold' }}>{empleado?.sede || 'No especificada'}</p>
-            </div>
-          </div>
-        </div>
       </div>
     );
   };
 
   // MIS HORARIOS - Vista tipo Calendario
   const SeccionHorarios = () => {
+    const [eventos, setEventos] = useState({});
     const diasSemanaCorto = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    // Festivos de Colombia 2026 (Ley 51 de 1983)
+    const festivosColombia2026 = {
+      '2026-01-01': 'Año Nuevo',
+      '2026-01-12': 'Día de los Reyes Magos',
+      '2026-03-23': 'Día de San José',
+      '2026-04-02': 'Jueves Santo',
+      '2026-04-03': 'Viernes Santo',
+      '2026-05-01': 'Día del Trabajo',
+      '2026-05-18': 'Ascensión del Señor',
+      '2026-06-08': 'Corpus Christi',
+      '2026-06-15': 'Sagrado Corazón',
+      '2026-06-29': 'San Pedro y San Pablo',
+      '2026-07-20': 'Día de la Independencia',
+      '2026-08-07': 'Batalla de Boyacá',
+      '2026-08-17': 'Asunción de la Virgen',
+      '2026-10-12': 'Día de la Raza',
+      '2026-11-02': 'Todos los Santos',
+      '2026-11-16': 'Independencia de Cartagena',
+      '2026-12-08': 'Inmaculada Concepción',
+      '2026-12-25': 'Navidad',
+      // 2025
+      '2025-12-08': 'Inmaculada Concepción',
+      '2025-12-25': 'Navidad',
+    };
+    
+    // Cargar eventos desde horarios
+    useEffect(() => {
+      const cargarEventos = async () => {
+        try {
+          const hoy = new Date();
+          const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+          const fechaInicio = mesAnterior.toISOString().split('T')[0];
+          
+          const { data } = await supabase
+            .from('horarios')
+            .select('eventos, eventos_por_dia, semana_inicio, semana_fin')
+            .gte('semana_fin', fechaInicio)
+            .order('semana_inicio', { ascending: false });
+          
+          if (data) {
+            const todosEventos = {};
+            data.forEach(semana => {
+              // Eventos generales
+              if (semana.eventos && typeof semana.eventos === 'object') {
+                Object.entries(semana.eventos).forEach(([fecha, evento]) => {
+                  todosEventos[fecha] = evento;
+                });
+              }
+              // Eventos por día
+              if (semana.eventos_por_dia && typeof semana.eventos_por_dia === 'object') {
+                Object.entries(semana.eventos_por_dia).forEach(([fecha, evento]) => {
+                  todosEventos[fecha] = evento;
+                });
+              }
+            });
+            setEventos(todosEventos);
+          }
+        } catch (e) {
+          console.log('Error cargando eventos:', e);
+        }
+      };
+      cargarEventos();
+    }, []);
     
     // Función para convertir hora 24h a formato AM/PM
     const formatearHora = (hora) => {
@@ -1545,26 +1807,66 @@ function App() {
                 const esHoy = fechaStr === hoyStr;
                 const horario = horariosPorFecha[fechaStr];
                 const esPasado = fechaStr < hoyStr;
+                const esDomingo = diaIdx === 0;
+                const festivo = festivosColombia2026[fechaStr];
+                const evento = eventos[fechaStr];
+                const esFestivo = !!festivo;
+                
+                // Determinar color de fondo
+                let bgColor = 'white';
+                if (!esDelMes) bgColor = '#f5f5f5';
+                else if (esHoy) bgColor = '#fff3e0';
+                else if (esFestivo) bgColor = '#fff9c4'; // Amarillo para festivos
+                else if (esDomingo) bgColor = '#ffebee'; // Rojo claro para domingos
                 
                 return (
                   <div key={diaIdx} style={{
-                    minHeight: 90,
+                    minHeight: 100,
                     padding: 6,
-                    backgroundColor: !esDelMes ? '#f5f5f5' : esHoy ? '#fff3e0' : 'white',
-                    border: esHoy ? '3px solid #ff9800' : '1px solid #e0e0e0',
-                    opacity: !esDelMes ? 0.4 : esPasado ? 0.6 : 1,
+                    backgroundColor: bgColor,
+                    border: esHoy ? '3px solid #ff9800' : esFestivo ? '2px solid #f9a825' : esDomingo ? '2px solid #ef9a9a' : '1px solid #e0e0e0',
+                    opacity: !esDelMes ? 0.4 : esPasado ? 0.7 : 1,
                     position: 'relative'
                   }}>
                     {/* Número del día */}
                     <div style={{
-                      fontWeight: esHoy ? 'bold' : 'normal',
+                      fontWeight: esHoy || esFestivo || esDomingo ? 'bold' : 'normal',
                       fontSize: esHoy ? 16 : 13,
-                      color: esHoy ? '#ff9800' : diaIdx === 0 ? '#d32f2f' : '#333',
-                      marginBottom: 4
+                      color: esHoy ? '#ff9800' : esFestivo ? '#f9a825' : esDomingo ? '#d32f2f' : '#333',
+                      marginBottom: 2
                     }}>
                       {fecha.getDate()}
                       {esHoy && <span style={{ fontSize: 10, marginLeft: 4 }}>HOY</span>}
                     </div>
+                    
+                    {/* Indicador de festivo */}
+                    {esFestivo && esDelMes && (
+                      <div style={{
+                        fontSize: 8,
+                        color: '#f57f17',
+                        fontWeight: 'bold',
+                        marginBottom: 3,
+                        lineHeight: 1.1
+                      }}>
+                        🎉 {festivo}
+                      </div>
+                    )}
+                    
+                    {/* Evento programado */}
+                    {evento && esDelMes && (
+                      <div style={{
+                        fontSize: 9,
+                        backgroundColor: evento.color || '#9c27b0',
+                        color: 'white',
+                        padding: '2px 4px',
+                        borderRadius: 3,
+                        marginBottom: 3,
+                        fontWeight: 'bold',
+                        textAlign: 'center'
+                      }}>
+                        {evento.nombre || evento.titulo || evento}
+                      </div>
+                    )}
                     
                     {/* Contenido del horario */}
                     {horario && esDelMes && (
@@ -1677,29 +1979,36 @@ function App() {
             {/* Leyenda */}
             <div style={{ 
               display: 'flex', 
-              gap: 20, 
+              gap: 15, 
               marginBottom: 20,
               flexWrap: 'wrap',
-              padding: '10px 15px',
+              padding: '12px 15px',
               backgroundColor: '#fafafa',
               borderRadius: 8
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 20, height: 20, backgroundColor: '#ffebee', border: '1px solid #c62828', borderRadius: 3 }}></div>
-                <span style={{ fontSize: 12 }}>Turno normal</span>
+                <div style={{ width: 18, height: 18, backgroundColor: '#ffcdd2', border: '2px solid #ef9a9a', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11, fontWeight: '500' }}>Domingo</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 20, height: 20, backgroundColor: '#e8f5e9', border: '1px solid #2e7d32', borderRadius: 3 }}></div>
-                <span style={{ fontSize: 12 }}>Descanso</span>
+                <div style={{ width: 18, height: 18, backgroundColor: '#fff9c4', border: '2px solid #f9a825', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11, fontWeight: '500' }}>🎉 Festivo</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 20, height: 20, backgroundColor: '#fff3e0', border: '3px solid #ff9800', borderRadius: 3 }}></div>
-                <span style={{ fontSize: 12 }}>Hoy</span>
+                <div style={{ width: 18, height: 18, backgroundColor: '#ffebee', border: '1px solid #c62828', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>Turno</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 10, height: 10, backgroundColor: '#c62828', borderRadius: 2 }}></div>
-                <div style={{ width: 10, height: 10, backgroundColor: '#1565c0', borderRadius: 2 }}></div>
-                <span style={{ fontSize: 12 }}>Turno partido</span>
+                <div style={{ width: 18, height: 18, backgroundColor: '#c8e6c9', border: '1px solid #2e7d32', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>Descanso</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#fff3e0', border: '3px solid #ff9800', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>Hoy</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#9c27b0', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>Evento</span>
               </div>
             </div>
             
