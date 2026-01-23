@@ -257,9 +257,21 @@ function App() {
           boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
         }}>
           <div style={{ textAlign: 'center', marginBottom: 30 }}>
-            <div style={{ fontSize: 60, marginBottom: 10 }}>🍔</div>
+            <img 
+              src="/logo.jpg" 
+              alt="Big Burguer" 
+              style={{ 
+                width: 120, 
+                height: 120, 
+                borderRadius: '50%', 
+                objectFit: 'cover',
+                marginBottom: 16,
+                border: '4px solid #c62828',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+              }} 
+            />
             <h1 style={{ color: '#b71c1c', margin: 0, fontSize: 24 }}>
-              Big Burguer - Portal del Empleado
+              Portal del Empleado
             </h1>
             <p style={{ color: '#666', marginTop: 8 }}>
               Ingresa con tus credenciales del sistema
@@ -1512,8 +1524,19 @@ function App() {
           >
             ☰
           </button>
+          <img 
+            src="/logo.jpg" 
+            alt="Big Burguer" 
+            style={{ 
+              width: 40, 
+              height: 40, 
+              borderRadius: '50%', 
+              objectFit: 'cover',
+              border: '2px solid white'
+            }} 
+          />
           <h1 style={{ margin: 0, fontSize: 18 }}>
-            🍔 Big Burguer - Portal del Empleado
+            Portal del Empleado
           </h1>
         </div>
         
