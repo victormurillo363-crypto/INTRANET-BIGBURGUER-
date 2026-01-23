@@ -9,7 +9,7 @@ export const SUPABASE_CONFIG = {
   url: process.env.REACT_APP_SUPABASE_URL || 'https://nhuxbrlbzrulbncghtim.supabase.co',
   
   // Anon Key (clave pública)
-  anonKey: process.env.REACT_APP_SUPABASE_ANON_KEY || 'sb_publishable_zh1_erTv_WxjJIJiyhYRdw_rVkVgoIz',
+  anonKey: process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5odXhicmxienJ1bGJuY2dodGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4OTY1MjAsImV4cCI6MjA4MDQ3MjUyMH0.xP55ysJ8HBoWlAyEiryQ_ZcbIkUtExe7k7BGcqmpUiE',
 };
 
 // ============================================
