@@ -1568,64 +1568,72 @@ function App() {
                     
                     {/* Contenido del horario */}
                     {horario && esDelMes && (
-                      <div style={{ fontSize: 11 }}>
+                      <div style={{ fontSize: 12 }}>
                         {horario.es_descanso ? (
                           <div style={{
-                            backgroundColor: '#e8f5e9',
-                            color: '#2e7d32',
-                            padding: '4px 6px',
+                            backgroundColor: '#c8e6c9',
+                            color: '#1b5e20',
+                            padding: '6px 6px',
                             borderRadius: 4,
                             textAlign: 'center',
-                            fontWeight: 'bold'
+                            fontWeight: '800',
+                            fontSize: 12
                           }}>
                             🌴 Descanso
                           </div>
                         ) : horario.turno_partido ? (
                           <div>
                             <div style={{
-                              backgroundColor: '#ffebee',
-                              color: '#c62828',
-                              padding: '3px 4px',
+                              backgroundColor: '#ffcdd2',
+                              color: '#b71c1c',
+                              padding: '4px 5px',
                               borderRadius: 3,
-                              marginBottom: 2,
-                              fontWeight: 'bold',
-                              fontSize: 10
+                              marginBottom: 3,
+                              fontWeight: '800',
+                              fontSize: 11,
+                              textAlign: 'center',
+                              textShadow: '0 0 1px rgba(0,0,0,0.2)'
                             }}>
                               {formatearHora(horario.hora_inicio)}-{formatearHora(horario.hora_fin)}
                             </div>
                             <div style={{
-                              backgroundColor: '#e3f2fd',
-                              color: '#1565c0',
-                              padding: '3px 4px',
+                              backgroundColor: '#bbdefb',
+                              color: '#0d47a1',
+                              padding: '4px 5px',
                               borderRadius: 3,
-                              fontWeight: 'bold',
-                              fontSize: 10
+                              fontWeight: '800',
+                              fontSize: 11,
+                              textAlign: 'center',
+                              textShadow: '0 0 1px rgba(0,0,0,0.2)'
                             }}>
                               {formatearHora(horario.segundo_turno.hora_inicio)}-{formatearHora(horario.segundo_turno.hora_fin)}
                             </div>
                             <div style={{ 
-                              fontSize: 8, 
-                              color: '#ff9800', 
+                              fontSize: 9, 
+                              color: '#e65100', 
                               textAlign: 'center',
-                              marginTop: 2 
+                              marginTop: 3,
+                              fontWeight: 'bold'
                             }}>
                               ⚡ Partido
                             </div>
                           </div>
                         ) : (
                           <div style={{
-                            backgroundColor: '#ffebee',
-                            color: '#c62828',
-                            padding: '4px 6px',
+                            backgroundColor: '#ffcdd2',
+                            color: '#b71c1c',
+                            padding: '5px 6px',
                             borderRadius: 4,
                             textAlign: 'center',
-                            fontWeight: 'bold'
+                            fontWeight: '800',
+                            fontSize: 12,
+                            textShadow: '0 0 1px rgba(0,0,0,0.2)'
                           }}>
                             {formatearHora(horario.hora_inicio)}
                             <br/>
                             {formatearHora(horario.hora_fin)}
                             {horario.sede && (
-                              <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+                              <div style={{ fontSize: 10, color: '#333', marginTop: 3, fontWeight: '600' }}>
                                 {horario.sede}
                               </div>
                             )}
