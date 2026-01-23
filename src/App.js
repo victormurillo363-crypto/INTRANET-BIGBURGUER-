@@ -991,21 +991,20 @@ function App() {
       const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
       const fechaTexto = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} de ${fechaActual.getFullYear()}`;
       
-      const nombreEmpleado = empleado?.nombre || usuario?.nombre || '';
+      // Nombre: combinar nombres y apellidos o usar campo nombre
+      const nombreEmpleado = empleado?.nombres && empleado?.apellidos 
+        ? `${empleado.nombres} ${empleado.apellidos}` 
+        : (empleado?.nombre || usuario?.nombre || '');
       const documento = empleado?.documento || usuario?.usuario || '';
       const cargo = empleado?.cargo || 'Colaborador';
-      const fechaIngreso = empleado?.fecha_ingreso || empleado?.fechaIngreso || '';
-      const tipoContrato = empleado?.tipo_contrato || empleado?.tipoContrato || 'Término Indefinido';
-      const salario = empleado?.salario_basico || empleado?.salariobasico || empleado?.salarioBase || empleado?.salario || empleado?.sueldo || 0;
+      // Campo correcto: fechaingreso (minúsculas, sin guión)
+      const fechaIngreso = empleado?.fechaingreso || empleado?.fecha_ingreso || empleado?.fechaIngreso || '';
+      // Campo correcto: tipocontrato (minúsculas, sin guión)
+      const tipoContrato = empleado?.tipocontrato || empleado?.tipo_contrato || empleado?.tipoContrato || 'Término Indefinido';
+      // Campo correcto: salariobase (minúsculas, sin guión)
+      const salario = empleado?.salariobase || empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
       
-      console.log('📄 Carta Laboral - Datos empleado:', empleado);
-      console.log('💰 Salario detectado:', salario, '| Campos:', {
-        salario_basico: empleado?.salario_basico,
-        salariobasico: empleado?.salariobasico,
-        salarioBase: empleado?.salarioBase,
-        salario: empleado?.salario,
-        sueldo: empleado?.sueldo
-      });
+      console.log('📄 Carta Laboral - Salario básico:', salario);
       
       const razonSocial = datosSede?.razonSocial || 'BIG BURGUER S.A.S';
       const nitSede = datosSede?.nit || '';
@@ -1137,9 +1136,17 @@ function App() {
       );
     }
 
-    const salarioEmpleado = empleado?.salario_basico || empleado?.salariobasico || empleado?.salarioBase || empleado?.salario || empleado?.sueldo || 0;
+    // Campo correcto: salariobase (minúsculas, sin guión)
+    const salarioEmpleado = empleado?.salariobase || empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
     
-    console.log('👁️ Vista previa - Salario empleado:', salarioEmpleado);
+    // Nombre: combinar nombres y apellidos
+    const nombreCompleto = empleado?.nombres && empleado?.apellidos 
+      ? `${empleado.nombres} ${empleado.apellidos}` 
+      : (empleado?.nombre || usuario?.nombre || '');
+    
+    // Campos correctos según estructura tabla
+    const fechaIngresoEmpleado = empleado?.fechaingreso || empleado?.fecha_ingreso || '';
+    const tipoContratoEmpleado = empleado?.tipocontrato || empleado?.tipo_contrato || 'Término Indefinido';
 
     return (
       <div>
@@ -1189,12 +1196,12 @@ function App() {
             <p style={{ textAlign: 'center', margin: '20px 0', fontWeight: 'bold' }}>CERTIFICA QUE:</p>
             
             <p>
-              El (la) Señor(a) <strong>{(empleado?.nombre || usuario?.nombre || '').toUpperCase()}</strong>, 
+              El (la) Señor(a) <strong>{nombreCompleto.toUpperCase()}</strong>, 
               identificado(a) con <strong>Cédula de Ciudadanía {empleado?.documento || usuario?.usuario}</strong>, 
               labora en nuestra empresa
-              {(empleado?.fecha_ingreso || empleado?.fechaIngreso) && (
-                <> desde el <strong>{new Date(empleado?.fecha_ingreso || empleado?.fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></>
-              )}, con un contrato <strong>{empleado?.tipo_contrato || empleado?.tipoContrato || 'Término Indefinido'}</strong>, 
+              {fechaIngresoEmpleado && (
+                <> desde el <strong>{new Date(fechaIngresoEmpleado).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></>
+              )}, con un contrato <strong>{tipoContratoEmpleado}</strong>, 
               desempeñando el cargo de <strong>{(empleado?.cargo || 'COLABORADOR').toUpperCase()}</strong>
               {salarioEmpleado > 0 && (
                 <>, devengando un salario básico mensual de <strong>{formatearMoneda(salarioEmpleado)}</strong></>
