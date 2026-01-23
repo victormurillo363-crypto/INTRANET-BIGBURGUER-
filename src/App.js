@@ -1004,7 +1004,7 @@ function App() {
       // Campo correcto: salariobase (minúsculas, sin guión)
       const salarioBase = empleado?.salariobase || empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
       // Auxilio de transporte legal vigente 2026 Colombia
-      const AUXILIO_TRANSPORTE = 200000;
+      const AUXILIO_TRANSPORTE = 249095;
       // Total: salario básico + auxilio de transporte
       const salarioTotal = salarioBase + AUXILIO_TRANSPORTE;
       
@@ -1143,7 +1143,7 @@ function App() {
     // Campo correcto: salariobase (minúsculas, sin guión)
     const salarioEmpleado = empleado?.salariobase || empleado?.salario_basico || empleado?.salarioBase || empleado?.salario || 0;
     // Auxilio de transporte legal vigente 2026 Colombia
-    const AUXILIO_TRANSPORTE = 200000;
+    const AUXILIO_TRANSPORTE = 249095;
     const salarioTotal = salarioEmpleado + AUXILIO_TRANSPORTE;
     
     // Nombre: combinar nombres y apellidos
