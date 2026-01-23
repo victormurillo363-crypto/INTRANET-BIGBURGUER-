@@ -119,6 +119,14 @@ function App() {
     try {
       console.log('🔍 Buscando nóminas para documento:', doc);
       
+      // PRIMERO: Ver cuántas nóminas hay en total en la tabla
+      const { data: todasNominas, count, error: errorTotal } = await supabase
+        .from('nominas')
+        .select('id, empleadoid, periodo, totalneto', { count: 'exact' })
+        .limit(10);
+      
+      console.log('📊 TOTAL nóminas en tabla:', count, 'Primeras 10:', todasNominas, errorTotal);
+      
       // Intentar buscar primero por empleadoid (puede ser el documento)
       let { data, error } = await supabase
         .from('nominas')
@@ -131,22 +139,18 @@ function App() {
       
       // Si no encuentra, intentar buscar en el campo empleado (si existe como jsonb)
       if ((!data || data.length === 0) && !error) {
-        console.log('🔄 Intentando búsqueda alternativa...');
+        console.log('🔄 Intentando búsqueda alternativa con ilike...');
+        // Buscar donde empleadoid contenga el documento
         const { data: dataAlt } = await supabase
           .from('nominas')
           .select('*')
+          .ilike('empleadoid', `%${doc}%`)
           .order('periodo', { ascending: false })
-          .limit(100);
+          .limit(12);
         
-        if (dataAlt) {
-          // Filtrar las que coincidan con el documento
-          const nominasFiltradas = dataAlt.filter(n => {
-            const empId = String(n.empleadoid || '');
-            const empDoc = n.empleado?.documento || '';
-            return empId === doc || empDoc === doc;
-          });
-          console.log('📋 Nóminas filtradas:', nominasFiltradas.length);
-          data = nominasFiltradas;
+        console.log('📋 Resultado búsqueda ilike:', dataAlt);
+        if (dataAlt && dataAlt.length > 0) {
+          data = dataAlt;
         }
       }
       
