@@ -2047,7 +2047,6 @@ function App() {
     const [enviando, setEnviando] = useState(false);
     const [archivosAdjuntos, setArchivosAdjuntos] = useState([]);
     const [subiendoArchivo, setSubiendoArchivo] = useState(false);
-    const [solicitudDetalle, setSolicitudDetalle] = useState(null);
 
     const tiposSolicitud = [
       { id: 'permiso', nombre: 'Permiso', icono: '🙋' },
@@ -2063,7 +2062,7 @@ function App() {
       setSubiendoArchivo(true);
       try {
         const nombreArchivo = `solicitudes/${Date.now()}_${archivo.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
           .from('documentos')
           .upload(nombreArchivo, archivo);
         
