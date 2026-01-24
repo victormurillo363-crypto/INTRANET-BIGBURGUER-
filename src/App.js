@@ -2039,12 +2039,15 @@ function App() {
 
   // RADICAR SOLICITUD
   const SeccionSolicitudes = () => {
-    const [modo, setModo] = useState('lista'); // 'lista' | 'nueva'
+    const [pestanaActiva, setPestanaActiva] = useState('radicar'); // 'radicar' | 'estado'
     const [tipoSolicitud, setTipoSolicitud] = useState('');
     const [descripcion, setDescripcion] = useState('');
     const [fechaInicio, setFechaInicio] = useState('');
     const [fechaFin, setFechaFin] = useState('');
     const [enviando, setEnviando] = useState(false);
+    const [archivosAdjuntos, setArchivosAdjuntos] = useState([]);
+    const [subiendoArchivo, setSubiendoArchivo] = useState(false);
+    const [solicitudDetalle, setSolicitudDetalle] = useState(null);
 
     const tiposSolicitud = [
       { id: 'permiso', nombre: 'Permiso', icono: '🙋' },
@@ -2055,14 +2058,48 @@ function App() {
       { id: 'otro', nombre: 'Otra Solicitud', icono: '📝' },
     ];
 
+    // Subir archivo a Supabase Storage
+    const subirArchivo = async (archivo) => {
+      setSubiendoArchivo(true);
+      try {
+        const nombreArchivo = `solicitudes/${Date.now()}_${archivo.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const { data, error } = await supabase.storage
+          .from('documentos')
+          .upload(nombreArchivo, archivo);
+        
+        if (error) throw error;
+        
+        const { data: urlData } = supabase.storage
+          .from('documentos')
+          .getPublicUrl(nombreArchivo);
+        
+        setArchivosAdjuntos(prev => [...prev, {
+          nombre: archivo.name,
+          url: urlData.publicUrl,
+          tipo: archivo.type,
+          tamaño: archivo.size
+        }]);
+      } catch (error) {
+        console.error('Error subiendo archivo:', error);
+        alert('❌ Error al subir el archivo');
+      }
+      setSubiendoArchivo(false);
+    };
+
+    const eliminarArchivo = (index) => {
+      setArchivosAdjuntos(prev => prev.filter((_, i) => i !== index));
+    };
+
     const enviarSolicitud = async (e) => {
       e.preventDefault();
       setEnviando(true);
       
       try {
+        const solicitudId = `SOL-${Date.now()}`;
         const { error } = await supabase
           .from('solicitudes_empleados')
           .insert({
+            id: solicitudId,
             usuario_id: usuario.id,
             documento: empleado?.documento || usuario.usuario,
             empleado_nombre: empleado?.nombre || usuario.nombre,
@@ -2070,18 +2107,20 @@ function App() {
             descripcion,
             fecha_inicio: fechaInicio || null,
             fecha_fin: fechaFin || null,
-            estado: 'pendiente',
+            estado: 'recibido',
             fecha_creacion: new Date().toISOString(),
-            empresa_id: empleado?.empresa_id || usuario.empresa_id
+            empresa_id: empleado?.empresa_id || usuario.empresa_id,
+            archivos_adjuntos: JSON.stringify(archivosAdjuntos)
           });
         
         if (!error) {
-          alert('✅ Solicitud enviada correctamente');
-          setModo('lista');
+          alert('✅ Solicitud radicada correctamente. Número de radicado: ' + solicitudId);
+          setPestanaActiva('estado');
           setTipoSolicitud('');
           setDescripcion('');
           setFechaInicio('');
           setFechaFin('');
+          setArchivosAdjuntos([]);
           await cargarSolicitudes(empleado?.documento || usuario.usuario);
         } else {
           console.error('Error:', error);
@@ -2096,245 +2135,434 @@ function App() {
 
     const getEstadoColor = (estado) => {
       switch (estado) {
-        case 'aprobada': return { bg: '#e8f5e9', color: '#2e7d32' };
-        case 'rechazada': return { bg: '#ffebee', color: '#c62828' };
-        default: return { bg: '#fff3e0', color: '#e65100' };
+        case 'aprobado': 
+        case 'aprobada': return { bg: '#e8f5e9', color: '#2e7d32', texto: '✅ APROBADO', icono: '✅' };
+        case 'negado':
+        case 'rechazada': return { bg: '#ffebee', color: '#c62828', texto: '❌ NEGADO', icono: '❌' };
+        case 'en_proceso': return { bg: '#e3f2fd', color: '#1565c0', texto: '🔄 EN PROCESO', icono: '🔄' };
+        case 'recibido': return { bg: '#fff3e0', color: '#e65100', texto: '📥 RECIBIDO', icono: '📥' };
+        default: return { bg: '#f5f5f5', color: '#666', texto: '⏳ PENDIENTE', icono: '⏳' };
       }
     };
 
     return (
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ color: '#c62828', margin: 0 }}>📝 Solicitudes</h2>
-          {modo === 'lista' && (
+        {/* Header con pestañas */}
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ color: '#c62828', margin: '0 0 16px 0' }}>📝 Solicitudes</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
             <button
-              onClick={() => setModo('nueva')}
+              onClick={() => setPestanaActiva('radicar')}
               style={{
-                padding: '10px 20px',
-                backgroundColor: '#c62828',
-                color: 'white',
+                padding: '12px 24px',
+                backgroundColor: pestanaActiva === 'radicar' ? '#c62828' : '#f5f5f5',
+                color: pestanaActiva === 'radicar' ? 'white' : '#333',
                 border: 'none',
-                borderRadius: 8,
-                cursor: 'pointer'
-              }}
-            >
-              ➕ Nueva Solicitud
-            </button>
-          )}
-        </div>
-        
-        {modo === 'nueva' ? (
-          <div style={{
-            backgroundColor: 'white',
-            border: '1px solid #e0e0e0',
-            borderRadius: 12,
-            padding: 24
-          }}>
-            <button
-              onClick={() => setModo('lista')}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#f5f5f5',
-                border: 'none',
-                borderRadius: 8,
+                borderRadius: '8px 8px 0 0',
                 cursor: 'pointer',
-                marginBottom: 20
+                fontWeight: 600,
+                fontSize: 14
               }}
             >
-              ← Volver
+              📤 Radicar Solicitud
             </button>
-            
-            <h3 style={{ color: '#c62828', marginBottom: 20 }}>Nueva Solicitud</h3>
-            
-            <form onSubmit={enviarSolicitud}>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
-                  Tipo de solicitud *
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                  {tiposSolicitud.map(tipo => (
-                    <button
-                      key={tipo.id}
-                      type="button"
-                      onClick={() => setTipoSolicitud(tipo.id)}
+            <button
+              onClick={() => setPestanaActiva('estado')}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: pestanaActiva === 'estado' ? '#c62828' : '#f5f5f5',
+                color: pestanaActiva === 'estado' ? 'white' : '#333',
+                border: 'none',
+                borderRadius: '8px 8px 0 0',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 14,
+                position: 'relative'
+              }}
+            >
+              📋 Estado Solicitudes
+              {solicitudes.filter(s => s.estado === 'recibido' || s.estado === 'en_proceso').length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: -5,
+                  right: -5,
+                  backgroundColor: '#ff9800',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: 20,
+                  height: 20,
+                  fontSize: 11,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {solicitudes.filter(s => s.estado === 'recibido' || s.estado === 'en_proceso').length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Contenedor con borde superior que conecta con las pestañas */}
+        <div style={{ 
+          backgroundColor: 'white', 
+          border: '1px solid #e0e0e0', 
+          borderRadius: '0 12px 12px 12px',
+          padding: 24
+        }}>
+          {/* Pestaña Radicar Solicitud */}
+          {pestanaActiva === 'radicar' && (
+            <div>
+              <h3 style={{ color: '#c62828', marginBottom: 20, marginTop: 0 }}>Nueva Solicitud</h3>
+              
+              <form onSubmit={enviarSolicitud}>
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                    Tipo de solicitud *
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                    {tiposSolicitud.map(tipo => (
+                      <button
+                        key={tipo.id}
+                        type="button"
+                        onClick={() => setTipoSolicitud(tipo.id)}
+                        style={{
+                          padding: 16,
+                          backgroundColor: tipoSolicitud === tipo.id ? '#ffebee' : '#f5f5f5',
+                          border: tipoSolicitud === tipo.id ? '2px solid #d32f2f' : '1px solid #e0e0e0',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <div style={{ fontSize: 24 }}>{tipo.icono}</div>
+                        <div style={{ fontSize: 12, marginTop: 4 }}>{tipo.nombre}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {(tipoSolicitud === 'permiso' || tipoSolicitud === 'vacaciones' || tipoSolicitud === 'licencia') && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                        Fecha inicio
+                      </label>
+                      <input
+                        type="date"
+                        value={fechaInicio}
+                        onChange={(e) => setFechaInicio(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: 12,
+                          border: '1px solid #ddd',
+                          borderRadius: 8,
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                        Fecha fin
+                      </label>
+                      <input
+                        type="date"
+                        value={fechaFin}
+                        onChange={(e) => setFechaFin(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: 12,
+                          border: '1px solid #ddd',
+                          borderRadius: 8,
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                    Descripción / Motivo *
+                  </label>
+                  <textarea
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    required
+                    rows={4}
+                    placeholder="Describe el motivo de tu solicitud..."
+                    style={{
+                      width: '100%',
+                      padding: 12,
+                      border: '1px solid #ddd',
+                      borderRadius: 8,
+                      resize: 'vertical',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                {/* Sección de archivos adjuntos */}
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                    📎 Archivos Adjuntos (opcional)
+                  </label>
+                  <div style={{
+                    border: '2px dashed #ddd',
+                    borderRadius: 8,
+                    padding: 20,
+                    textAlign: 'center',
+                    backgroundColor: '#fafafa'
+                  }}>
+                    <input
+                      type="file"
+                      id="archivo-solicitud"
+                      multiple
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files);
+                        for (const file of files) {
+                          await subirArchivo(file);
+                        }
+                        e.target.value = '';
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                    <label
+                      htmlFor="archivo-solicitud"
                       style={{
-                        padding: 16,
-                        backgroundColor: tipoSolicitud === tipo.id ? '#ffebee' : '#f5f5f5',
-                        border: tipoSolicitud === tipo.id ? '2px solid #d32f2f' : '1px solid #e0e0e0',
+                        display: 'inline-block',
+                        padding: '10px 20px',
+                        backgroundColor: '#f5f5f5',
+                        border: '1px solid #ddd',
                         borderRadius: 8,
-                        cursor: 'pointer',
-                        textAlign: 'center'
+                        cursor: 'pointer'
                       }}
                     >
-                      <div style={{ fontSize: 24 }}>{tipo.icono}</div>
-                      <div style={{ fontSize: 12, marginTop: 4 }}>{tipo.nombre}</div>
-                    </button>
-                  ))}
+                      {subiendoArchivo ? '⏳ Subiendo...' : '📁 Seleccionar archivos'}
+                    </label>
+                    <p style={{ margin: '10px 0 0', fontSize: 12, color: '#999' }}>
+                      PDF, imágenes, documentos (máx. 5MB por archivo)
+                    </p>
+                  </div>
+                  
+                  {/* Lista de archivos adjuntos */}
+                  {archivosAdjuntos.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      {archivosAdjuntos.map((archivo, idx) => (
+                        <div key={idx} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          backgroundColor: '#e8f5e9',
+                          borderRadius: 6,
+                          marginBottom: 6
+                        }}>
+                          <span style={{ fontSize: 13 }}>
+                            📄 {archivo.nombre}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => eliminarArchivo(idx)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#c62828',
+                              cursor: 'pointer',
+                              fontSize: 16
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-              
-              {(tipoSolicitud === 'permiso' || tipoSolicitud === 'vacaciones' || tipoSolicitud === 'licencia') && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
-                      Fecha inicio
-                    </label>
-                    <input
-                      type="date"
-                      value={fechaInicio}
-                      onChange={(e) => setFechaInicio(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: 12,
-                        border: '1px solid #ddd',
-                        borderRadius: 8,
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
-                      Fecha fin
-                    </label>
-                    <input
-                      type="date"
-                      value={fechaFin}
-                      onChange={(e) => setFechaFin(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: 12,
-                        border: '1px solid #ddd',
-                        borderRadius: 8,
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
+                
+                <button
+                  type="submit"
+                  disabled={!tipoSolicitud || !descripcion || enviando}
+                  style={{
+                    padding: '14px 32px',
+                    backgroundColor: '#c62828',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 16,
+                    opacity: (!tipoSolicitud || !descripcion || enviando) ? 0.5 : 1
+                  }}
+                >
+                  {enviando ? '⏳ Enviando...' : '📤 Enviar Solicitud'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Pestaña Estado de Solicitudes */}
+          {pestanaActiva === 'estado' && (
+            <div>
+              {solicitudes.length === 0 ? (
+                <div style={{
+                  padding: 40,
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 12,
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: 60, marginBottom: 16 }}>📭</div>
+                  <h3>No tienes solicitudes</h3>
+                  <p style={{ color: '#666' }}>
+                    Aún no has radicado ninguna solicitud.
+                  </p>
+                  <button
+                    onClick={() => setPestanaActiva('radicar')}
+                    style={{
+                      marginTop: 16,
+                      padding: '12px 24px',
+                      backgroundColor: '#c62828',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 8,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📤 Radicar mi primera solicitud
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {solicitudes.map(sol => {
+                    const estadoStyle = getEstadoColor(sol.estado);
+                    const tiposSolicitudMap = {
+                      permiso: { nombre: 'Permiso', icono: '🙋' },
+                      vacaciones: { nombre: 'Vacaciones', icono: '🏖️' },
+                      licencia: { nombre: 'Licencia', icono: '📋' },
+                      cambio_horario: { nombre: 'Cambio de Horario', icono: '🕐' },
+                      certificado: { nombre: 'Certificado Laboral', icono: '📄' },
+                      otro: { nombre: 'Otra Solicitud', icono: '📝' }
+                    };
+                    const tipo = tiposSolicitudMap[sol.tipo] || { nombre: sol.tipo, icono: '📝' };
+                    
+                    return (
+                      <div
+                        key={sol.id}
+                        style={{
+                          padding: 16,
+                          backgroundColor: '#fafafa',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: 12
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 20 }}>{tipo.icono}</span>
+                              <span style={{ fontWeight: 'bold', color: '#c62828' }}>
+                                {tipo.nombre}
+                              </span>
+                            </div>
+                            <p style={{ margin: '8px 0', color: '#666', fontSize: 14 }}>
+                              {sol.descripcion}
+                            </p>
+                            <div style={{ fontSize: 12, color: '#999' }}>
+                              📅 Radicada: {new Date(sol.fecha_creacion).toLocaleDateString('es-CO')}
+                              {sol.fecha_inicio && ` | Del ${sol.fecha_inicio} al ${sol.fecha_fin}`}
+                            </div>
+                          </div>
+                          <span style={{
+                            padding: '6px 12px',
+                            backgroundColor: estadoStyle.bg,
+                            color: estadoStyle.color,
+                            borderRadius: 20,
+                            fontSize: 12,
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}>
+                            {estadoStyle.icono} {sol.estado?.toUpperCase()}
+                          </span>
+                        </div>
+                        
+                        {/* Archivos adjuntos de la solicitud */}
+                        {sol.archivos_adjuntos && sol.archivos_adjuntos.length > 0 && (
+                          <div style={{ marginTop: 12, padding: 10, backgroundColor: '#e3f2fd', borderRadius: 8 }}>
+                            <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 6 }}>📎 Archivos adjuntos:</div>
+                            {sol.archivos_adjuntos.map((arch, idx) => (
+                              <a
+                                key={idx}
+                                href={arch.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'inline-block',
+                                  margin: '2px 4px',
+                                  padding: '4px 8px',
+                                  backgroundColor: 'white',
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                  color: '#1976d2',
+                                  textDecoration: 'none'
+                                }}
+                              >
+                                📄 {arch.nombre}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+
+                        {sol.respuesta && (
+                          <div style={{
+                            marginTop: 12,
+                            padding: 12,
+                            backgroundColor: sol.estado === 'aprobado' ? '#e8f5e9' : sol.estado === 'negado' ? '#ffebee' : '#fff3e0',
+                            borderRadius: 8,
+                            fontSize: 13
+                          }}>
+                            <strong>💬 Respuesta de RRHH:</strong> {sol.respuesta}
+                            {sol.fecha_respuesta && (
+                              <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                                Respondido: {new Date(sol.fecha_respuesta).toLocaleDateString('es-CO')}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Archivos adjuntos de la respuesta */}
+                        {sol.archivos_respuesta && sol.archivos_respuesta.length > 0 && (
+                          <div style={{ marginTop: 8, padding: 10, backgroundColor: '#fff8e1', borderRadius: 8 }}>
+                            <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 6 }}>📎 Archivos de respuesta:</div>
+                            {sol.archivos_respuesta.map((arch, idx) => (
+                              <a
+                                key={idx}
+                                href={arch.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'inline-block',
+                                  margin: '2px 4px',
+                                  padding: '4px 8px',
+                                  backgroundColor: 'white',
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                  color: '#f57c00',
+                                  textDecoration: 'none'
+                                }}
+                              >
+                                📄 {arch.nombre}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-              
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
-                  Descripción / Motivo *
-                </label>
-                <textarea
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  required
-                  rows={4}
-                  placeholder="Describe el motivo de tu solicitud..."
-                  style={{
-                    width: '100%',
-                    padding: 12,
-                    border: '1px solid #ddd',
-                    borderRadius: 8,
-                    resize: 'vertical',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-              
-              <button
-                type="submit"
-                disabled={!tipoSolicitud || !descripcion || enviando}
-                style={{
-                  padding: '14px 32px',
-                  backgroundColor: '#c62828',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontSize: 16,
-                  opacity: (!tipoSolicitud || !descripcion || enviando) ? 0.5 : 1
-                }}
-              >
-                {enviando ? '⏳ Enviando...' : '📤 Enviar Solicitud'}
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div>
-            {solicitudes.length === 0 ? (
-              <div style={{
-                padding: 40,
-                backgroundColor: '#f5f5f5',
-                borderRadius: 12,
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: 60, marginBottom: 16 }}>📭</div>
-                <h3>No tienes solicitudes</h3>
-                <p style={{ color: '#666' }}>
-                  Aún no has radicado ninguna solicitud.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {solicitudes.map(sol => {
-                  const estadoStyle = getEstadoColor(sol.estado);
-                  const tiposSolicitudMap = {
-                    permiso: { nombre: 'Permiso', icono: '🙋' },
-                    vacaciones: { nombre: 'Vacaciones', icono: '🏖️' },
-                    licencia: { nombre: 'Licencia', icono: '📋' },
-                    cambio_horario: { nombre: 'Cambio de Horario', icono: '🕐' },
-                    certificado: { nombre: 'Certificado Laboral', icono: '📄' },
-                    otro: { nombre: 'Otra Solicitud', icono: '📝' }
-                  };
-                  const tipo = tiposSolicitudMap[sol.tipo] || { nombre: sol.tipo, icono: '📝' };
-                  
-                  return (
-                    <div
-                      key={sol.id}
-                      style={{
-                        padding: 16,
-                        backgroundColor: 'white',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 12
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 20 }}>{tipo.icono}</span>
-                            <span style={{ fontWeight: 'bold', color: '#c62828' }}>
-                              {tipo.nombre}
-                            </span>
-                          </div>
-                          <p style={{ margin: '8px 0', color: '#666', fontSize: 14 }}>
-                            {sol.descripcion}
-                          </p>
-                          <div style={{ fontSize: 12, color: '#999' }}>
-                            Radicada: {new Date(sol.fecha_creacion).toLocaleDateString('es-CO')}
-                            {sol.fecha_inicio && ` | Del ${sol.fecha_inicio} al ${sol.fecha_fin}`}
-                          </div>
-                        </div>
-                        <span style={{
-                          padding: '6px 12px',
-                          backgroundColor: estadoStyle.bg,
-                          color: estadoStyle.color,
-                          borderRadius: 20,
-                          fontSize: 12,
-                          fontWeight: 'bold'
-                        }}>
-                          {sol.estado?.toUpperCase()}
-                        </span>
-                      </div>
-                      {sol.respuesta && (
-                        <div style={{
-                          marginTop: 12,
-                          padding: 12,
-                          backgroundColor: '#f5f5f5',
-                          borderRadius: 8,
-                          fontSize: 13
-                        }}>
-                          <strong>Respuesta:</strong> {sol.respuesta}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
