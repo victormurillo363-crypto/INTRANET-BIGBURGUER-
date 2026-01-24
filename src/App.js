@@ -2094,11 +2094,9 @@ function App() {
       setEnviando(true);
       
       try {
-        const solicitudId = `SOL-${Date.now()}`;
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('solicitudes_empleados')
           .insert({
-            id: solicitudId,
             usuario_id: usuario.id,
             documento: empleado?.documento || usuario.usuario,
             empleado_nombre: empleado?.nombre || usuario.nombre,
@@ -2110,10 +2108,12 @@ function App() {
             fecha_creacion: new Date().toISOString(),
             empresa_id: empleado?.empresa_id || usuario.empresa_id,
             archivos_adjuntos: JSON.stringify(archivosAdjuntos)
-          });
+          })
+          .select('id')
+          .single();
         
         if (!error) {
-          alert('✅ Solicitud radicada correctamente. Número de radicado: ' + solicitudId);
+          alert('✅ Solicitud radicada correctamente. Número de radicado: ' + data.id.substring(0, 8).toUpperCase());
           setPestanaActiva('estado');
           setTipoSolicitud('');
           setDescripcion('');
