@@ -2063,13 +2063,13 @@ function App() {
       try {
         const nombreArchivo = `solicitudes/${Date.now()}_${archivo.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         const { error } = await supabase.storage
-          .from('documentos')
+          .from('empleados-docs')
           .upload(nombreArchivo, archivo);
         
         if (error) throw error;
         
         const { data: urlData } = supabase.storage
-          .from('documentos')
+          .from('empleados-docs')
           .getPublicUrl(nombreArchivo);
         
         setArchivosAdjuntos(prev => [...prev, {
