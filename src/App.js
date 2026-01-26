@@ -3422,7 +3422,7 @@ function App() {
   const SeccionPrestamos = () => {
     const [prestamos, setPrestamos] = useState([]);
     const [cargando, setCargando] = useState(true);
-    const [filtro, setFiltro] = useState('todos'); // todos, activo, pagado, pendiente
+    const [filtro, setFiltro] = useState('activo'); // activo, pagado
 
     useEffect(() => {
       cargarPrestamos();
@@ -3524,17 +3524,12 @@ function App() {
       if (cuotasPagadas >= totalCuotas || saldoReal <= 0) {
         return 'pagado';
       }
-      // Si tiene cuotas pagadas, está activo
-      if (cuotasPagadas > 0) {
-        return 'activo';
-      }
-      // De lo contrario, está pendiente
-      return prestamo.estado?.toLowerCase() || 'pendiente';
+      // Si no está pagado, está activo (incluye pendientes)
+      return 'activo';
     };
 
     // Filtrar préstamos con estado calculado
     const prestamosFiltrados = prestamos.filter(p => {
-      if (filtro === 'todos') return true;
       const estadoReal = getEstadoReal(p);
       return estadoReal === filtro;
     });
@@ -3631,7 +3626,7 @@ function App() {
           marginBottom: 16,
           flexWrap: 'wrap'
         }}>
-          {['todos', 'activo', 'pagado', 'pendiente'].map(f => (
+          {['activo', 'pagado'].map(f => (
             <button
               key={f}
               onClick={() => setFiltro(f)}
@@ -3646,9 +3641,7 @@ function App() {
                 transition: 'all 0.2s'
               }}
             >
-              {f === 'todos' ? '📋 Todos' : 
-               f === 'activo' ? '✅ Activos' : 
-               f === 'pagado' ? '💯 Pagados' : '⏳ Pendientes'}
+              {f === 'activo' ? '✅ Activos' : '💯 Pagados'}
             </button>
           ))}
         </div>
