@@ -321,8 +321,7 @@ function App() {
         .from('solicitudes_empleados')
         .update({ 
           estado: nuevoEstado,
-          fecha_confirmacion_empleado: new Date().toISOString(),
-          confirmacion_empleado: aceptar ? 'aceptada' : 'rechazada'
+          fecha_respuesta: new Date().toISOString()
         })
         .eq('id', solicitudId);
       
