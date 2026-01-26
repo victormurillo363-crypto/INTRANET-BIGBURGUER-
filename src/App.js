@@ -3480,32 +3480,68 @@ function App() {
       }
     };
 
+    // Parsear plan de cuotas
+    const parsearPlan = (plan) => {
+      if (!plan) return [];
+      if (Array.isArray(plan)) return plan;
+      if (typeof plan === 'string') {
+        try {
+          return JSON.parse(plan);
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    };
+
+    // Calcular cuotas pagadas del plan
+    const contarCuotasPagadas = (plan) => {
+      const planArray = parsearPlan(plan);
+      if (!planArray || planArray.length === 0) return 0;
+      return planArray.filter(c => c.pagado === true || c.pagada === true).length;
+    };
+
+    // Determinar estado real del préstamo
+    const getEstadoReal = (prestamo) => {
+      const planArray = parsearPlan(prestamo.plan);
+      const cuotasPagadas = contarCuotasPagadas(prestamo.plan);
+      const totalCuotas = prestamo.cuotas || planArray.length || 1;
+      const saldo = prestamo.saldo || 0;
+      const cuotasRestantes = prestamo.cuotasrestantes ?? (totalCuotas - cuotasPagadas);
+      
+      // Si saldo es 0 o todas las cuotas están pagadas, está pagado
+      if (saldo <= 0 || cuotasRestantes <= 0 || cuotasPagadas >= totalCuotas) {
+        return 'pagado';
+      }
+      // Si tiene cuotas pagadas, está activo
+      if (cuotasPagadas > 0) {
+        return 'activo';
+      }
+      // De lo contrario, está pendiente
+      return prestamo.estado?.toLowerCase() || 'pendiente';
+    };
+
     // Normalizar estado para comparación (lowercase)
     const normalizarEstado = (estado) => {
       if (!estado) return 'pendiente';
       const est = estado.toLowerCase().trim();
-      // Considerar "activo" también cuando tiene cuotas restantes y no está pagado
       return est;
     };
 
+    // Filtrar préstamos con estado calculado
     const prestamosFiltrados = prestamos.filter(p => {
       if (filtro === 'todos') return true;
-      const estadoNorm = normalizarEstado(p.estado);
-      // Para "activo", también mostrar los que tienen saldo pendiente (cuotasrestantes > 0)
-      if (filtro === 'activo') {
-        return estadoNorm === 'activo' || 
-               (p.cuotasrestantes > 0 && estadoNorm !== 'pagado');
-      }
-      return estadoNorm === filtro;
+      const estadoReal = getEstadoReal(p);
+      return estadoReal === filtro;
     });
 
     // Para saldo pendiente, sumar todos los que tienen saldo > 0
     const totalActivo = prestamos
-      .filter(p => (p.saldo || 0) > 0)
+      .filter(p => (p.saldo || 0) > 0 && getEstadoReal(p) !== 'pagado')
       .reduce((sum, p) => sum + (p.saldo || 0), 0);
 
     const cuotasProximaQuincena = prestamos
-      .filter(p => (p.cuotasrestantes || 0) > 0 && p.plan)
+      .filter(p => getEstadoReal(p) === 'activo')
       .reduce((sum, p) => {
         // Calcular cuota mensual: valor / cuotas
         const cuotaMensual = p.cuotas > 0 ? (p.valor / p.cuotas) : 0;
@@ -3633,10 +3669,14 @@ function App() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {prestamosFiltrados.map((prestamo, index) => {
-              const estadoInfo = getEstadoColor(prestamo.estado);
+              const estadoReal = getEstadoReal(prestamo);
+              const estadoInfo = getEstadoColor(estadoReal);
               const cuotaMensual = prestamo.cuotas > 0 ? (prestamo.valor / prestamo.cuotas) : 0;
-              const progreso = prestamo.cuotas > 0 
-                ? ((prestamo.cuotas - (prestamo.cuotasrestantes || 0)) / prestamo.cuotas) * 100 
+              const cuotasPagadas = contarCuotasPagadas(prestamo.plan);
+              const totalCuotas = prestamo.cuotas || parsearPlan(prestamo.plan).length || 1;
+              const cuotasRestantes = prestamo.cuotasrestantes ?? (totalCuotas - cuotasPagadas);
+              const progreso = totalCuotas > 0 
+                ? (cuotasPagadas / totalCuotas) * 100 
                 : 0;
               
               return (
@@ -3699,9 +3739,9 @@ function App() {
                       <p style={{ margin: '4px 0 0', fontWeight: 600 }}>{formatearFecha(prestamo.fechasolicitud)}</p>
                     </div>
                     <div>
-                      <p style={{ margin: 0, fontSize: 11, color: '#666' }}>Cuotas</p>
-                      <p style={{ margin: '4px 0 0', fontWeight: 600 }}>
-                        {prestamo.cuotas - (prestamo.cuotasrestantes || 0)} / {prestamo.cuotas || 1}
+                      <p style={{ margin: 0, fontSize: 11, color: '#666' }}>Cuotas Pagadas</p>
+                      <p style={{ margin: '4px 0 0', fontWeight: 600, color: cuotasPagadas >= totalCuotas ? '#2E7D32' : '#333' }}>
+                        {cuotasPagadas} / {totalCuotas} {cuotasPagadas >= totalCuotas && '✅'}
                       </p>
                     </div>
                     <div>
@@ -3710,44 +3750,44 @@ function App() {
                     </div>
                     <div>
                       <p style={{ margin: 0, fontSize: 11, color: '#666' }}>Saldo Pendiente</p>
-                      <p style={{ margin: '4px 0 0', fontWeight: 600, color: '#c62828' }}>
-                        {formatearMoneda(prestamo.saldo || 0)}
+                      <p style={{ margin: '4px 0 0', fontWeight: 600, color: (prestamo.saldo || 0) > 0 ? '#c62828' : '#2E7D32' }}>
+                        {(prestamo.saldo || 0) <= 0 ? '✅ Pagado' : formatearMoneda(prestamo.saldo || 0)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Barra de progreso - mostrar cuando tiene cuotas restantes */}
-                  {(prestamo.cuotasrestantes > 0 || prestamo.saldo > 0) && (
-                    <div>
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 11,
-                        color: '#666',
-                        marginBottom: 4
-                      }}>
-                        <span>Progreso de pago</span>
-                        <span>{Math.round(progreso)}%</span>
-                      </div>
-                      <div style={{
-                        height: 8,
-                        background: '#e0e0e0',
-                        borderRadius: 4,
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${progreso}%`,
-                          background: 'linear-gradient(90deg, #2E7D32 0%, #43A047 100%)',
-                          borderRadius: 4,
-                          transition: 'width 0.3s'
-                        }} />
-                      </div>
+                  {/* Barra de progreso - mostrar siempre para ver el avance */}
+                  <div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: 11,
+                      color: '#666',
+                      marginBottom: 4
+                    }}>
+                      <span>Progreso de pago</span>
+                      <span>{Math.round(progreso)}%</span>
                     </div>
-                  )}
+                    <div style={{
+                      height: 8,
+                      background: '#e0e0e0',
+                      borderRadius: 4,
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${progreso}%`,
+                        background: progreso >= 100 
+                          ? 'linear-gradient(90deg, #1565C0 0%, #1E88E5 100%)' 
+                          : 'linear-gradient(90deg, #2E7D32 0%, #43A047 100%)',
+                        borderRadius: 4,
+                        transition: 'width 0.3s'
+                      }} />
+                    </div>
+                  </div>
 
                   {/* Indicador de descuento programado */}
-                  {(prestamo.cuotasrestantes > 0 || prestamo.saldo > 0) && prestamo.plan && (
+                  {estadoReal === 'activo' && prestamo.plan && (
                     <div style={{
                       marginTop: 12,
                       padding: 10,
