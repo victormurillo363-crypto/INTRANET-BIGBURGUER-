@@ -2467,6 +2467,26 @@ function App() {
                     };
                     const tipo = tiposSolicitudMap[sol.tipo] || { nombre: sol.tipo, icono: '📝' };
                     
+                    // Parsear archivos adjuntos (pueden venir como string JSON)
+                    let archivosAdj = [];
+                    try {
+                      if (sol.archivos_adjuntos) {
+                        archivosAdj = typeof sol.archivos_adjuntos === 'string' 
+                          ? JSON.parse(sol.archivos_adjuntos) 
+                          : sol.archivos_adjuntos;
+                      }
+                    } catch (e) { archivosAdj = []; }
+                    
+                    // Parsear archivos de respuesta
+                    let archivosResp = [];
+                    try {
+                      if (sol.archivos_respuesta) {
+                        archivosResp = typeof sol.archivos_respuesta === 'string' 
+                          ? JSON.parse(sol.archivos_respuesta) 
+                          : sol.archivos_respuesta;
+                      }
+                    } catch (e) { archivosResp = []; }
+                    
                     return (
                       <div
                         key={sol.id}
@@ -2509,10 +2529,10 @@ function App() {
                         </div>
                         
                         {/* Archivos adjuntos de la solicitud */}
-                        {sol.archivos_adjuntos && sol.archivos_adjuntos.length > 0 && (
+                        {archivosAdj && archivosAdj.length > 0 && (
                           <div style={{ marginTop: 12, padding: 10, backgroundColor: '#e3f2fd', borderRadius: 8 }}>
                             <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 6 }}>📎 Archivos adjuntos:</div>
-                            {sol.archivos_adjuntos.map((arch, idx) => (
+                            {archivosAdj.map((arch, idx) => (
                               <a
                                 key={idx}
                                 href={arch.url}
@@ -2553,10 +2573,10 @@ function App() {
                         )}
 
                         {/* Archivos adjuntos de la respuesta */}
-                        {sol.archivos_respuesta && sol.archivos_respuesta.length > 0 && (
+                        {archivosResp && archivosResp.length > 0 && (
                           <div style={{ marginTop: 8, padding: 10, backgroundColor: '#fff8e1', borderRadius: 8 }}>
                             <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 6 }}>📎 Archivos de respuesta:</div>
-                            {sol.archivos_respuesta.map((arch, idx) => (
+                            {archivosResp.map((arch, idx) => (
                               <a
                                 key={idx}
                                 href={arch.url}
