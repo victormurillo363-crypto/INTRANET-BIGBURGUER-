@@ -679,6 +679,7 @@ function App() {
   const menuItems = [
     { id: 'inicio', icono: '🏠', nombre: 'Inicio' },
     { id: 'desprendible', icono: '💰', nombre: 'Desprendible de Pago' },
+    { id: 'prestamos', icono: '💳', nombre: 'Préstamos/Adelantos' },
     { id: 'carta-laboral', icono: '📄', nombre: 'Carta Laboral' },
     { id: 'contrato', icono: '📋', nombre: 'Contrato de Trabajo' },
     { id: 'horarios', icono: '🕐', nombre: 'Mis Horarios' },
@@ -3417,6 +3418,345 @@ function App() {
     );
   };
 
+  // PRÉSTAMOS Y ADELANTOS
+  const SeccionPrestamos = () => {
+    const [prestamos, setPrestamos] = useState([]);
+    const [cargando, setCargando] = useState(true);
+    const [filtro, setFiltro] = useState('todos'); // todos, activo, pagado, pendiente
+
+    useEffect(() => {
+      cargarPrestamos();
+    }, []);
+
+    const cargarPrestamos = async () => {
+      setCargando(true);
+      try {
+        const { data, error } = await supabase
+          .from('prestamos')
+          .select('*')
+          .eq('empleadoid', empleado?.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error cargando préstamos:', error);
+        } else {
+          setPrestamos(data || []);
+        }
+      } catch (e) {
+        console.error('Error:', e);
+      }
+      setCargando(false);
+    };
+
+    const formatearMoneda = (valor) => {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+      }).format(valor || 0);
+    };
+
+    const formatearFecha = (fecha) => {
+      if (!fecha) return '-';
+      return new Date(fecha).toLocaleDateString('es-CO', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    };
+
+    const getEstadoColor = (estado) => {
+      switch (estado?.toLowerCase()) {
+        case 'activo':
+          return { bg: '#E8F5E9', color: '#2E7D32', texto: '✅ Activo' };
+        case 'pagado':
+          return { bg: '#E3F2FD', color: '#1565C0', texto: '💯 Pagado' };
+        case 'pendiente':
+          return { bg: '#FFF3E0', color: '#E65100', texto: '⏳ Pendiente' };
+        case 'rechazado':
+          return { bg: '#FFEBEE', color: '#C62828', texto: '❌ Rechazado' };
+        default:
+          return { bg: '#F5F5F5', color: '#616161', texto: estado || 'Sin estado' };
+      }
+    };
+
+    const prestamosFiltrados = prestamos.filter(p => {
+      if (filtro === 'todos') return true;
+      return p.estado?.toLowerCase() === filtro;
+    });
+
+    const totalActivo = prestamos
+      .filter(p => p.estado?.toLowerCase() === 'activo')
+      .reduce((sum, p) => sum + (p.saldo || 0), 0);
+
+    const cuotasProximaQuincena = prestamos
+      .filter(p => p.estado?.toLowerCase() === 'activo' && p.plan)
+      .reduce((sum, p) => {
+        // Calcular cuota mensual: valor / cuotas
+        const cuotaMensual = p.cuotas > 0 ? (p.valor / p.cuotas) : 0;
+        return sum + cuotaMensual;
+      }, 0);
+
+    if (cargando) {
+      return (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: 300,
+          flexDirection: 'column',
+          gap: 16
+        }}>
+          <div style={{
+            width: 50,
+            height: 50,
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #c62828',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <p style={{ color: '#666' }}>Cargando préstamos...</p>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <h2 style={{ color: '#c62828', marginBottom: 16 }}>💳 Préstamos y Adelantos</h2>
+        
+        {/* Resumen */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: 16,
+          marginBottom: 24
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #c62828 0%, #e53935 100%)',
+            color: 'white',
+            borderRadius: 12,
+            padding: 20,
+            textAlign: 'center'
+          }}>
+            <p style={{ margin: 0, fontSize: 14, opacity: 0.9 }}>Total Préstamos</p>
+            <p style={{ margin: '8px 0 0', fontSize: 28, fontWeight: 'bold' }}>{prestamos.length}</p>
+          </div>
+          <div style={{
+            background: 'linear-gradient(135deg, #2E7D32 0%, #43A047 100%)',
+            color: 'white',
+            borderRadius: 12,
+            padding: 20,
+            textAlign: 'center'
+          }}>
+            <p style={{ margin: 0, fontSize: 14, opacity: 0.9 }}>Saldo Pendiente</p>
+            <p style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 'bold' }}>{formatearMoneda(totalActivo)}</p>
+          </div>
+          <div style={{
+            background: 'linear-gradient(135deg, #1565C0 0%, #1E88E5 100%)',
+            color: 'white',
+            borderRadius: 12,
+            padding: 20,
+            textAlign: 'center'
+          }}>
+            <p style={{ margin: 0, fontSize: 14, opacity: 0.9 }}>Próximo Descuento</p>
+            <p style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 'bold' }}>{formatearMoneda(cuotasProximaQuincena)}</p>
+          </div>
+        </div>
+
+        {/* Filtros */}
+        <div style={{ 
+          display: 'flex', 
+          gap: 8, 
+          marginBottom: 16,
+          flexWrap: 'wrap'
+        }}>
+          {['todos', 'activo', 'pagado', 'pendiente'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFiltro(f)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 20,
+                border: 'none',
+                background: filtro === f ? '#c62828' : '#e0e0e0',
+                color: filtro === f ? 'white' : '#333',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              {f === 'todos' ? '📋 Todos' : 
+               f === 'activo' ? '✅ Activos' : 
+               f === 'pagado' ? '💯 Pagados' : '⏳ Pendientes'}
+            </button>
+          ))}
+        </div>
+
+        {/* Lista de préstamos */}
+        {prestamosFiltrados.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: 60,
+            background: 'white',
+            borderRadius: 12,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <p style={{ fontSize: 48, margin: 0 }}>📭</p>
+            <p style={{ color: '#666', marginTop: 16 }}>
+              {filtro === 'todos' 
+                ? 'No tienes préstamos registrados'
+                : `No tienes préstamos con estado "${filtro}"`
+              }
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {prestamosFiltrados.map((prestamo, index) => {
+              const estadoInfo = getEstadoColor(prestamo.estado);
+              const cuotaMensual = prestamo.cuotas > 0 ? (prestamo.valor / prestamo.cuotas) : 0;
+              const progreso = prestamo.cuotas > 0 
+                ? ((prestamo.cuotas - (prestamo.cuotasrestantes || 0)) / prestamo.cuotas) * 100 
+                : 0;
+              
+              return (
+                <div 
+                  key={prestamo.id || index}
+                  style={{
+                    background: 'white',
+                    borderRadius: 12,
+                    padding: 20,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    border: '1px solid #eee'
+                  }}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start',
+                    marginBottom: 12,
+                    flexWrap: 'wrap',
+                    gap: 8
+                  }}>
+                    <div>
+                      <span style={{
+                        fontSize: 11,
+                        background: '#f5f5f5',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        color: '#666'
+                      }}>
+                        {prestamo.razon === 'adelanto' ? '💵 Adelanto' : '💳 Préstamo'}
+                      </span>
+                      <h3 style={{ margin: '8px 0 0', fontSize: 24, color: '#c62828' }}>
+                        {formatearMoneda(prestamo.valor)}
+                      </h3>
+                    </div>
+                    <span style={{
+                      padding: '6px 12px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      backgroundColor: estadoInfo.bg,
+                      color: estadoInfo.color
+                    }}>
+                      {estadoInfo.texto}
+                    </span>
+                  </div>
+
+                  {/* Detalles */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                    gap: 12,
+                    marginBottom: 12,
+                    padding: 12,
+                    background: '#fafafa',
+                    borderRadius: 8
+                  }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 11, color: '#666' }}>Fecha Solicitud</p>
+                      <p style={{ margin: '4px 0 0', fontWeight: 600 }}>{formatearFecha(prestamo.fechasolicitud)}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 11, color: '#666' }}>Cuotas</p>
+                      <p style={{ margin: '4px 0 0', fontWeight: 600 }}>
+                        {prestamo.cuotas - (prestamo.cuotasrestantes || 0)} / {prestamo.cuotas || 1}
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 11, color: '#666' }}>Cuota Mensual</p>
+                      <p style={{ margin: '4px 0 0', fontWeight: 600 }}>{formatearMoneda(cuotaMensual)}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 11, color: '#666' }}>Saldo Pendiente</p>
+                      <p style={{ margin: '4px 0 0', fontWeight: 600, color: '#c62828' }}>
+                        {formatearMoneda(prestamo.saldo || 0)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Barra de progreso */}
+                  {prestamo.estado?.toLowerCase() === 'activo' && (
+                    <div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 11,
+                        color: '#666',
+                        marginBottom: 4
+                      }}>
+                        <span>Progreso de pago</span>
+                        <span>{Math.round(progreso)}%</span>
+                      </div>
+                      <div style={{
+                        height: 8,
+                        background: '#e0e0e0',
+                        borderRadius: 4,
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${progreso}%`,
+                          background: 'linear-gradient(90deg, #2E7D32 0%, #43A047 100%)',
+                          borderRadius: 4,
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Indicador de descuento programado */}
+                  {prestamo.estado?.toLowerCase() === 'activo' && prestamo.plan && (
+                    <div style={{
+                      marginTop: 12,
+                      padding: 10,
+                      background: '#E3F2FD',
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8
+                    }}>
+                      <span>📅</span>
+                      <span style={{ fontSize: 12, color: '#1565C0' }}>
+                        Descuento programado en la próxima quincena
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ACTUALIZACIÓN DE DATOS DEL EMPLEADO
   const SeccionActualizacionDatos = () => {
     // Mapear campos de la BD (minúsculas sin guiones) a nombres legibles
@@ -3705,6 +4045,7 @@ function App() {
     switch (seccionActiva) {
       case 'inicio': return <SeccionInicio />;
       case 'desprendible': return <SeccionDesprendible />;
+      case 'prestamos': return <SeccionPrestamos />;
       case 'carta-laboral': return <SeccionCartaLaboral />;
       case 'contrato': return <SeccionContrato />;
       case 'horarios': return <SeccionHorarios />;
