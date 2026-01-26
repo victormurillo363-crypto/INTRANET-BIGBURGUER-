@@ -2047,6 +2047,22 @@ function App() {
     const [enviando, setEnviando] = useState(false);
     const [archivosAdjuntos, setArchivosAdjuntos] = useState([]);
     const [subiendoArchivo, setSubiendoArchivo] = useState(false);
+    const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
+
+    // Cargar solicitudes cuando se cambia a la pestaña estado
+    useEffect(() => {
+      if (pestanaActiva === 'estado') {
+        const cargarMisSolicitudes = async () => {
+          setCargandoSolicitudes(true);
+          const doc = empleado?.documento || usuario?.usuario;
+          if (doc) {
+            await cargarSolicitudes(doc);
+          }
+          setCargandoSolicitudes(false);
+        };
+        cargarMisSolicitudes();
+      }
+    }, [pestanaActiva]);
 
     const tiposSolicitud = [
       { id: 'permiso', nombre: 'Permiso', icono: '🙋' },
@@ -2402,7 +2418,15 @@ function App() {
           {/* Pestaña Estado de Solicitudes */}
           {pestanaActiva === 'estado' && (
             <div>
-              {solicitudes.length === 0 ? (
+              {cargandoSolicitudes ? (
+                <div style={{
+                  padding: 40,
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: 40, marginBottom: 16 }}>⏳</div>
+                  <p>Cargando solicitudes...</p>
+                </div>
+              ) : solicitudes.length === 0 ? (
                 <div style={{
                   padding: 40,
                   backgroundColor: '#f5f5f5',
