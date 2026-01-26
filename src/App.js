@@ -35,6 +35,7 @@ function App() {
   const [empresa, setEmpresa] = useState(null);
   const [configEmpresa, setConfigEmpresa] = useState(null);
   const [pestanaSolicitudes, setPestanaSolicitudes] = useState('radicar'); // 'radicar' | 'estado'
+  const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
 
   // Verificar si hay sesión guardada al cargar
   useEffect(() => {
@@ -293,17 +294,23 @@ function App() {
   };
 
   const cargarSolicitudes = async (doc) => {
+    setCargandoSolicitudes(true);
     try {
-      const { data } = await supabase
+      console.log('📋 Cargando solicitudes para documento:', doc);
+      const { data, error } = await supabase
         .from('solicitudes_empleados')
         .select('*')
         .eq('documento', doc)
         .order('fecha_creacion', { ascending: false })
         .limit(20);
+      
+      console.log('📋 Resultado solicitudes:', data, error);
       if (data) setSolicitudes(data);
+      if (error) console.error('Error cargando solicitudes:', error);
     } catch (e) {
-      console.log('Tabla solicitudes_empleados no disponible');
+      console.log('Tabla solicitudes_empleados no disponible:', e);
     }
+    setCargandoSolicitudes(false);
   };
 
   // ============================================
@@ -2051,20 +2058,14 @@ function App() {
     const [enviando, setEnviando] = useState(false);
     const [archivosAdjuntos, setArchivosAdjuntos] = useState([]);
     const [subiendoArchivo, setSubiendoArchivo] = useState(false);
-    const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
 
     // Cargar solicitudes cuando se cambia a la pestaña estado
     useEffect(() => {
       if (pestanaActiva === 'estado') {
-        const cargarMisSolicitudes = async () => {
-          setCargandoSolicitudes(true);
-          const doc = empleado?.documento || usuario?.usuario;
-          if (doc) {
-            await cargarSolicitudes(doc);
-          }
-          setCargandoSolicitudes(false);
-        };
-        cargarMisSolicitudes();
+        const doc = empleado?.documento || usuario?.usuario;
+        if (doc && solicitudes.length === 0) {
+          cargarSolicitudes(doc);
+        }
       }
     }, [pestanaActiva]);
 
