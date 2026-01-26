@@ -2088,6 +2088,13 @@ function App() {
     const [enviando, setEnviando] = useState(false);
     const [archivosAdjuntos, setArchivosAdjuntos] = useState([]);
     const [subiendoArchivo, setSubiendoArchivo] = useState(false);
+    
+    // Campos adicionales para tipos específicos
+    const [valorAdelanto, setValorAdelanto] = useState('');
+    const [propuestaPago, setPropuestaPago] = useState('');
+    const [epsActual, setEpsActual] = useState('');
+    const [epsNueva, setEpsNueva] = useState('');
+    const [observaciones, setObservaciones] = useState('');
 
     // Cargar solicitudes cuando se cambia a la pestaña estado
     useEffect(() => {
@@ -2102,7 +2109,10 @@ function App() {
     const tiposSolicitud = [
       { id: 'permiso', nombre: 'Permiso', icono: '🙋' },
       { id: 'vacaciones', nombre: 'Vacaciones', icono: '🏖️' },
-      { id: 'licencia', nombre: 'Licencia', icono: '📋' },
+      { id: 'adelanto_nomina', nombre: 'Adelanto de Nómina', icono: '💰' },
+      { id: 'cambio_eps', nombre: 'Cambio de EPS', icono: '🏥' },
+      { id: 'documentos_vinculacion', nombre: 'Documentos Vinculación', icono: '📁' },
+      { id: 'documentos_actualizacion', nombre: 'Docs. Actualización', icono: '🔄' },
       { id: 'cambio_horario', nombre: 'Cambio de Horario', icono: '🕐' },
       { id: 'certificado', nombre: 'Certificado Laboral', icono: '📄' },
       { id: 'otro', nombre: 'Otra Solicitud', icono: '📝' },
@@ -2145,6 +2155,17 @@ function App() {
       setEnviando(true);
       
       try {
+        // Construir descripción completa según tipo
+        let descripcionCompleta = descripcion;
+        
+        if (tipoSolicitud === 'adelanto_nomina') {
+          descripcionCompleta = `💰 Valor solicitado: $${valorAdelanto}\n📅 Propuesta de pago: ${propuestaPago}\n\n${descripcion}`;
+        } else if (tipoSolicitud === 'cambio_eps') {
+          descripcionCompleta = `🏥 EPS Actual: ${epsActual}\n🏥 EPS Nueva: ${epsNueva}\n\n${descripcion}`;
+        } else if (tipoSolicitud === 'documentos_vinculacion' || tipoSolicitud === 'documentos_actualizacion') {
+          descripcionCompleta = `📝 Observaciones: ${observaciones}\n\n${descripcion}`;
+        }
+        
         const { data, error } = await supabase
           .from('solicitudes_empleados')
           .insert({
@@ -2152,7 +2173,7 @@ function App() {
             documento: empleado?.documento || usuario.usuario,
             empleado_nombre: empleado?.nombre || usuario.nombre,
             tipo: tipoSolicitud,
-            descripcion,
+            descripcion: descripcionCompleta,
             fecha_inicio: fechaInicio || null,
             fecha_fin: fechaFin || null,
             estado: 'recibido',
@@ -2171,6 +2192,11 @@ function App() {
           setFechaInicio('');
           setFechaFin('');
           setArchivosAdjuntos([]);
+          setValorAdelanto('');
+          setPropuestaPago('');
+          setEpsActual('');
+          setEpsNueva('');
+          setObservaciones('');
           await cargarSolicitudes(empleado?.documento || usuario.usuario);
         } else {
           console.error('Error:', error);
@@ -2319,7 +2345,8 @@ function App() {
                   </div>
                 </div>
                 
-                {(tipoSolicitud === 'permiso' || tipoSolicitud === 'vacaciones' || tipoSolicitud === 'licencia') && (
+                {/* Campos para Permiso y Vacaciones - fechas */}
+                {(tipoSolicitud === 'permiso' || tipoSolicitud === 'vacaciones') && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
@@ -2357,15 +2384,143 @@ function App() {
                     </div>
                   </div>
                 )}
+
+                {/* Campos para Adelanto de Nómina */}
+                {tipoSolicitud === 'adelanto_nomina' && (
+                  <div style={{ marginBottom: 20, padding: 16, backgroundColor: '#fff3e0', borderRadius: 12 }}>
+                    <h4 style={{ margin: '0 0 16px', color: '#e65100' }}>💰 Información del Adelanto</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                          Valor solicitado *
+                        </label>
+                        <input
+                          type="number"
+                          value={valorAdelanto}
+                          onChange={(e) => setValorAdelanto(e.target.value)}
+                          required
+                          placeholder="Ej: 500000"
+                          style={{
+                            width: '100%',
+                            padding: 12,
+                            border: '1px solid #ddd',
+                            borderRadius: 8,
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                          Propuesta de pago *
+                        </label>
+                        <input
+                          type="text"
+                          value={propuestaPago}
+                          onChange={(e) => setPropuestaPago(e.target.value)}
+                          required
+                          placeholder="Ej: Descuento en 2 quincenas"
+                          style={{
+                            width: '100%',
+                            padding: 12,
+                            border: '1px solid #ddd',
+                            borderRadius: 8,
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos para Cambio de EPS */}
+                {tipoSolicitud === 'cambio_eps' && (
+                  <div style={{ marginBottom: 20, padding: 16, backgroundColor: '#e3f2fd', borderRadius: 12 }}>
+                    <h4 style={{ margin: '0 0 16px', color: '#1565c0' }}>🏥 Información de EPS</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                          EPS Actual *
+                        </label>
+                        <input
+                          type="text"
+                          value={epsActual}
+                          onChange={(e) => setEpsActual(e.target.value)}
+                          required
+                          placeholder="Ej: Sura, Nueva EPS, etc."
+                          style={{
+                            width: '100%',
+                            padding: 12,
+                            border: '1px solid #ddd',
+                            borderRadius: 8,
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                          EPS a trasladar *
+                        </label>
+                        <input
+                          type="text"
+                          value={epsNueva}
+                          onChange={(e) => setEpsNueva(e.target.value)}
+                          required
+                          placeholder="Ej: Sanitas, Compensar, etc."
+                          style={{
+                            width: '100%',
+                            padding: 12,
+                            border: '1px solid #ddd',
+                            borderRadius: 8,
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos para Documentos Vinculación y Actualización */}
+                {(tipoSolicitud === 'documentos_vinculacion' || tipoSolicitud === 'documentos_actualizacion') && (
+                  <div style={{ marginBottom: 20, padding: 16, backgroundColor: '#f3e5f5', borderRadius: 12 }}>
+                    <h4 style={{ margin: '0 0 16px', color: '#7b1fa2' }}>
+                      {tipoSolicitud === 'documentos_vinculacion' ? '📁 Documentos de Vinculación' : '🔄 Documentos para Actualización'}
+                    </h4>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                        Observaciones *
+                      </label>
+                      <textarea
+                        value={observaciones}
+                        onChange={(e) => setObservaciones(e.target.value)}
+                        required
+                        rows={3}
+                        placeholder="Describe qué documentos estás adjuntando y el motivo..."
+                        style={{
+                          width: '100%',
+                          padding: 12,
+                          border: '1px solid #ddd',
+                          borderRadius: 8,
+                          resize: 'vertical',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <p style={{ margin: '12px 0 0', fontSize: 12, color: '#666' }}>
+                      ⚠️ Recuerda adjuntar los documentos en la sección de archivos más abajo.
+                    </p>
+                  </div>
+                )}
                 
                 <div style={{ marginBottom: 20 }}>
                   <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
-                    Descripción / Motivo *
+                    {tipoSolicitud === 'documentos_vinculacion' || tipoSolicitud === 'documentos_actualizacion' 
+                      ? 'Descripción adicional (opcional)' 
+                      : 'Descripción / Motivo *'}
                   </label>
                   <textarea
                     value={descripcion}
                     onChange={(e) => setDescripcion(e.target.value)}
-                    required
+                    required={tipoSolicitud !== 'documentos_vinculacion' && tipoSolicitud !== 'documentos_actualizacion'}
                     rows={4}
                     placeholder="Describe el motivo de tu solicitud..."
                     style={{
