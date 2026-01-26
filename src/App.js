@@ -78,6 +78,39 @@ function App() {
     };
   }, [usuario]);
 
+  // ============================================
+  // CERRAR SESION AL CERRAR PESTAÑA O NAVEGADOR
+  // (pero mantener sesión al recargar F5)
+  // ============================================
+  useEffect(() => {
+    // Marcar que la página está activa
+    sessionStorage.setItem('intranet_activa', 'true');
+    
+    const limpiarSesionAlCerrar = (event) => {
+      // Detectar si es una recarga (F5) usando Navigation API
+      const navegacion = performance.getEntriesByType('navigation')[0];
+      const esRecarga = navegacion && navegacion.type === 'reload';
+      
+      // Para pagehide, verificar si la página se va a cachear (recarga)
+      if (event.type === 'pagehide' && event.persisted) {
+        return; // Es una navegación con cache, no limpiar
+      }
+      
+      // Solo limpiar si NO es una recarga
+      if (!esRecarga) {
+        sessionStorage.removeItem('intranet_usuario');
+        sessionStorage.removeItem('intranet_activa');
+      }
+    };
+    
+    // pagehide: se dispara al cerrar pestaña (mejor que beforeunload)
+    window.addEventListener('pagehide', limpiarSesionAlCerrar);
+    
+    return () => {
+      window.removeEventListener('pagehide', limpiarSesionAlCerrar);
+    };
+  }, []);
+
   // Verificar si hay sesion guardada al cargar (usando sessionStorage)
   useEffect(() => {
     const sesionGuardada = sessionStorage.getItem('intranet_usuario');

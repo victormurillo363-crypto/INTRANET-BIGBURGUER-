@@ -1,0 +1,10 @@
+﻿  const menuItems = [
+    { id: 'inicio', icono: '', nombre: 'Inicio' },
+    { id: 'desprendible', icono: '', nombre: 'Desprendible de Pago' },
+    { id: 'carta-laboral', icono: '', nombre: 'Carta Laboral' },
+    { id: 'contrato', icono: '', nombre: 'Contrato de Trabajo' },
+    { id: 'horarios', icono: '', nombre: 'Mis Horarios' },
+    { id: 'solicitudes', icono: '', nombre: 'Radicar Solicitud' },
+    { id: 'reglamento', icono: '', nombre: 'Reglamento Interno' },
+    { id: 'formatos', icono: '', nombre: 'Formatos' },
+  ];
