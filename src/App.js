@@ -86,20 +86,27 @@ function App() {
   useEffect(() => {
     // Sistema de heartbeat: actualiza timestamp cada segundo
     // Si al abrir la página el timestamp es muy viejo, la pestaña se cerró
-    const HEARTBEAT_INTERVAL = 1000; // 1 segundo
-    const MAX_HEARTBEAT_AGE = 3000; // 3 segundos máximo
+    const HEARTBEAT_INTERVAL = 500; // 0.5 segundos
+    const MAX_HEARTBEAT_AGE = 2000; // 2 segundos máximo sin actualizar = pestaña cerrada
     
-    // Verificar si la sesión anterior es válida
+    // Verificar ANTES de cargar si la sesión anterior es válida
     const lastHeartbeat = localStorage.getItem('intranet_heartbeat');
     const sesionGuardada = localStorage.getItem('intranet_usuario');
     
-    if (sesionGuardada && lastHeartbeat) {
-      const edad = Date.now() - parseInt(lastHeartbeat);
-      // Si el heartbeat es muy viejo (>3 seg), la pestaña se cerró
-      if (edad > MAX_HEARTBEAT_AGE) {
-        console.log('Sesion cerrada: pestaña fue cerrada anteriormente');
+    if (sesionGuardada) {
+      if (!lastHeartbeat) {
+        // No hay heartbeat, sesión inválida
+        console.log('Sesion cerrada: no hay heartbeat');
         localStorage.removeItem('intranet_usuario');
-        localStorage.removeItem('intranet_heartbeat');
+      } else {
+        const edad = Date.now() - parseInt(lastHeartbeat);
+        console.log('Edad del heartbeat:', edad, 'ms');
+        // Si el heartbeat es muy viejo (>2 seg), la pestaña se cerró
+        if (edad > MAX_HEARTBEAT_AGE) {
+          console.log('Sesion cerrada: pestaña fue cerrada anteriormente (heartbeat viejo)');
+          localStorage.removeItem('intranet_usuario');
+          localStorage.removeItem('intranet_heartbeat');
+        }
       }
     }
     
@@ -114,22 +121,14 @@ function App() {
     actualizarHeartbeat();
     const intervalId = setInterval(actualizarHeartbeat, HEARTBEAT_INTERVAL);
     
-    // Limpiar al cerrar
-    const limpiarAlCerrar = () => {
-      localStorage.removeItem('intranet_heartbeat');
-    };
-    
-    window.addEventListener('beforeunload', limpiarAlCerrar);
-    
     return () => {
       clearInterval(intervalId);
-      window.removeEventListener('beforeunload', limpiarAlCerrar);
     };
   }, []);
 
   // Verificar si hay sesion guardada al cargar (usando localStorage)
   useEffect(() => {
-    // Pequeño delay para que el heartbeat check se ejecute primero
+    // Esperar para que el heartbeat check limpie sesiones inválidas primero
     const timer = setTimeout(() => {
       const sesionGuardada = localStorage.getItem('intranet_usuario');
       if (sesionGuardada) {
@@ -137,11 +136,14 @@ function App() {
           const datosUsuario = JSON.parse(sesionGuardada);
           setUsuario(datosUsuario);
           cargarDatosEmpleado(datosUsuario);
+          // Actualizar heartbeat inmediatamente al restaurar sesión
+          localStorage.setItem('intranet_heartbeat', Date.now().toString());
         } catch (e) {
           localStorage.removeItem('intranet_usuario');
+          localStorage.removeItem('intranet_heartbeat');
         }
       }
-    }, 100);
+    }, 150);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
