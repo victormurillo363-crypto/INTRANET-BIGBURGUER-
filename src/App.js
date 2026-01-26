@@ -3480,17 +3480,32 @@ function App() {
       }
     };
 
+    // Normalizar estado para comparación (lowercase)
+    const normalizarEstado = (estado) => {
+      if (!estado) return 'pendiente';
+      const est = estado.toLowerCase().trim();
+      // Considerar "activo" también cuando tiene cuotas restantes y no está pagado
+      return est;
+    };
+
     const prestamosFiltrados = prestamos.filter(p => {
       if (filtro === 'todos') return true;
-      return p.estado?.toLowerCase() === filtro;
+      const estadoNorm = normalizarEstado(p.estado);
+      // Para "activo", también mostrar los que tienen saldo pendiente (cuotasrestantes > 0)
+      if (filtro === 'activo') {
+        return estadoNorm === 'activo' || 
+               (p.cuotasrestantes > 0 && estadoNorm !== 'pagado');
+      }
+      return estadoNorm === filtro;
     });
 
+    // Para saldo pendiente, sumar todos los que tienen saldo > 0
     const totalActivo = prestamos
-      .filter(p => p.estado?.toLowerCase() === 'activo')
+      .filter(p => (p.saldo || 0) > 0)
       .reduce((sum, p) => sum + (p.saldo || 0), 0);
 
     const cuotasProximaQuincena = prestamos
-      .filter(p => p.estado?.toLowerCase() === 'activo' && p.plan)
+      .filter(p => (p.cuotasrestantes || 0) > 0 && p.plan)
       .reduce((sum, p) => {
         // Calcular cuota mensual: valor / cuotas
         const cuotaMensual = p.cuotas > 0 ? (p.valor / p.cuotas) : 0;
@@ -3701,8 +3716,8 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Barra de progreso */}
-                  {prestamo.estado?.toLowerCase() === 'activo' && (
+                  {/* Barra de progreso - mostrar cuando tiene cuotas restantes */}
+                  {(prestamo.cuotasrestantes > 0 || prestamo.saldo > 0) && (
                     <div>
                       <div style={{
                         display: 'flex',
@@ -3732,7 +3747,7 @@ function App() {
                   )}
 
                   {/* Indicador de descuento programado */}
-                  {prestamo.estado?.toLowerCase() === 'activo' && prestamo.plan && (
+                  {(prestamo.cuotasrestantes > 0 || prestamo.saldo > 0) && prestamo.plan && (
                     <div style={{
                       marginTop: 12,
                       padding: 10,
