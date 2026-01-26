@@ -3494,11 +3494,23 @@ function App() {
       return [];
     };
 
-    // Calcular cuotas pagadas del plan
+    // Calcular cuotas pagadas del plan - usa noDescontable como en el sistema principal
     const contarCuotasPagadas = (plan) => {
       const planArray = parsearPlan(plan);
       if (!planArray || planArray.length === 0) return 0;
-      return planArray.filter(c => c.pagado === true || c.pagada === true).length;
+      // En el sistema principal, noDescontable=true significa que ya se descontó/pagó
+      return planArray.filter(c => c.noDescontable === true).length;
+    };
+
+    // Calcular el saldo real basado en las cuotas no pagadas
+    const calcularSaldoReal = (prestamo) => {
+      const planArray = parsearPlan(prestamo.plan);
+      if (!planArray || planArray.length === 0) return prestamo.saldo || prestamo.valor || 0;
+      // Sumar el valor de las cuotas que NO están pagadas (noDescontable !== true)
+      const abonado = planArray
+        .filter(c => c.noDescontable === true)
+        .reduce((sum, c) => sum + (c.valor || 0), 0);
+      return (prestamo.valor || 0) - abonado;
     };
 
     // Determinar estado real del préstamo
@@ -3506,11 +3518,10 @@ function App() {
       const planArray = parsearPlan(prestamo.plan);
       const cuotasPagadas = contarCuotasPagadas(prestamo.plan);
       const totalCuotas = prestamo.cuotas || planArray.length || 1;
-      const saldo = prestamo.saldo || 0;
-      const cuotasRestantes = prestamo.cuotasrestantes ?? (totalCuotas - cuotasPagadas);
+      const saldoReal = calcularSaldoReal(prestamo);
       
-      // Si saldo es 0 o todas las cuotas están pagadas, está pagado
-      if (saldo <= 0 || cuotasRestantes <= 0 || cuotasPagadas >= totalCuotas) {
+      // Si todas las cuotas están pagadas o el saldo es 0, está pagado
+      if (cuotasPagadas >= totalCuotas || saldoReal <= 0) {
         return 'pagado';
       }
       // Si tiene cuotas pagadas, está activo
@@ -3528,10 +3539,10 @@ function App() {
       return estadoReal === filtro;
     });
 
-    // Para saldo pendiente, sumar todos los que tienen saldo > 0
+    // Para saldo pendiente, sumar los saldos reales calculados
     const totalActivo = prestamos
-      .filter(p => (p.saldo || 0) > 0 && getEstadoReal(p) !== 'pagado')
-      .reduce((sum, p) => sum + (p.saldo || 0), 0);
+      .filter(p => getEstadoReal(p) !== 'pagado')
+      .reduce((sum, p) => sum + calcularSaldoReal(p), 0);
 
     const cuotasProximaQuincena = prestamos
       .filter(p => getEstadoReal(p) === 'activo')
@@ -3667,6 +3678,7 @@ function App() {
               const cuotaMensual = prestamo.cuotas > 0 ? (prestamo.valor / prestamo.cuotas) : 0;
               const cuotasPagadas = contarCuotasPagadas(prestamo.plan);
               const totalCuotas = prestamo.cuotas || parsearPlan(prestamo.plan).length || 1;
+              const saldoReal = calcularSaldoReal(prestamo);
               const progreso = totalCuotas > 0 
                 ? (cuotasPagadas / totalCuotas) * 100 
                 : 0;
@@ -3742,8 +3754,8 @@ function App() {
                     </div>
                     <div>
                       <p style={{ margin: 0, fontSize: 11, color: '#666' }}>Saldo Pendiente</p>
-                      <p style={{ margin: '4px 0 0', fontWeight: 600, color: (prestamo.saldo || 0) > 0 ? '#c62828' : '#2E7D32' }}>
-                        {(prestamo.saldo || 0) <= 0 ? '✅ Pagado' : formatearMoneda(prestamo.saldo || 0)}
+                      <p style={{ margin: '4px 0 0', fontWeight: 600, color: saldoReal > 0 ? '#c62828' : '#2E7D32' }}>
+                        {saldoReal <= 0 ? '✅ Pagado' : formatearMoneda(saldoReal)}
                       </p>
                     </div>
                   </div>
