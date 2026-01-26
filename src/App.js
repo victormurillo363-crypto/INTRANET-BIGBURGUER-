@@ -313,24 +313,26 @@ function App() {
     setCargandoSolicitudes(false);
   };
 
-  // Función para que el empleado responda a una propuesta
-  const responderPropuesta = async (solicitudId, aceptar) => {
+  // Función para que el empleado responda a una propuesta de RRHH
+  const responderPropuesta = async (solicitudId, textoRespuesta) => {
+    if (!textoRespuesta || !textoRespuesta.trim()) {
+      alert('Por favor escribe tu respuesta');
+      return;
+    }
+    
     try {
-      const nuevoEstado = aceptar ? 'confirmado_empleado' : 'rechazado_empleado';
       const { error } = await supabase
         .from('solicitudes_empleados')
         .update({ 
-          estado: nuevoEstado,
-          fecha_respuesta: new Date().toISOString()
+          respuesta_empleado: textoRespuesta.trim(),
+          fecha_respuesta_empleado: new Date().toISOString()
+          // El estado sigue en 'en_proceso' hasta que RRHH dé respuesta definitiva
         })
         .eq('id', solicitudId);
       
       if (error) throw error;
       
-      alert(aceptar 
-        ? '✅ Has aceptado la propuesta. RRHH será notificado.' 
-        : '🔄 Has rechazado la propuesta. RRHH revisará tu solicitud nuevamente.'
-      );
+      alert('✅ Tu respuesta ha sido enviada. RRHH revisará y te dará una respuesta definitiva.');
       
       // Recargar solicitudes
       const doc = empleado?.documento || usuario?.usuario;
@@ -2251,11 +2253,11 @@ function App() {
                   border: '2px solid white',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                  {solicitudes.filter(s => s.estado === 'pendiente_confirmacion').length}
+                  {solicitudes.filter(s => s.requiere_confirmacion && !s.respuesta_empleado && s.estado === 'en_proceso').length}
                 </span>
               )}
               {/* Badge para otras pendientes */}
-              {solicitudes.filter(s => s.estado === 'pendiente_confirmacion').length === 0 && 
+              {solicitudes.filter(s => s.requiere_confirmacion && !s.respuesta_empleado && s.estado === 'en_proceso').length === 0 && 
                solicitudes.filter(s => s.estado === 'recibido' || s.estado === 'en_proceso').length > 0 && (
                 <span style={{
                   position: 'absolute',
@@ -2659,8 +2661,8 @@ function App() {
                           </div>
                         )}
 
-                        {/* Botones para confirmar/rechazar propuesta si aplica */}
-                        {sol.estado === 'pendiente_confirmacion' && (
+                        {/* Formulario para responder a propuesta de RRHH */}
+                        {sol.requiere_confirmacion && sol.estado === 'en_proceso' && !sol.respuesta_empleado && (
                           <div style={{
                             marginTop: 16,
                             padding: 16,
@@ -2677,50 +2679,67 @@ function App() {
                               gap: 8
                             }}>
                               <span style={{ fontSize: 20 }}>📨</span>
-                              RRHH te ha enviado una propuesta. ¿Aceptas?
+                              RRHH te ha enviado una propuesta. Por favor responde:
                             </div>
-                            <div style={{ display: 'flex', gap: 12 }}>
-                              <button
-                                onClick={() => responderPropuesta(sol.id, true)}
-                                style={{
-                                  flex: 1,
-                                  padding: '12px 20px',
-                                  backgroundColor: '#4caf50',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: 8,
-                                  cursor: 'pointer',
-                                  fontWeight: 'bold',
-                                  fontSize: 14
-                                }}
-                              >
-                                ✅ Aceptar Propuesta
-                              </button>
-                              <button
-                                onClick={() => responderPropuesta(sol.id, false)}
-                                style={{
-                                  flex: 1,
-                                  padding: '12px 20px',
-                                  backgroundColor: '#ff9800',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: 8,
-                                  cursor: 'pointer',
-                                  fontWeight: 'bold',
-                                  fontSize: 14
-                                }}
-                              >
-                                🔄 Rechazar Propuesta
-                              </button>
+                            <textarea
+                              id={`respuesta-${sol.id}`}
+                              rows={3}
+                              placeholder="Escribe tu respuesta aquí... (ej: Acepto la propuesta / No estoy de acuerdo porque...)"
+                              style={{
+                                width: '100%',
+                                padding: 12,
+                                border: '1px solid #ce93d8',
+                                borderRadius: 8,
+                                resize: 'vertical',
+                                boxSizing: 'border-box',
+                                marginBottom: 12
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                const textarea = document.getElementById(`respuesta-${sol.id}`);
+                                responderPropuesta(sol.id, textarea.value);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '12px 20px',
+                                backgroundColor: '#7b1fa2',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 8,
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: 14
+                              }}
+                            >
+                              📤 Enviar Respuesta
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Mostrar respuesta del empleado ya enviada */}
+                        {sol.respuesta_empleado && (
+                          <div style={{
+                            marginTop: 12,
+                            padding: 12,
+                            backgroundColor: '#e8f5e9',
+                            borderRadius: 8,
+                            border: '1px solid #4caf50'
+                          }}>
+                            <div style={{ fontSize: 12, fontWeight: 'bold', color: '#2e7d32', marginBottom: 4 }}>
+                              ✅ Tu respuesta:
                             </div>
-                            <p style={{ 
-                              margin: '8px 0 0', 
-                              fontSize: 11, 
-                              color: '#666', 
-                              textAlign: 'center' 
-                            }}>
-                              Si rechazas, RRHH revisará nuevamente tu solicitud.
-                            </p>
+                            <p style={{ margin: 0, fontSize: 13, color: '#333' }}>{sol.respuesta_empleado}</p>
+                            {sol.fecha_respuesta_empleado && (
+                              <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                                Enviada: {new Date(sol.fecha_respuesta_empleado).toLocaleString('es-CO')}
+                              </div>
+                            )}
+                            {sol.estado === 'en_proceso' && (
+                              <div style={{ fontSize: 11, color: '#ff9800', marginTop: 4, fontWeight: 'bold' }}>
+                                ⏳ Esperando respuesta definitiva de RRHH...
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
