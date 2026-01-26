@@ -683,6 +683,7 @@ function App() {
     { id: 'contrato', icono: '📋', nombre: 'Contrato de Trabajo' },
     { id: 'horarios', icono: '🕐', nombre: 'Mis Horarios' },
     { id: 'solicitudes', icono: '📝', nombre: 'Radicar Solicitud' },
+    { id: 'actualizacion-datos', icono: '👤', nombre: 'Actualizar Mis Datos' },
     { id: 'reglamento', icono: '📖', nombre: 'Reglamento Interno' },
     { id: 'formatos', icono: '📁', nombre: 'Formatos' },
   ];
@@ -3416,6 +3417,309 @@ function App() {
     );
   };
 
+  // ACTUALIZACIÓN DE DATOS DEL EMPLEADO
+  const SeccionActualizacionDatos = () => {
+    const [datosEditados, setDatosEditados] = useState({
+      nombre: empleado?.nombre || '',
+      documento: empleado?.documento || '',
+      tipo_documento: empleado?.tipo_documento || 'CC',
+      fecha_nacimiento: empleado?.fecha_nacimiento || '',
+      telefono: empleado?.telefono || '',
+      celular: empleado?.celular || '',
+      email: empleado?.email || '',
+      direccion: empleado?.direccion || '',
+      ciudad: empleado?.ciudad || '',
+      eps: empleado?.eps || '',
+      fondo_pension: empleado?.fondo_pension || '',
+      fondo_cesantias: empleado?.fondo_cesantias || '',
+      caja_compensacion: empleado?.caja_compensacion || '',
+      banco: empleado?.banco || '',
+      tipo_cuenta: empleado?.tipo_cuenta || '',
+      numero_cuenta: empleado?.numero_cuenta || '',
+      contacto_emergencia: empleado?.contacto_emergencia || '',
+      telefono_emergencia: empleado?.telefono_emergencia || '',
+      parentesco_emergencia: empleado?.parentesco_emergencia || ''
+    });
+    const [guardando, setGuardando] = useState(false);
+    const [mensajeExito, setMensajeExito] = useState('');
+    const [solicitudesPendientes, setSolicitudesPendientes] = useState([]);
+
+    useEffect(() => {
+      cargarSolicitudesPendientes();
+    }, []);
+
+    const cargarSolicitudesPendientes = async () => {
+      try {
+        const { data } = await supabase
+          .from('solicitudes_actualizacion_datos')
+          .select('*')
+          .eq('documento_empleado', empleado?.documento)
+          .eq('estado', 'pendiente')
+          .order('created_at', { ascending: false });
+        if (data) setSolicitudesPendientes(data);
+      } catch (e) {
+        console.log('Tabla solicitudes_actualizacion_datos no disponible');
+      }
+    };
+
+    const handleChange = (campo, valor) => {
+      setDatosEditados(prev => ({ ...prev, [campo]: valor }));
+    };
+
+    const enviarSolicitudActualizacion = async () => {
+      setGuardando(true);
+      setMensajeExito('');
+      
+      // Identificar qué campos cambiaron
+      const cambios = {};
+      const datosOriginales = {};
+      
+      Object.keys(datosEditados).forEach(campo => {
+        const valorOriginal = empleado?.[campo] || '';
+        const valorNuevo = datosEditados[campo] || '';
+        if (valorOriginal !== valorNuevo) {
+          cambios[campo] = valorNuevo;
+          datosOriginales[campo] = valorOriginal;
+        }
+      });
+
+      if (Object.keys(cambios).length === 0) {
+        alert('No hay cambios para enviar');
+        setGuardando(false);
+        return;
+      }
+
+      try {
+        const { error } = await supabase
+          .from('solicitudes_actualizacion_datos')
+          .insert({
+            empresa_id: empleado?.empresa_id || usuario?.empresa_id,
+            empleado_id: empleado?.id,
+            documento_empleado: empleado?.documento,
+            nombre_empleado: empleado?.nombre,
+            datos_originales: datosOriginales,
+            datos_nuevos: cambios,
+            estado: 'pendiente',
+            created_at: new Date().toISOString()
+          });
+
+        if (error) {
+          console.error('Error al enviar solicitud:', error);
+          alert('Error al enviar la solicitud. Inténtalo de nuevo.');
+        } else {
+          setMensajeExito('✅ Solicitud enviada correctamente. Un administrador revisará tu solicitud.');
+          cargarSolicitudesPendientes();
+        }
+      } catch (e) {
+        console.error('Error:', e);
+        alert('Error al procesar la solicitud');
+      }
+      setGuardando(false);
+    };
+
+    const camposPersonales = [
+      { campo: 'nombre', label: 'Nombre Completo', tipo: 'text', disabled: true },
+      { campo: 'documento', label: 'Número de Documento', tipo: 'text', disabled: true },
+      { campo: 'tipo_documento', label: 'Tipo de Documento', tipo: 'select', opciones: ['CC', 'CE', 'TI', 'PA'] },
+      { campo: 'fecha_nacimiento', label: 'Fecha de Nacimiento', tipo: 'date' },
+      { campo: 'telefono', label: 'Teléfono Fijo', tipo: 'tel' },
+      { campo: 'celular', label: 'Celular', tipo: 'tel' },
+      { campo: 'email', label: 'Correo Electrónico', tipo: 'email' },
+      { campo: 'direccion', label: 'Dirección de Residencia', tipo: 'text' },
+      { campo: 'ciudad', label: 'Ciudad', tipo: 'text' },
+    ];
+
+    const camposSeguridad = [
+      { campo: 'eps', label: 'EPS', tipo: 'text' },
+      { campo: 'fondo_pension', label: 'Fondo de Pensión', tipo: 'text' },
+      { campo: 'fondo_cesantias', label: 'Fondo de Cesantías', tipo: 'text' },
+      { campo: 'caja_compensacion', label: 'Caja de Compensación', tipo: 'text' },
+    ];
+
+    const camposBancarios = [
+      { campo: 'banco', label: 'Banco', tipo: 'text' },
+      { campo: 'tipo_cuenta', label: 'Tipo de Cuenta', tipo: 'select', opciones: ['Ahorros', 'Corriente'] },
+      { campo: 'numero_cuenta', label: 'Número de Cuenta', tipo: 'text' },
+    ];
+
+    const camposEmergencia = [
+      { campo: 'contacto_emergencia', label: 'Nombre Contacto de Emergencia', tipo: 'text' },
+      { campo: 'telefono_emergencia', label: 'Teléfono de Emergencia', tipo: 'tel' },
+      { campo: 'parentesco_emergencia', label: 'Parentesco', tipo: 'text' },
+    ];
+
+    const renderCampo = (config) => (
+      <div key={config.campo} style={{ marginBottom: 16 }}>
+        <label style={{ display: 'block', marginBottom: 6, fontWeight: '500', color: '#555' }}>
+          {config.label}
+        </label>
+        {config.tipo === 'select' ? (
+          <select
+            value={datosEditados[config.campo]}
+            onChange={(e) => handleChange(config.campo, e.target.value)}
+            disabled={config.disabled}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: '1px solid #ddd',
+              borderRadius: 8,
+              fontSize: 14,
+              backgroundColor: config.disabled ? '#f5f5f5' : 'white'
+            }}
+          >
+            {config.opciones?.map(op => (
+              <option key={op} value={op}>{op}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type={config.tipo}
+            value={datosEditados[config.campo]}
+            onChange={(e) => handleChange(config.campo, e.target.value)}
+            disabled={config.disabled}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: '1px solid #ddd',
+              borderRadius: 8,
+              fontSize: 14,
+              backgroundColor: config.disabled ? '#f5f5f5' : 'white',
+              boxSizing: 'border-box'
+            }}
+          />
+        )}
+      </div>
+    );
+
+    return (
+      <div>
+        <h2 style={{ color: '#c62828', marginBottom: 8 }}>👤 Actualizar Mis Datos</h2>
+        <p style={{ color: '#666', marginBottom: 24 }}>
+          Revisa y actualiza tu información personal. Los cambios serán enviados para aprobación.
+        </p>
+
+        {mensajeExito && (
+          <div style={{
+            padding: 16,
+            backgroundColor: '#e8f5e9',
+            color: '#2e7d32',
+            borderRadius: 12,
+            marginBottom: 24
+          }}>
+            {mensajeExito}
+          </div>
+        )}
+
+        {solicitudesPendientes.length > 0 && (
+          <div style={{
+            padding: 16,
+            backgroundColor: '#fff3e0',
+            border: '1px solid #ffb74d',
+            borderRadius: 12,
+            marginBottom: 24
+          }}>
+            <div style={{ fontWeight: 'bold', color: '#e65100', marginBottom: 8 }}>
+              ⏳ Tienes {solicitudesPendientes.length} solicitud(es) pendiente(s) de aprobación
+            </div>
+            <p style={{ color: '#666', margin: 0, fontSize: 14 }}>
+              Una vez aprobadas, tus datos se actualizarán automáticamente.
+            </p>
+          </div>
+        )}
+
+        <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, marginBottom: 24 }}>
+          <h3 style={{ color: '#333', marginBottom: 20, borderBottom: '2px solid #e0e0e0', paddingBottom: 10 }}>
+            📋 Datos Personales
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+            {camposPersonales.map(renderCampo)}
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, marginBottom: 24 }}>
+          <h3 style={{ color: '#333', marginBottom: 20, borderBottom: '2px solid #e0e0e0', paddingBottom: 10 }}>
+            🏥 Seguridad Social
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+            {camposSeguridad.map(renderCampo)}
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, marginBottom: 24 }}>
+          <h3 style={{ color: '#333', marginBottom: 20, borderBottom: '2px solid #e0e0e0', paddingBottom: 10 }}>
+            🏦 Datos Bancarios
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+            {camposBancarios.map(renderCampo)}
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, marginBottom: 24 }}>
+          <h3 style={{ color: '#333', marginBottom: 20, borderBottom: '2px solid #e0e0e0', paddingBottom: 10 }}>
+            🚨 Contacto de Emergencia
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+            {camposEmergencia.map(renderCampo)}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button
+            onClick={() => {
+              setDatosEditados({
+                nombre: empleado?.nombre || '',
+                documento: empleado?.documento || '',
+                tipo_documento: empleado?.tipo_documento || 'CC',
+                fecha_nacimiento: empleado?.fecha_nacimiento || '',
+                telefono: empleado?.telefono || '',
+                celular: empleado?.celular || '',
+                email: empleado?.email || '',
+                direccion: empleado?.direccion || '',
+                ciudad: empleado?.ciudad || '',
+                eps: empleado?.eps || '',
+                fondo_pension: empleado?.fondo_pension || '',
+                fondo_cesantias: empleado?.fondo_cesantias || '',
+                caja_compensacion: empleado?.caja_compensacion || '',
+                banco: empleado?.banco || '',
+                tipo_cuenta: empleado?.tipo_cuenta || '',
+                numero_cuenta: empleado?.numero_cuenta || '',
+                contacto_emergencia: empleado?.contacto_emergencia || '',
+                telefono_emergencia: empleado?.telefono_emergencia || '',
+                parentesco_emergencia: empleado?.parentesco_emergencia || ''
+              });
+            }}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#f5f5f5',
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 14
+            }}
+          >
+            Cancelar Cambios
+          </button>
+          <button
+            onClick={enviarSolicitudActualizacion}
+            disabled={guardando}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: guardando ? '#ccc' : '#c62828',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              cursor: guardando ? 'not-allowed' : 'pointer',
+              fontSize: 14,
+              fontWeight: 'bold'
+            }}
+          >
+            {guardando ? 'Enviando...' : '📤 Enviar Solicitud de Actualización'}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // Renderizar sección activa
   const renderSeccion = () => {
     switch (seccionActiva) {
@@ -3425,6 +3729,7 @@ function App() {
       case 'contrato': return <SeccionContrato />;
       case 'horarios': return <SeccionHorarios />;
       case 'solicitudes': return <SeccionSolicitudes />;
+      case 'actualizacion-datos': return <SeccionActualizacionDatos />;
       case 'reglamento': return <SeccionReglamento />;
       case 'formatos': return <SeccionFormatos />;
       default: return <SeccionInicio />;
