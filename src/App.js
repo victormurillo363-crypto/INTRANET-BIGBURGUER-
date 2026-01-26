@@ -84,42 +84,34 @@ function App() {
   // (pero mantener sesión al recargar F5)
   // ============================================
   useEffect(() => {
-    // Sistema de heartbeat: actualiza timestamp cada segundo
-    // Si al abrir la página el timestamp es muy viejo, la pestaña se cerró
-    const HEARTBEAT_INTERVAL = 500; // 0.5 segundos
-    const MAX_HEARTBEAT_AGE = 2000; // 2 segundos máximo sin actualizar = pestaña cerrada
+    // Usar sessionStorage para marcar si la pestaña está activa
+    // sessionStorage se limpia al cerrar pestaña pero persiste en recarga
+    const SESION_ACTIVA_KEY = 'intranet_sesion_activa';
     
-    // Verificar ANTES de cargar si la sesión anterior es válida
-    const lastHeartbeat = localStorage.getItem('intranet_heartbeat');
+    // Si hay usuario guardado pero NO hay marca de sesión activa, 
+    // significa que la pestaña se cerró anteriormente
     const sesionGuardada = localStorage.getItem('intranet_usuario');
+    const sesionActiva = sessionStorage.getItem(SESION_ACTIVA_KEY);
     
-    if (sesionGuardada) {
-      if (!lastHeartbeat) {
-        // No hay heartbeat, sesión inválida
-        console.log('Sesion cerrada: no hay heartbeat');
-        localStorage.removeItem('intranet_usuario');
-      } else {
-        const edad = Date.now() - parseInt(lastHeartbeat);
-        console.log('Edad del heartbeat:', edad, 'ms');
-        // Si el heartbeat es muy viejo (>2 seg), la pestaña se cerró
-        if (edad > MAX_HEARTBEAT_AGE) {
-          console.log('Sesion cerrada: pestaña fue cerrada anteriormente (heartbeat viejo)');
-          localStorage.removeItem('intranet_usuario');
-          localStorage.removeItem('intranet_heartbeat');
-        }
-      }
+    if (sesionGuardada && !sesionActiva) {
+      // La pestaña fue cerrada, limpiar sesión
+      console.log('Sesion cerrada: pestaña fue cerrada (no hay marca de sesion activa)');
+      localStorage.removeItem('intranet_usuario');
+      localStorage.removeItem('intranet_heartbeat');
     }
     
-    // Actualizar heartbeat periódicamente mientras la página esté abierta
+    // Marcar que la sesión está activa (esto persiste en recarga pero no al cerrar pestaña)
+    sessionStorage.setItem(SESION_ACTIVA_KEY, 'true');
+    
+    // Mantener heartbeat para el timeout de inactividad
     const actualizarHeartbeat = () => {
       if (localStorage.getItem('intranet_usuario')) {
         localStorage.setItem('intranet_heartbeat', Date.now().toString());
       }
     };
     
-    // Iniciar heartbeat inmediatamente
     actualizarHeartbeat();
-    const intervalId = setInterval(actualizarHeartbeat, HEARTBEAT_INTERVAL);
+    const intervalId = setInterval(actualizarHeartbeat, 1000);
     
     return () => {
       clearInterval(intervalId);
