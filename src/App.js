@@ -3790,8 +3790,8 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Indicador de descuento programado */}
-                  {estadoReal === 'activo' && prestamo.plan && (
+                  {/* Indicador de descuento programado - mostrar si hay cuotas pendientes de descuento */}
+                  {estadoReal !== 'pagado' && parsearPlan(prestamo.plan).some(c => !c.noDescontable) && (
                     <div style={{
                       marginTop: 12,
                       padding: 10,
