@@ -37,6 +37,8 @@ function App() {
   const [pestanaSolicitudes, setPestanaSolicitudes] = useState('radicar'); // 'radicar' | 'estado'
   const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
   const [sesionExpirada, setSesionExpirada] = useState(false);
+  const [avisos, setAvisos] = useState([]);
+  const [avisoSeleccionado, setAvisoSeleccionado] = useState(null);
 
   // ============================================
   // TIMEOUT DE INACTIVIDAD - 10 MINUTOS
@@ -176,6 +178,9 @@ function App() {
             .eq('id', empresaId)
             .maybeSingle();
           if (empresaData) setEmpresa(empresaData);
+          
+          // Cargar avisos de la intranet
+          await cargarAvisos(empresaId);
         }
         
         // Cargar datos adicionales usando ID para nóminas y horarios, documento para el resto
@@ -193,6 +198,11 @@ function App() {
           sede: '',
           empresa_id: usuarioData.empresa_id
         });
+        
+        // Cargar avisos si hay empresa_id
+        if (usuarioData.empresa_id) {
+          await cargarAvisos(usuarioData.empresa_id);
+        }
         
         // Cargar datos usando el documento del usuario
         await Promise.all([
@@ -399,6 +409,29 @@ function App() {
       console.log('Tabla solicitudes_empleados no disponible:', e);
     }
     setCargandoSolicitudes(false);
+  };
+
+  // Cargar avisos y noticias de la intranet
+  const cargarAvisos = async (empresaId) => {
+    try {
+      const { data, error } = await supabase
+        .from('avisos_intranet')
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .eq('activo', true)
+        .order('fecha', { ascending: false })
+        .limit(20);
+      
+      if (data) {
+        console.log('📰 Avisos cargados:', data.length);
+        setAvisos(data);
+      }
+      if (error) {
+        console.log('Tabla avisos_intranet no disponible:', error);
+      }
+    } catch (e) {
+      console.log('Error cargando avisos:', e);
+    }
   };
 
   // Función para que el empleado responda a una propuesta de RRHH
@@ -658,61 +691,248 @@ function App() {
   // COMPONENTES DE SECCIONES
   // ============================================
   
-  // INICIO
-  const SeccionInicio = () => (
-    <div>
-      <div style={{
-        background: 'linear-gradient(135deg, #b71c1c, #c62828)',
-        color: 'white',
-        padding: 30,
-        borderRadius: 16,
-        marginBottom: 24,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 20
-      }}>
-        <img 
-          src="/logo.jpg" 
-          alt="Big Burguer" 
-          style={{ 
-            width: 70, 
-            height: 70, 
-            borderRadius: '50%', 
-            objectFit: 'cover',
-            border: '3px solid white',
-            flexShrink: 0
-          }} 
-        />
+  // INICIO - Página web con avisos y noticias
+  const SeccionInicio = () => {
+    // Si hay un aviso seleccionado, mostrar su contenido completo
+    if (avisoSeleccionado) {
+      return (
         <div>
-          <h2 style={{ margin: 0 }}>¡Bienvenido, {empleado?.nombre || usuario?.nombre || 'Empleado'}!</h2>
-          <p style={{ margin: '10px 0 0', opacity: 0.9 }}>
-            {empleado?.cargo || 'Colaborador'} | {empleado?.sede || configEmpresa?.nombre_empresa || empresa?.nombre || 'Empresa'}
-          </p>
-        </div>
-      </div>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-        {menuItems.filter(m => m.id !== 'inicio').map(item => (
+          {/* Botón volver */}
           <button
-            key={item.id}
-            onClick={() => setSeccionActiva(item.id)}
+            onClick={() => setAvisoSeleccionado(null)}
             style={{
-              padding: 24,
-              backgroundColor: 'white',
-              border: '2px solid #e0e0e0',
-              borderRadius: 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              backgroundColor: '#f5f5f5',
+              border: 'none',
+              borderRadius: 8,
               cursor: 'pointer',
-              textAlign: 'center',
-              transition: 'all 0.3s'
+              marginBottom: 20,
+              color: '#666'
             }}
           >
-            <div style={{ fontSize: 40, marginBottom: 12 }}>{item.icono}</div>
-            <div style={{ fontWeight: 'bold', color: '#c62828' }}>{item.nombre}</div>
+            ← Volver a inicio
           </button>
-        ))}
+          
+          {/* Contenido del aviso */}
+          <article style={{
+            backgroundColor: 'white',
+            borderRadius: 16,
+            overflow: 'hidden',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+          }}>
+            {avisoSeleccionado.imagen && (
+              <img 
+                src={avisoSeleccionado.imagen} 
+                alt={avisoSeleccionado.titulo}
+                style={{ width: '100%', maxHeight: 400, objectFit: 'cover' }}
+              />
+            )}
+            <div style={{ padding: 32 }}>
+              <div style={{ 
+                display: 'inline-block',
+                backgroundColor: avisoSeleccionado.tipo === 'urgente' ? '#c62828' : 
+                               avisoSeleccionado.tipo === 'noticia' ? '#1976d2' : '#388e3c',
+                color: 'white',
+                padding: '4px 12px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 'bold',
+                marginBottom: 16
+              }}>
+                {avisoSeleccionado.tipo === 'urgente' ? '🔔 URGENTE' : 
+                 avisoSeleccionado.tipo === 'noticia' ? '📰 NOTICIA' : '📢 AVISO'}
+              </div>
+              <h1 style={{ margin: '0 0 16px', color: '#333', fontSize: 28 }}>
+                {avisoSeleccionado.titulo}
+              </h1>
+              <p style={{ color: '#999', fontSize: 14, marginBottom: 24 }}>
+                📅 {new Date(avisoSeleccionado.fecha).toLocaleDateString('es-CO', { 
+                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                })}
+              </p>
+              {/* Contenido HTML renderizado */}
+              <div 
+                style={{ 
+                  lineHeight: 1.8, 
+                  color: '#444',
+                  fontSize: 16
+                }}
+                dangerouslySetInnerHTML={{ __html: avisoSeleccionado.contenido }}
+              />
+            </div>
+          </article>
+        </div>
+      );
+    }
+    
+    return (
+      <div>
+        {/* Banner de bienvenida */}
+        <div style={{
+          background: 'linear-gradient(135deg, #b71c1c, #c62828)',
+          color: 'white',
+          padding: 30,
+          borderRadius: 16,
+          marginBottom: 24,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 20
+        }}>
+          <img 
+            src="/logo.jpg" 
+            alt="Big Burguer" 
+            style={{ 
+              width: 70, 
+              height: 70, 
+              borderRadius: '50%', 
+              objectFit: 'cover',
+              border: '3px solid white',
+              flexShrink: 0
+            }} 
+          />
+          <div>
+            <h2 style={{ margin: 0 }}>¡Bienvenido, {empleado?.nombre || usuario?.nombre || 'Empleado'}!</h2>
+            <p style={{ margin: '10px 0 0', opacity: 0.9 }}>
+              {empleado?.cargo || 'Colaborador'} | {empleado?.sede || configEmpresa?.nombre_empresa || empresa?.nombre || 'Empresa'}
+            </p>
+          </div>
+        </div>
+        
+        {/* Sección de Avisos y Noticias */}
+        <div style={{ marginBottom: 32 }}>
+          <h3 style={{ color: '#333', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            📰 Avisos y Noticias
+          </h3>
+          
+          {avisos.length === 0 ? (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: 16,
+              padding: 40,
+              textAlign: 'center',
+              color: '#999'
+            }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
+              <p>No hay avisos o noticias en este momento</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {avisos.map(aviso => (
+                <article 
+                  key={aviso.id}
+                  onClick={() => setAvisoSeleccionado(aviso)}
+                  style={{
+                    backgroundColor: 'white',
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    display: 'flex',
+                    flexDirection: aviso.imagen ? 'row' : 'column'
+                  }}
+                  onMouseOver={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
+                  }}
+                  onMouseOut={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+                  }}
+                >
+                  {aviso.imagen && (
+                    <div style={{ 
+                      width: 200, 
+                      minHeight: 150,
+                      flexShrink: 0,
+                      backgroundImage: `url(${aviso.imagen})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }} />
+                  )}
+                  <div style={{ padding: 20, flex: 1 }}>
+                    <div style={{ 
+                      display: 'inline-block',
+                      backgroundColor: aviso.tipo === 'urgente' ? '#ffebee' : 
+                                     aviso.tipo === 'noticia' ? '#e3f2fd' : '#e8f5e9',
+                      color: aviso.tipo === 'urgente' ? '#c62828' : 
+                             aviso.tipo === 'noticia' ? '#1976d2' : '#388e3c',
+                      padding: '3px 10px',
+                      borderRadius: 20,
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      marginBottom: 10
+                    }}>
+                      {aviso.tipo === 'urgente' ? '🔔 URGENTE' : 
+                       aviso.tipo === 'noticia' ? '📰 NOTICIA' : '📢 AVISO'}
+                    </div>
+                    <h4 style={{ margin: '0 0 8px', color: '#333', fontSize: 18 }}>
+                      {aviso.titulo}
+                    </h4>
+                    <p style={{ 
+                      margin: '0 0 12px', 
+                      color: '#666', 
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}>
+                      {aviso.resumen || aviso.contenido?.replace(/<[^>]*>/g, '').substring(0, 150) + '...'}
+                    </p>
+                    <p style={{ margin: 0, color: '#999', fontSize: 12 }}>
+                      📅 {new Date(aviso.fecha).toLocaleDateString('es-CO', { 
+                        day: 'numeric', month: 'short', year: 'numeric' 
+                      })}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Accesos rápidos */}
+        <div>
+          <h3 style={{ color: '#333', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            ⚡ Accesos Rápidos
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+            {menuItems.filter(m => m.id !== 'inicio').map(item => (
+              <button
+                key={item.id}
+                onClick={() => setSeccionActiva(item.id)}
+                style={{
+                  padding: 16,
+                  backgroundColor: 'white',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.borderColor = '#c62828';
+                  e.currentTarget.style.backgroundColor = '#ffebee';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.borderColor = '#e0e0e0';
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}
+              >
+                <div style={{ fontSize: 28, marginBottom: 8 }}>{item.icono}</div>
+                <div style={{ fontWeight: '500', color: '#333', fontSize: 13 }}>{item.nombre}</div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // DESPRENDIBLE DE PAGO - Conectado a la tabla nominas del sistema principal
   const SeccionDesprendible = () => {
