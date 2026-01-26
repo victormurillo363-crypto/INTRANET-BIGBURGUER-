@@ -3419,26 +3419,24 @@ function App() {
 
   // ACTUALIZACIÓN DE DATOS DEL EMPLEADO
   const SeccionActualizacionDatos = () => {
+    // Mapear campos de la BD (minúsculas sin guiones) a nombres legibles
     const [datosEditados, setDatosEditados] = useState({
-      nombre: empleado?.nombre || '',
+      nombres: empleado?.nombres || '',
+      apellidos: empleado?.apellidos || '',
       documento: empleado?.documento || '',
-      tipo_documento: empleado?.tipo_documento || 'CC',
-      fecha_nacimiento: empleado?.fecha_nacimiento || '',
+      tipodoc: empleado?.tipodoc || 'Cédula de ciudadanía',
+      fechanacimiento: empleado?.fechanacimiento || '',
       telefono: empleado?.telefono || '',
-      celular: empleado?.celular || '',
-      email: empleado?.email || '',
       direccion: empleado?.direccion || '',
-      ciudad: empleado?.ciudad || '',
       eps: empleado?.eps || '',
-      fondo_pension: empleado?.fondo_pension || '',
-      fondo_cesantias: empleado?.fondo_cesantias || '',
-      caja_compensacion: empleado?.caja_compensacion || '',
+      fondopensiones: empleado?.fondopensiones || empleado?.fondo || '',
+      arl: empleado?.arl || '',
       banco: empleado?.banco || '',
-      tipo_cuenta: empleado?.tipo_cuenta || '',
-      numero_cuenta: empleado?.numero_cuenta || '',
-      contacto_emergencia: empleado?.contacto_emergencia || '',
-      telefono_emergencia: empleado?.telefono_emergencia || '',
-      parentesco_emergencia: empleado?.parentesco_emergencia || ''
+      tipocuenta: empleado?.tipocuenta || '',
+      numerocuenta: empleado?.numerocuenta || '',
+      rh: empleado?.rh || '',
+      nacionalidad: empleado?.nacionalidad || '',
+      genero: empleado?.genero || ''
     });
     const [guardando, setGuardando] = useState(false);
     const [mensajeExito, setMensajeExito] = useState('');
@@ -3518,34 +3516,28 @@ function App() {
     };
 
     const camposPersonales = [
-      { campo: 'nombre', label: 'Nombre Completo', tipo: 'text', disabled: true },
+      { campo: 'nombres', label: 'Nombres', tipo: 'text' },
+      { campo: 'apellidos', label: 'Apellidos', tipo: 'text' },
       { campo: 'documento', label: 'Número de Documento', tipo: 'text', disabled: true },
-      { campo: 'tipo_documento', label: 'Tipo de Documento', tipo: 'select', opciones: ['CC', 'CE', 'TI', 'PA'] },
-      { campo: 'fecha_nacimiento', label: 'Fecha de Nacimiento', tipo: 'date' },
-      { campo: 'telefono', label: 'Teléfono Fijo', tipo: 'tel' },
-      { campo: 'celular', label: 'Celular', tipo: 'tel' },
-      { campo: 'email', label: 'Correo Electrónico', tipo: 'email' },
+      { campo: 'tipodoc', label: 'Tipo de Documento', tipo: 'select', opciones: ['Cédula de ciudadanía', 'Cédula de extranjería', 'Tarjeta de identidad', 'Pasaporte'] },
+      { campo: 'fechanacimiento', label: 'Fecha de Nacimiento', tipo: 'date' },
+      { campo: 'rh', label: 'Grupo Sanguíneo (RH)', tipo: 'select', opciones: ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'] },
+      { campo: 'genero', label: 'Género', tipo: 'select', opciones: ['Masculino', 'Femenino', 'Otro'] },
+      { campo: 'nacionalidad', label: 'Nacionalidad', tipo: 'text' },
+      { campo: 'telefono', label: 'Teléfono / Celular', tipo: 'tel' },
       { campo: 'direccion', label: 'Dirección de Residencia', tipo: 'text' },
-      { campo: 'ciudad', label: 'Ciudad', tipo: 'text' },
     ];
 
     const camposSeguridad = [
       { campo: 'eps', label: 'EPS', tipo: 'text' },
-      { campo: 'fondo_pension', label: 'Fondo de Pensión', tipo: 'text' },
-      { campo: 'fondo_cesantias', label: 'Fondo de Cesantías', tipo: 'text' },
-      { campo: 'caja_compensacion', label: 'Caja de Compensación', tipo: 'text' },
+      { campo: 'fondopensiones', label: 'Fondo de Pensión', tipo: 'text' },
+      { campo: 'arl', label: 'ARL', tipo: 'text' },
     ];
 
     const camposBancarios = [
       { campo: 'banco', label: 'Banco', tipo: 'text' },
-      { campo: 'tipo_cuenta', label: 'Tipo de Cuenta', tipo: 'select', opciones: ['Ahorros', 'Corriente'] },
-      { campo: 'numero_cuenta', label: 'Número de Cuenta', tipo: 'text' },
-    ];
-
-    const camposEmergencia = [
-      { campo: 'contacto_emergencia', label: 'Nombre Contacto de Emergencia', tipo: 'text' },
-      { campo: 'telefono_emergencia', label: 'Teléfono de Emergencia', tipo: 'tel' },
-      { campo: 'parentesco_emergencia', label: 'Parentesco', tipo: 'text' },
+      { campo: 'tipocuenta', label: 'Tipo de Cuenta', tipo: 'select', opciones: ['Ahorros', 'Corriente'] },
+      { campo: 'numerocuenta', label: 'Número de Cuenta', tipo: 'text' },
     ];
 
     const renderCampo = (config) => (
@@ -3654,38 +3646,26 @@ function App() {
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, marginBottom: 24 }}>
-          <h3 style={{ color: '#333', marginBottom: 20, borderBottom: '2px solid #e0e0e0', paddingBottom: 10 }}>
-            🚨 Contacto de Emergencia
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
-            {camposEmergencia.map(renderCampo)}
-          </div>
-        </div>
-
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button
             onClick={() => {
               setDatosEditados({
-                nombre: empleado?.nombre || '',
+                nombres: empleado?.nombres || '',
+                apellidos: empleado?.apellidos || '',
                 documento: empleado?.documento || '',
-                tipo_documento: empleado?.tipo_documento || 'CC',
-                fecha_nacimiento: empleado?.fecha_nacimiento || '',
+                tipodoc: empleado?.tipodoc || 'Cédula de ciudadanía',
+                fechanacimiento: empleado?.fechanacimiento || '',
                 telefono: empleado?.telefono || '',
-                celular: empleado?.celular || '',
-                email: empleado?.email || '',
                 direccion: empleado?.direccion || '',
-                ciudad: empleado?.ciudad || '',
                 eps: empleado?.eps || '',
-                fondo_pension: empleado?.fondo_pension || '',
-                fondo_cesantias: empleado?.fondo_cesantias || '',
-                caja_compensacion: empleado?.caja_compensacion || '',
+                fondopensiones: empleado?.fondopensiones || empleado?.fondo || '',
+                arl: empleado?.arl || '',
                 banco: empleado?.banco || '',
-                tipo_cuenta: empleado?.tipo_cuenta || '',
-                numero_cuenta: empleado?.numero_cuenta || '',
-                contacto_emergencia: empleado?.contacto_emergencia || '',
-                telefono_emergencia: empleado?.telefono_emergencia || '',
-                parentesco_emergencia: empleado?.parentesco_emergencia || ''
+                tipocuenta: empleado?.tipocuenta || '',
+                numerocuenta: empleado?.numerocuenta || '',
+                rh: empleado?.rh || '',
+                nacionalidad: empleado?.nacionalidad || '',
+                genero: empleado?.genero || ''
               });
             }}
             style={{
