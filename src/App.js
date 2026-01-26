@@ -313,6 +313,35 @@ function App() {
     setCargandoSolicitudes(false);
   };
 
+  // Función para que el empleado responda a una propuesta
+  const responderPropuesta = async (solicitudId, aceptar) => {
+    try {
+      const nuevoEstado = aceptar ? 'confirmado_empleado' : 'rechazado_empleado';
+      const { error } = await supabase
+        .from('solicitudes_empleados')
+        .update({ 
+          estado: nuevoEstado,
+          fecha_confirmacion_empleado: new Date().toISOString(),
+          confirmacion_empleado: aceptar ? 'aceptada' : 'rechazada'
+        })
+        .eq('id', solicitudId);
+      
+      if (error) throw error;
+      
+      alert(aceptar 
+        ? '✅ Has aceptado la propuesta. RRHH será notificado.' 
+        : '🔄 Has rechazado la propuesta. RRHH revisará tu solicitud nuevamente.'
+      );
+      
+      // Recargar solicitudes
+      const doc = empleado?.documento || usuario?.usuario;
+      if (doc) await cargarSolicitudes(doc);
+    } catch (error) {
+      console.error('Error respondiendo propuesta:', error);
+      alert('❌ Error al procesar tu respuesta');
+    }
+  };
+
   // ============================================
   // FUNCIÓN DE LOGIN - Usa tabla "usuarios" del sistema principal
   // ============================================
@@ -2161,6 +2190,9 @@ function App() {
         case 'rechazada': return { bg: '#ffebee', color: '#c62828', texto: '❌ NEGADO', icono: '❌' };
         case 'en_proceso': return { bg: '#e3f2fd', color: '#1565c0', texto: '🔄 EN PROCESO', icono: '🔄' };
         case 'recibido': return { bg: '#fff3e0', color: '#e65100', texto: '📥 RECIBIDO', icono: '📥' };
+        case 'pendiente_confirmacion': return { bg: '#f3e5f5', color: '#7b1fa2', texto: '📨 PROPUESTA RECIBIDA', icono: '📨' };
+        case 'confirmado_empleado': return { bg: '#e8f5e9', color: '#2e7d32', texto: '✅ CONFIRMADO', icono: '✅' };
+        case 'rechazado_empleado': return { bg: '#fff3e0', color: '#e65100', texto: '🔄 RECHAZASTE PROPUESTA', icono: '🔄' };
         default: return { bg: '#f5f5f5', color: '#666', texto: '⏳ PENDIENTE', icono: '⏳' };
       }
     };
@@ -2201,7 +2233,31 @@ function App() {
               }}
             >
               📋 Estado Solicitudes
-              {solicitudes.filter(s => s.estado === 'recibido' || s.estado === 'en_proceso').length > 0 && (
+              {/* Badge para propuestas pendientes de confirmación */}
+              {solicitudes.filter(s => s.estado === 'pendiente_confirmacion').length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: -8,
+                  right: -8,
+                  backgroundColor: '#7b1fa2',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: 24,
+                  height: 24,
+                  fontSize: 11,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  border: '2px solid white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}>
+                  {solicitudes.filter(s => s.estado === 'pendiente_confirmacion').length}
+                </span>
+              )}
+              {/* Badge para otras pendientes */}
+              {solicitudes.filter(s => s.estado === 'pendiente_confirmacion').length === 0 && 
+               solicitudes.filter(s => s.estado === 'recibido' || s.estado === 'en_proceso').length > 0 && (
                 <span style={{
                   position: 'absolute',
                   top: -5,
@@ -2601,6 +2657,71 @@ function App() {
                                 📄 {arch.nombre}
                               </a>
                             ))}
+                          </div>
+                        )}
+
+                        {/* Botones para confirmar/rechazar propuesta si aplica */}
+                        {sol.estado === 'pendiente_confirmacion' && (
+                          <div style={{
+                            marginTop: 16,
+                            padding: 16,
+                            backgroundColor: '#f3e5f5',
+                            borderRadius: 12,
+                            border: '2px solid #ce93d8'
+                          }}>
+                            <div style={{ 
+                              fontWeight: 'bold', 
+                              color: '#7b1fa2', 
+                              marginBottom: 12,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8
+                            }}>
+                              <span style={{ fontSize: 20 }}>📨</span>
+                              RRHH te ha enviado una propuesta. ¿Aceptas?
+                            </div>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                              <button
+                                onClick={() => responderPropuesta(sol.id, true)}
+                                style={{
+                                  flex: 1,
+                                  padding: '12px 20px',
+                                  backgroundColor: '#4caf50',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 8,
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold',
+                                  fontSize: 14
+                                }}
+                              >
+                                ✅ Aceptar Propuesta
+                              </button>
+                              <button
+                                onClick={() => responderPropuesta(sol.id, false)}
+                                style={{
+                                  flex: 1,
+                                  padding: '12px 20px',
+                                  backgroundColor: '#ff9800',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 8,
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold',
+                                  fontSize: 14
+                                }}
+                              >
+                                🔄 Rechazar Propuesta
+                              </button>
+                            </div>
+                            <p style={{ 
+                              margin: '8px 0 0', 
+                              fontSize: 11, 
+                              color: '#666', 
+                              textAlign: 'center' 
+                            }}>
+                              Si rechazas, RRHH revisará nuevamente tu solicitud.
+                            </p>
                           </div>
                         )}
                       </div>
