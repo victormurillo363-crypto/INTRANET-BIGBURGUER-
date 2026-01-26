@@ -3521,13 +3521,6 @@ function App() {
       return prestamo.estado?.toLowerCase() || 'pendiente';
     };
 
-    // Normalizar estado para comparación (lowercase)
-    const normalizarEstado = (estado) => {
-      if (!estado) return 'pendiente';
-      const est = estado.toLowerCase().trim();
-      return est;
-    };
-
     // Filtrar préstamos con estado calculado
     const prestamosFiltrados = prestamos.filter(p => {
       if (filtro === 'todos') return true;
@@ -3674,7 +3667,6 @@ function App() {
               const cuotaMensual = prestamo.cuotas > 0 ? (prestamo.valor / prestamo.cuotas) : 0;
               const cuotasPagadas = contarCuotasPagadas(prestamo.plan);
               const totalCuotas = prestamo.cuotas || parsearPlan(prestamo.plan).length || 1;
-              const cuotasRestantes = prestamo.cuotasrestantes ?? (totalCuotas - cuotasPagadas);
               const progreso = totalCuotas > 0 
                 ? (cuotasPagadas / totalCuotas) * 100 
                 : 0;
