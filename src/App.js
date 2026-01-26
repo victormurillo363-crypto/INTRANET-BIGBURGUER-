@@ -34,6 +34,7 @@ function App() {
   const [solicitudes, setSolicitudes] = useState([]);
   const [empresa, setEmpresa] = useState(null);
   const [configEmpresa, setConfigEmpresa] = useState(null);
+  const [pestanaSolicitudes, setPestanaSolicitudes] = useState('radicar'); // 'radicar' | 'estado'
 
   // Verificar si hay sesión guardada al cargar
   useEffect(() => {
@@ -2039,7 +2040,10 @@ function App() {
 
   // RADICAR SOLICITUD
   const SeccionSolicitudes = () => {
-    const [pestanaActiva, setPestanaActiva] = useState('radicar'); // 'radicar' | 'estado'
+    // Usar el estado del padre para la pestaña activa
+    const pestanaActiva = pestanaSolicitudes;
+    const setPestanaActiva = setPestanaSolicitudes;
+    
     const [tipoSolicitud, setTipoSolicitud] = useState('');
     const [descripcion, setDescripcion] = useState('');
     const [fechaInicio, setFechaInicio] = useState('');
