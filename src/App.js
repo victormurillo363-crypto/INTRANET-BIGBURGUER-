@@ -67,6 +67,9 @@ function App() {
       setHorarios([]);
       setSolicitudes([]);
       setSeccionActiva('inicio');
+      // Limpiar campos de login
+      setDocumento('');
+      setClave('');
     };
     
     const reiniciarTimer = () => {
@@ -622,6 +625,9 @@ function App() {
     setHorarios([]);
     setSolicitudes([]);
     setSeccionActiva('inicio');
+    // Limpiar campos de login
+    setDocumento('');
+    setClave('');
   };
 
   // ============================================
