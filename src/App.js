@@ -695,8 +695,20 @@ function App() {
   
   // INICIO - Página web con avisos y noticias
   const SeccionInicio = () => {
-    // Si hay un aviso seleccionado, mostrar su contenido completo
-    if (avisoSeleccionado) {
+    // Función para obtener info del tipo
+    const getTipoInfo = (tipo) => {
+      switch(tipo) {
+        case 'noticia': return { label: '📰 NOTICIA', bg: '#e3f2fd', color: '#1976d2' };
+        case 'aviso': return { label: '📢 AVISO', bg: '#FFF3E0', color: '#F57C00' };
+        case 'importante': return { label: '⚠️ IMPORTANTE', bg: '#ffebee', color: '#c62828' };
+        case 'evento': return { label: '🎉 EVENTO', bg: '#F3E5F5', color: '#7B1FA2' };
+        default: return { label: '📢 AVISO', bg: '#e8f5e9', color: '#388e3c' };
+      }
+    };
+
+    // Si hay un aviso seleccionado (solo para avisos/eventos, no noticias)
+    if (avisoSeleccionado && avisoSeleccionado.tipo !== 'noticia') {
+      const tipoInfo = getTipoInfo(avisoSeleccionado.tipo);
       return (
         <div>
           {/* Botón volver */}
@@ -718,13 +730,14 @@ function App() {
             ← Volver a inicio
           </button>
           
-          {/* Contenido del aviso */}
+          {/* Contenido del aviso/evento como página web */}
           <article style={{
             backgroundColor: 'white',
             borderRadius: 16,
             overflow: 'hidden',
             boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
           }}>
+            {/* Imagen principal */}
             {avisoSeleccionado.imagen && (
               <img 
                 src={avisoSeleccionado.imagen} 
@@ -733,29 +746,33 @@ function App() {
               />
             )}
             <div style={{ padding: 32 }}>
+              {/* Badge tipo */}
               <div style={{ 
                 display: 'inline-block',
-                backgroundColor: avisoSeleccionado.tipo === 'urgente' ? '#c62828' : 
-                               avisoSeleccionado.tipo === 'noticia' ? '#1976d2' : '#388e3c',
-                color: 'white',
-                padding: '4px 12px',
+                backgroundColor: tipoInfo.bg,
+                color: tipoInfo.color,
+                padding: '6px 16px',
                 borderRadius: 20,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 'bold',
                 marginBottom: 16
               }}>
-                {avisoSeleccionado.tipo === 'urgente' ? '🔔 URGENTE' : 
-                 avisoSeleccionado.tipo === 'noticia' ? '📰 NOTICIA' : '📢 AVISO'}
+                {tipoInfo.label}
               </div>
-              <h1 style={{ margin: '0 0 16px', color: '#333', fontSize: 28 }}>
+              
+              {/* Título */}
+              <h1 style={{ margin: '0 0 16px', color: '#1a1a2e', fontSize: 28, fontWeight: 700 }}>
                 {avisoSeleccionado.titulo}
               </h1>
+              
+              {/* Fecha */}
               <p style={{ color: '#999', fontSize: 14, marginBottom: 24 }}>
                 📅 {new Date(avisoSeleccionado.fecha).toLocaleDateString('es-CO', { 
                   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
                 })}
               </p>
-              {/* Contenido HTML renderizado */}
+              
+              {/* Contenido renderizado como HTML */}
               <div 
                 style={{ 
                   lineHeight: 1.8, 
@@ -822,78 +839,104 @@ function App() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {avisos.map(aviso => (
-                <article 
-                  key={aviso.id}
-                  onClick={() => setAvisoSeleccionado(aviso)}
-                  style={{
-                    backgroundColor: 'white',
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    display: 'flex',
-                    flexDirection: aviso.imagen ? 'row' : 'column'
-                  }}
-                  onMouseOver={e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
-                  }}
-                  onMouseOut={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
-                  }}
-                >
-                  {aviso.imagen && (
-                    <div style={{ 
-                      width: 200, 
-                      minHeight: 150,
-                      flexShrink: 0,
-                      backgroundImage: `url(${aviso.imagen})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    }} />
-                  )}
-                  <div style={{ padding: 20, flex: 1 }}>
-                    <div style={{ 
-                      display: 'inline-block',
-                      backgroundColor: aviso.tipo === 'urgente' ? '#ffebee' : 
-                                     aviso.tipo === 'noticia' ? '#e3f2fd' : '#e8f5e9',
-                      color: aviso.tipo === 'urgente' ? '#c62828' : 
-                             aviso.tipo === 'noticia' ? '#1976d2' : '#388e3c',
-                      padding: '3px 10px',
-                      borderRadius: 20,
-                      fontSize: 11,
-                      fontWeight: 'bold',
-                      marginBottom: 10
-                    }}>
-                      {aviso.tipo === 'urgente' ? '🔔 URGENTE' : 
-                       aviso.tipo === 'noticia' ? '📰 NOTICIA' : '📢 AVISO'}
+              {avisos.map(aviso => {
+                const tipoInfo = getTipoInfo(aviso.tipo);
+                const esNoticia = aviso.tipo === 'noticia';
+                
+                return (
+                  <article 
+                    key={aviso.id}
+                    onClick={() => {
+                      if (esNoticia) {
+                        // Si es noticia, abrir el link en nueva pestaña
+                        window.open(aviso.contenido, '_blank');
+                      } else {
+                        // Si es aviso/evento, mostrar contenido completo
+                        setAvisoSeleccionado(aviso);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: 'white',
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      display: 'flex',
+                      flexDirection: aviso.imagen ? 'row' : 'column'
+                    }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+                    }}
+                  >
+                    {aviso.imagen && (
+                      <div style={{ 
+                        width: 200, 
+                        minHeight: 150,
+                        flexShrink: 0,
+                        backgroundImage: `url(${aviso.imagen})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }} />
+                    )}
+                    <div style={{ padding: 20, flex: 1 }}>
+                      <div style={{ 
+                        display: 'inline-block',
+                        backgroundColor: tipoInfo.bg,
+                        color: tipoInfo.color,
+                        padding: '3px 10px',
+                        borderRadius: 20,
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        marginBottom: 10
+                      }}>
+                        {tipoInfo.label}
+                      </div>
+                      <h4 style={{ margin: '0 0 8px', color: '#333', fontSize: 18 }}>
+                        {aviso.titulo}
+                      </h4>
+                      
+                      {/* Para noticias mostrar indicador de link externo */}
+                      {esNoticia ? (
+                        <p style={{ 
+                          margin: '0 0 12px', 
+                          color: '#1976d2', 
+                          fontSize: 14,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}>
+                          🔗 Click para ver la noticia completa
+                        </p>
+                      ) : (
+                        <p style={{ 
+                          margin: '0 0 12px', 
+                          color: '#666', 
+                          fontSize: 14,
+                          lineHeight: 1.5,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {aviso.resumen || aviso.contenido?.replace(/<[^>]*>/g, '').substring(0, 150) + '...'}
+                        </p>
+                      )}
+                      
+                      <p style={{ margin: 0, color: '#999', fontSize: 12 }}>
+                        📅 {new Date(aviso.fecha).toLocaleDateString('es-CO', { 
+                          day: 'numeric', month: 'short', year: 'numeric' 
+                        })}
+                      </p>
                     </div>
-                    <h4 style={{ margin: '0 0 8px', color: '#333', fontSize: 18 }}>
-                      {aviso.titulo}
-                    </h4>
-                    <p style={{ 
-                      margin: '0 0 12px', 
-                      color: '#666', 
-                      fontSize: 14,
-                      lineHeight: 1.5,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}>
-                      {aviso.resumen || aviso.contenido?.replace(/<[^>]*>/g, '').substring(0, 150) + '...'}
-                    </p>
-                    <p style={{ margin: 0, color: '#999', fontSize: 12 }}>
-                      📅 {new Date(aviso.fecha).toLocaleDateString('es-CO', { 
-                        day: 'numeric', month: 'short', year: 'numeric' 
-                      })}
-                    </p>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
         </div>
@@ -997,8 +1040,26 @@ function App() {
       return horas;
     };
 
+    // Obtener método de liquidación
+    const getMetodoLiquidacion = (nomina) => {
+      if (!nomina) return null;
+      // Buscar en horas_totales o detalle_horas_completo
+      let datos = nomina.horas_totales || nomina.detalle_horas_completo;
+      if (typeof datos === 'string') {
+        try {
+          datos = JSON.parse(datos);
+        } catch {
+          return null;
+        }
+      }
+      return datos?.metodoLiquidacion || null;
+    };
+
     const horasTotales = nominaSeleccionada ? getHorasTotales(nominaSeleccionada) : null;
     const rangoQuincena = nominaSeleccionada ? getRangoQuincena(nominaSeleccionada.periodo) : null;
+    const metodoLiquidacion = nominaSeleccionada ? getMetodoLiquidacion(nominaSeleccionada) : null;
+    // Método 2 = sin_recargos = no mostrar horas extras
+    const esMetodo2 = metodoLiquidacion === 'sin_recargos';
 
     return (
       <div>
@@ -1139,7 +1200,7 @@ function App() {
               {horasTotales && (
                 <div style={{ marginBottom: 12 }}>
                   <h4 style={{ color: '#1565c0', borderBottom: '1px solid #1565c0', paddingBottom: 4, margin: '0 0 8px', fontSize: 12 }}>
-                    ⏰ HORAS TRABAJADAS
+                    ⏰ HORAS TRABAJADAS {esMetodo2 && <span style={{ fontSize: 10, color: '#666', fontWeight: 'normal' }}>(Método sin recargos)</span>}
                   </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, fontSize: 11 }}>
                     {(horasTotales.hNorm > 0 || horasTotales.horasNormales > 0) && (
@@ -1157,17 +1218,18 @@ function App() {
                         <strong>Festivas</strong><br/>{horasTotales.hFest || horasTotales.horasFestivas || 0}h
                       </div>
                     )}
-                    {(horasTotales.hExDia > 0 || horasTotales.horasExtrasDia > 0) && (
+                    {/* Horas extras SOLO si NO es método 2 */}
+                    {!esMetodo2 && (horasTotales.hExDia > 0 || horasTotales.horasExtrasDia > 0) && (
                       <div style={{ padding: 6, backgroundColor: '#fff3e0', borderRadius: 4, textAlign: 'center' }}>
                         <strong>Extra Diurna</strong><br/>{horasTotales.hExDia || horasTotales.horasExtrasDia || 0}h
                       </div>
                     )}
-                    {(horasTotales.hExNoc > 0 || horasTotales.horasExtrasNoc > 0) && (
+                    {!esMetodo2 && (horasTotales.hExNoc > 0 || horasTotales.horasExtrasNoc > 0) && (
                       <div style={{ padding: 6, backgroundColor: '#ede7f6', borderRadius: 4, textAlign: 'center' }}>
                         <strong>Extra Nocturna</strong><br/>{horasTotales.hExNoc || horasTotales.horasExtrasNoc || 0}h
                       </div>
                     )}
-                    {(horasTotales.hExFest > 0 || horasTotales.horasExtrasFest > 0) && (
+                    {!esMetodo2 && (horasTotales.hExFest > 0 || horasTotales.horasExtrasFest > 0) && (
                       <div style={{ padding: 6, backgroundColor: '#ffebee', borderRadius: 4, textAlign: 'center' }}>
                         <strong>Extra Festiva</strong><br/>{horasTotales.hExFest || horasTotales.horasExtrasFest || 0}h
                       </div>
@@ -1195,7 +1257,8 @@ function App() {
                           <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.auxtransporte || nominaSeleccionada.auxtransp)}</td>
                         </tr>
                       )}
-                      {(nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor) > 0 && (
+                      {/* Horas Extras SOLO si NO es método 2 */}
+                      {!esMetodo2 && (nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor) > 0 && (
                         <tr>
                           <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Horas Extras</td>
                           <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.valorextras || nominaSeleccionada.hexvalor)}</td>
@@ -2422,6 +2485,13 @@ function App() {
     const [epsActual, setEpsActual] = useState('');
     const [epsNueva, setEpsNueva] = useState('');
     const [observaciones, setObservaciones] = useState('');
+    
+    // Campos para Incapacidad/Permiso
+    const [numeroDias, setNumeroDias] = useState('');
+    const [fechaInicialIncapacidad, setFechaInicialIncapacidad] = useState('');
+    const [esAccidenteLaboral, setEsAccidenteLaboral] = useState(false);
+    const [archivoIncapacidad, setArchivoIncapacidad] = useState(null);
+    const [subiendoArchivoIncapacidad, setSubiendoArchivoIncapacidad] = useState(false);
 
     // Cargar solicitudes cuando se cambia a la pestaña estado
     useEffect(() => {
@@ -2434,6 +2504,7 @@ function App() {
     }, [pestanaActiva]);
 
     const tiposSolicitud = [
+      { id: 'incapacidad_permiso', nombre: 'Incapacidad/Permiso', icono: '🏥' },
       { id: 'permiso', nombre: 'Permiso', icono: '🙋' },
       { id: 'vacaciones', nombre: 'Vacaciones', icono: '🏖️' },
       { id: 'adelanto_nomina', nombre: 'Adelanto de Nómina', icono: '💰' },
@@ -2482,10 +2553,31 @@ function App() {
       setEnviando(true);
       
       try {
+        // Validación especial para incapacidad/permiso
+        if (tipoSolicitud === 'incapacidad_permiso') {
+          if (!numeroDias || !fechaInicialIncapacidad) {
+            alert('⚠️ Por favor complete todos los campos obligatorios');
+            setEnviando(false);
+            return;
+          }
+          if (!archivoIncapacidad) {
+            alert('⚠️ Por favor adjunte el documento de incapacidad (Historia clínica + Incapacidad)');
+            setEnviando(false);
+            return;
+          }
+        }
+        
         // Construir descripción completa según tipo
         let descripcionCompleta = descripcion;
+        let archivosParaGuardar = archivosAdjuntos;
         
-        if (tipoSolicitud === 'adelanto_nomina') {
+        if (tipoSolicitud === 'incapacidad_permiso') {
+          descripcionCompleta = `🏥 INCAPACIDAD/PERMISO\n📅 Número de días: ${numeroDias}\n📆 Fecha inicial: ${fechaInicialIncapacidad}\n⚠️ Accidente laboral: ${esAccidenteLaboral ? 'SÍ' : 'NO'}\n\n${descripcion}`;
+          // Agregar archivo de incapacidad a los adjuntos
+          if (archivoIncapacidad) {
+            archivosParaGuardar = [...archivosAdjuntos, archivoIncapacidad];
+          }
+        } else if (tipoSolicitud === 'adelanto_nomina') {
           descripcionCompleta = `💰 Valor solicitado: $${valorAdelanto}\n📅 Propuesta de pago: ${propuestaPago}\n\n${descripcion}`;
         } else if (tipoSolicitud === 'cambio_eps') {
           descripcionCompleta = `🏥 EPS Actual: ${epsActual}\n🏥 EPS Nueva: ${epsNueva}\n\n${descripcion}`;
@@ -2501,12 +2593,12 @@ function App() {
             empleado_nombre: empleado?.nombre || usuario.nombre,
             tipo: tipoSolicitud,
             descripcion: descripcionCompleta,
-            fecha_inicio: fechaInicio || null,
+            fecha_inicio: tipoSolicitud === 'incapacidad_permiso' ? fechaInicialIncapacidad : (fechaInicio || null),
             fecha_fin: fechaFin || null,
             estado: 'recibido',
             fecha_creacion: new Date().toISOString(),
             empresa_id: empleado?.empresa_id || usuario.empresa_id,
-            archivos_adjuntos: JSON.stringify(archivosAdjuntos)
+            archivos_adjuntos: JSON.stringify(archivosParaGuardar)
           })
           .select('id')
           .single();
@@ -2524,6 +2616,11 @@ function App() {
           setEpsActual('');
           setEpsNueva('');
           setObservaciones('');
+          // Limpiar campos de incapacidad
+          setNumeroDias('');
+          setFechaInicialIncapacidad('');
+          setEsAccidenteLaboral(false);
+          setArchivoIncapacidad(null);
           await cargarSolicitudes(empleado?.documento || usuario.usuario);
         } else {
           console.error('Error:', error);
@@ -2708,6 +2805,142 @@ function App() {
                           boxSizing: 'border-box'
                         }}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos para Incapacidad/Permiso */}
+                {tipoSolicitud === 'incapacidad_permiso' && (
+                  <div style={{ marginBottom: 20, padding: 16, backgroundColor: '#ffebee', borderRadius: 12 }}>
+                    <h4 style={{ margin: '0 0 16px', color: '#c62828' }}>🏥 Información de Incapacidad/Permiso</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                          Número de días *
+                        </label>
+                        <input
+                          type="number"
+                          value={numeroDias}
+                          onChange={(e) => setNumeroDias(e.target.value)}
+                          required
+                          min="1"
+                          placeholder="Ej: 3"
+                          style={{
+                            width: '100%',
+                            padding: 12,
+                            border: '1px solid #ddd',
+                            borderRadius: 8,
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                          Fecha inicial *
+                        </label>
+                        <input
+                          type="date"
+                          value={fechaInicialIncapacidad}
+                          onChange={(e) => setFechaInicialIncapacidad(e.target.value)}
+                          required
+                          style={{
+                            width: '100%',
+                            padding: 12,
+                            border: '1px solid #ddd',
+                            borderRadius: 8,
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={esAccidenteLaboral}
+                          onChange={(e) => setEsAccidenteLaboral(e.target.checked)}
+                          style={{ width: 20, height: 20 }}
+                        />
+                        <span style={{ fontWeight: 'bold' }}>¿Es accidente laboral?</span>
+                      </label>
+                    </div>
+                    
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
+                        📎 Adjuntar documento (Historia clínica + Incapacidad en 1 documento) *
+                      </label>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setSubiendoArchivoIncapacidad(true);
+                            try {
+                              const nombreArchivo = `incapacidad_${Date.now()}_${file.name}`;
+                              const { error } = await supabase.storage
+                                .from('solicitudes-archivos')
+                                .upload(nombreArchivo, file);
+                              
+                              if (error) throw error;
+                              
+                              const { data: urlData } = supabase.storage
+                                .from('solicitudes-archivos')
+                                .getPublicUrl(nombreArchivo);
+                              
+                              setArchivoIncapacidad({
+                                nombre: file.name,
+                                url: urlData.publicUrl,
+                                tipo: file.type
+                              });
+                            } catch (error) {
+                              alert('Error al subir archivo: ' + error.message);
+                            } finally {
+                              setSubiendoArchivoIncapacidad(false);
+                            }
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: 12,
+                          border: '2px dashed #c62828',
+                          borderRadius: 8,
+                          backgroundColor: '#fff',
+                          cursor: 'pointer'
+                        }}
+                        disabled={subiendoArchivoIncapacidad}
+                      />
+                      {subiendoArchivoIncapacidad && (
+                        <p style={{ color: '#c62828', marginTop: 8 }}>⏳ Subiendo archivo...</p>
+                      )}
+                      {archivoIncapacidad && (
+                        <div style={{ 
+                          marginTop: 12, 
+                          padding: 12, 
+                          backgroundColor: '#e8f5e9', 
+                          borderRadius: 8,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span>✅ {archivoIncapacidad.nombre}</span>
+                          <button
+                            type="button"
+                            onClick={() => setArchivoIncapacidad(null)}
+                            style={{
+                              background: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 4,
+                              padding: '4px 8px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
