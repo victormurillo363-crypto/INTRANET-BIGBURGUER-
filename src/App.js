@@ -2868,11 +2868,11 @@ function App() {
                     
                     <div>
                       <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
-                        📎 Adjuntar documento (Historia clínica + Incapacidad en 1 documento) *
+                        📎 Adjuntar documento (Historia clínica + Incapacidad en 1 solo documento legible y en formato PDF) *
                       </label>
                       <input
                         type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf"
                         onChange={async (e) => {
                           const file = e.target.files[0];
                           if (file) {
@@ -3094,7 +3094,8 @@ function App() {
                   />
                 </div>
 
-                {/* Sección de archivos adjuntos */}
+                {/* Sección de archivos adjuntos - NO mostrar para incapacidad (ya tiene su propio campo) */}
+                {tipoSolicitud !== 'incapacidad_permiso' && (
                 <div style={{ marginBottom: 20 }}>
                   <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
                     📎 Archivos Adjuntos (opcional)
@@ -3171,6 +3172,7 @@ function App() {
                     </div>
                   )}
                 </div>
+                )}
                 
                 <button
                   type="submit"
