@@ -2878,15 +2878,15 @@ function App() {
                           if (file) {
                             setSubiendoArchivoIncapacidad(true);
                             try {
-                              const nombreArchivo = `incapacidad_${Date.now()}_${file.name}`;
+                              const nombreArchivo = `incapacidades/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
                               const { error } = await supabase.storage
-                                .from('solicitudes-archivos')
+                                .from('empleados-docs')
                                 .upload(nombreArchivo, file);
                               
                               if (error) throw error;
                               
                               const { data: urlData } = supabase.storage
-                                .from('solicitudes-archivos')
+                                .from('empleados-docs')
                                 .getPublicUrl(nombreArchivo);
                               
                               setArchivoIncapacidad({
