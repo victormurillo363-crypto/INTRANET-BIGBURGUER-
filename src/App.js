@@ -28,6 +28,13 @@ function App() {
   const [clave, setClave] = useState('');
   const [errorLogin, setErrorLogin] = useState('');
   
+  // Estados para cambio de contraseña obligatorio (primer inicio de sesión)
+  const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false);
+  const [nuevaPassword, setNuevaPassword] = useState('');
+  const [confirmarPassword, setConfirmarPassword] = useState('');
+  const [errorCambioPassword, setErrorCambioPassword] = useState('');
+  const [usuarioTemporal, setUsuarioTemporal] = useState(null);
+  
   // Estados para datos
   const [nominas, setNominas] = useState([]);
   const [horarios, setHorarios] = useState([]);
@@ -495,7 +502,7 @@ function App() {
         return;
       }
       
-      // Usuario encontrado - guardar sesión
+      // Usuario encontrado - preparar datos
       const datosUsuario = {
         id: usuarioData.id,
         nombre: usuarioData.nombre,
@@ -505,6 +512,18 @@ function App() {
         empresa_id: usuarioData.empresa_id
       };
       
+      // Verificar si es primer inicio de sesión (campo primer_login = true o clave igual a documento)
+      const esPrimerLogin = usuarioData.primer_login === true || usuarioData.clave === usuarioData.usuario;
+      
+      if (esPrimerLogin) {
+        // Mostrar modal de cambio de contraseña obligatorio
+        setUsuarioTemporal(datosUsuario);
+        setMostrarCambioPassword(true);
+        setCargando(false);
+        return;
+      }
+      
+      // Login normal - guardar sesión
       localStorage.setItem('intranet_usuario', JSON.stringify(datosUsuario));
       localStorage.setItem('intranet_heartbeat', Date.now().toString());
       setSesionExpirada(false);
@@ -518,6 +537,82 @@ function App() {
     setCargando(false);
   };
 
+  // Función para cambiar contraseña en primer inicio de sesión
+  const guardarNuevaPassword = async () => {
+    setErrorCambioPassword('');
+    
+    // Validaciones
+    if (!nuevaPassword || !confirmarPassword) {
+      setErrorCambioPassword('Por favor completa ambos campos');
+      return;
+    }
+    
+    if (nuevaPassword.length < 6) {
+      setErrorCambioPassword('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    
+    if (nuevaPassword !== confirmarPassword) {
+      setErrorCambioPassword('Las contraseñas no coinciden');
+      return;
+    }
+    
+    if (nuevaPassword === usuarioTemporal?.usuario) {
+      setErrorCambioPassword('La nueva contraseña no puede ser igual al documento');
+      return;
+    }
+    
+    setCargando(true);
+    try {
+      // Actualizar contraseña en la tabla usuarios
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ 
+          clave: nuevaPassword,
+          primer_login: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', usuarioTemporal.id);
+      
+      if (error) {
+        console.error('Error actualizando contraseña:', error);
+        setErrorCambioPassword('Error al guardar la contraseña. Intenta de nuevo.');
+        setCargando(false);
+        return;
+      }
+      
+      // Contraseña actualizada exitosamente - completar login
+      localStorage.setItem('intranet_usuario', JSON.stringify(usuarioTemporal));
+      localStorage.setItem('intranet_heartbeat', Date.now().toString());
+      setSesionExpirada(false);
+      setUsuario(usuarioTemporal);
+      await cargarDatosEmpleado(usuarioTemporal);
+      
+      // Limpiar estados del cambio de contraseña
+      setMostrarCambioPassword(false);
+      setUsuarioTemporal(null);
+      setNuevaPassword('');
+      setConfirmarPassword('');
+      
+      alert('✅ Contraseña actualizada exitosamente. ¡Bienvenido!');
+      
+    } catch (error) {
+      console.error('Error en cambio de contraseña:', error);
+      setErrorCambioPassword('Error al procesar el cambio de contraseña');
+    }
+    setCargando(false);
+  };
+  
+  // Cancelar cambio de contraseña (vuelve al login)
+  const cancelarCambioPassword = () => {
+    setMostrarCambioPassword(false);
+    setUsuarioTemporal(null);
+    setNuevaPassword('');
+    setConfirmarPassword('');
+    setErrorCambioPassword('');
+    setClave('');
+  };
+
   const cerrarSesion = () => {
     localStorage.removeItem('intranet_usuario');
     localStorage.removeItem('intranet_heartbeat');
@@ -528,6 +623,151 @@ function App() {
     setSolicitudes([]);
     setSeccionActiva('inicio');
   };
+
+  // ============================================
+  // MODAL DE CAMBIO DE CONTRASEÑA (PRIMER INICIO DE SESIÓN)
+  // ============================================
+  if (mostrarCambioPassword) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #b71c1c 0%, #c62828 50%, #d32f2f 100%)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: 20,
+          padding: 40,
+          width: '100%',
+          maxWidth: 450,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: 25 }}>
+            <div style={{ fontSize: 60, marginBottom: 10 }}>🔐</div>
+            <h2 style={{ color: '#b71c1c', margin: 0, fontSize: 22 }}>
+              Cambio de Contraseña Obligatorio
+            </h2>
+            <p style={{ color: '#666', marginTop: 10, fontSize: 14 }}>
+              Es tu primer inicio de sesión. Por seguridad, debes crear una nueva contraseña.
+            </p>
+          </div>
+          
+          <div style={{
+            padding: 15,
+            backgroundColor: '#e3f2fd',
+            borderRadius: 10,
+            marginBottom: 20,
+            border: '1px solid #90caf9'
+          }}>
+            <p style={{ margin: 0, color: '#1565c0', fontSize: 13 }}>
+              👤 Usuario: <strong>{usuarioTemporal?.usuario}</strong><br/>
+              📛 Nombre: <strong>{usuarioTemporal?.nombre}</strong>
+            </p>
+          </div>
+          
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', marginBottom: 6, color: '#333', fontWeight: 500 }}>
+              Nueva Contraseña
+            </label>
+            <input
+              type="password"
+              value={nuevaPassword}
+              onChange={(e) => setNuevaPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '2px solid #e0e0e0',
+                borderRadius: 10,
+                fontSize: 16,
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+          
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', marginBottom: 6, color: '#333', fontWeight: 500 }}>
+              Confirmar Contraseña
+            </label>
+            <input
+              type="password"
+              value={confirmarPassword}
+              onChange={(e) => setConfirmarPassword(e.target.value)}
+              placeholder="Repite la contraseña"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '2px solid #e0e0e0',
+                borderRadius: 10,
+                fontSize: 16,
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+          
+          {errorCambioPassword && (
+            <div style={{
+              padding: 12,
+              backgroundColor: '#ffebee',
+              color: '#c62828',
+              borderRadius: 8,
+              marginBottom: 16,
+              textAlign: 'center'
+            }}>
+              ⚠️ {errorCambioPassword}
+            </div>
+          )}
+          
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              onClick={cancelarCambioPassword}
+              disabled={cargando}
+              style={{
+                flex: 1,
+                padding: '14px',
+                backgroundColor: '#757575',
+                color: 'white',
+                border: 'none',
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 'bold',
+                cursor: cargando ? 'not-allowed' : 'pointer'
+              }}
+            >
+              ← Cancelar
+            </button>
+            <button
+              onClick={guardarNuevaPassword}
+              disabled={cargando}
+              style={{
+                flex: 2,
+                padding: '14px',
+                backgroundColor: '#4caf50',
+                color: 'white',
+                border: 'none',
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 'bold',
+                cursor: cargando ? 'wait' : 'pointer',
+                opacity: cargando ? 0.7 : 1
+              }}
+            >
+              {cargando ? '⏳ Guardando...' : '✅ Guardar Nueva Contraseña'}
+            </button>
+          </div>
+          
+          <div style={{ textAlign: 'center', marginTop: 20, color: '#999', fontSize: 11 }}>
+            Esta contraseña servirá para ingresar tanto a la Intranet como al Sistema Central
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ============================================
   // PANTALLA DE LOGIN
