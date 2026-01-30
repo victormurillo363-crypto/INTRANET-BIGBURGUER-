@@ -2081,9 +2081,9 @@ function App() {
         if (typeof firmaData === 'string') {
           try {
             const parsed = JSON.parse(firmaData);
-            // Puede ser { imagen: "data:..." } o directamente la cadena base64
+            // Puede ser { firma: "data:..." } o { imagen: "data:..." }
             if (parsed && typeof parsed === 'object') {
-              return parsed.imagen || parsed.image || parsed.data || null;
+              return parsed.firma || parsed.imagen || parsed.image || parsed.data || null;
             }
             // Si el parseo devuelve un string, verificar si es base64
             if (typeof parsed === 'string' && parsed.startsWith('data:image')) {
@@ -2096,7 +2096,7 @@ function App() {
         
         // Si es un objeto directamente
         if (typeof firmaData === 'object' && firmaData !== null) {
-          return firmaData.imagen || firmaData.image || firmaData.data || null;
+          return firmaData.firma || firmaData.imagen || firmaData.image || firmaData.data || null;
         }
         
         return null;
