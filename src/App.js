@@ -2044,7 +2044,7 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [empleado?.id]);
     
-    // Función para generar e imprimir el contrato como PDF - IGUAL AL SISTEMA ORIGINAL
+    // Función para generar e imprimir el contrato como PDF - CON FIRMAS DIGITALES
     const imprimirContrato = () => {
       if (!contrato?.datos) return;
       
@@ -2061,6 +2061,38 @@ function App() {
       
       // URL del logo usando la URL base de la aplicación (funciona en desarrollo y producción)
       const LOGO_URL = window.location.origin + "/logo-bigburguer.jpg";
+      
+      // Parsear las firmas si el contrato está firmado
+      let firmaEmpleadorImg = null;
+      let firmaTrabajadorImg = null;
+      const estaFirmado = contrato.firmado === true;
+      const tipoFirmaEmpleador = contrato.tipo_firma_empleador || 'digital';
+      
+      if (estaFirmado) {
+        // Parsear firma del empleador
+        if (contrato.firma_empleador) {
+          try {
+            const firmaEmpleadorData = typeof contrato.firma_empleador === 'string' 
+              ? JSON.parse(contrato.firma_empleador) 
+              : contrato.firma_empleador;
+            firmaEmpleadorImg = firmaEmpleadorData.imagen || firmaEmpleadorData;
+          } catch (e) {
+            firmaEmpleadorImg = contrato.firma_empleador;
+          }
+        }
+        
+        // Parsear firma del trabajador
+        if (contrato.firma_trabajador) {
+          try {
+            const firmaTrabajadorData = typeof contrato.firma_trabajador === 'string' 
+              ? JSON.parse(contrato.firma_trabajador) 
+              : contrato.firma_trabajador;
+            firmaTrabajadorImg = firmaTrabajadorData.imagen || firmaTrabajadorData;
+          } catch (e) {
+            firmaTrabajadorImg = contrato.firma_trabajador;
+          }
+        }
+      }
 
       win.document.write(`
         <html>
@@ -2168,10 +2200,51 @@ function App() {
             <p style="margin-top: 25px;">Para constancia se firma en dos ejemplares del mismo tenor y valor, ante testigos en la ciudad y fecha que se indican a continuación:</p>
             <p style="margin: 15px 0;"><strong>CIUDAD:</strong> ${datos.ciudad || ''} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>FECHA:</strong> ${datos.fechaFirma || ''}</p>
             
+            ${estaFirmado && (firmaEmpleadorImg || firmaTrabajadorImg) ? `
+            <!-- CONTRATO FIRMADO DIGITALMENTE -->
+            <div style="margin-top: 40px; padding: 15px; border: 2px solid #4caf50; border-radius: 8px; background-color: #e8f5e9; text-align: center;">
+              <strong style="color: #2e7d32;">✓ DOCUMENTO FIRMADO DIGITALMENTE</strong>
+              <p style="margin: 5px 0 0 0; font-size: 11px; color: #666;">
+                Fecha de firma: ${contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO') : 'No disponible'}
+              </p>
+            </div>
+            
+            <div class="firma-container">
+              <div class="firma-box">
+                ${firmaEmpleadorImg ? `
+                  <div style="height: 80px; display: flex; align-items: flex-end; justify-content: center;">
+                    <img src="${firmaEmpleadorImg}" style="max-height: 75px; max-width: 180px; ${tipoFirmaEmpleador === 'electronica' ? 'filter: grayscale(100%); opacity: 0.7;' : ''}" />
+                  </div>
+                ` : '<div class="espacio-firma"></div>'}
+                <div class="linea-firma"></div>
+                <div class="nombre-firma">EMPLEADOR</div>
+                <div class="nombre-firma">${datos.representanteLegal || ''}</div>
+                <div class="cedula-firma">${datos.tipoDocRepresentante || "Cédula de Ciudadanía"} ${datos.cedulaRepresentante || ''}</div>
+                <div class="cedula-firma">Representante Legal</div>
+                <div style="font-size: 9px; color: ${tipoFirmaEmpleador === 'electronica' ? '#666' : '#4caf50'}; margin-top: 4px;">
+                  ${tipoFirmaEmpleador === 'electronica' ? '(Firma Digital Pre-registrada)' : '(Firma Digital)'}
+                </div>
+              </div>
+              <div class="firma-box">
+                ${firmaTrabajadorImg ? `
+                  <div style="height: 80px; display: flex; align-items: flex-end; justify-content: center;">
+                    <img src="${firmaTrabajadorImg}" style="max-height: 75px; max-width: 180px;" />
+                  </div>
+                ` : '<div class="espacio-firma"></div>'}
+                <div class="linea-firma"></div>
+                <div class="nombre-firma">${trabajadorNombre}</div>
+                <div class="nombre-firma">${datos.nombreTrabajador || ''}</div>
+                <div class="cedula-firma">${datos.tipoDocTrabajador || "Cédula de Ciudadanía"} ${datos.cedulaTrabajador || ''}</div>
+                ${firmaTrabajadorImg ? '<div style="font-size: 9px; color: #4caf50; margin-top: 4px;">(Firma Digital)</div>' : ''}
+              </div>
+            </div>
+            ` : `
+            <!-- CONTRATO SIN FIRMAR -->
             <div class="firma-container">
               <div class="firma-box"><div class="espacio-firma"></div><div class="linea-firma"></div><div class="nombre-firma">EMPLEADOR</div><div class="nombre-firma">${datos.representanteLegal || ''}</div><div class="cedula-firma">${datos.tipoDocRepresentante || "Cédula de Ciudadanía"} ${datos.cedulaRepresentante || ''}</div><div class="cedula-firma">Representante Legal</div></div>
               <div class="firma-box"><div class="espacio-firma"></div><div class="linea-firma"></div><div class="nombre-firma">${trabajadorNombre}</div><div class="nombre-firma">${datos.nombreTrabajador || ''}</div><div class="cedula-firma">${datos.tipoDocTrabajador || "Cédula de Ciudadanía"} ${datos.cedulaTrabajador || ''}</div></div>
             </div>
+            `}
 
             <script>
               // Esperar a que la imagen cargue antes de imprimir
@@ -2219,15 +2292,30 @@ function App() {
                     {contrato.datos?.tipoContrato || contrato.tipocontrato || 'Término Indefinido'}
                   </p>
                 </div>
-                <div style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#e8f5e9',
-                  color: '#2e7d32',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontWeight: 'bold'
-                }}>
-                  ✓ Vigente
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#e8f5e9',
+                    color: '#2e7d32',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 'bold'
+                  }}>
+                    ✓ Vigente
+                  </div>
+                  {contrato.firmado && (
+                    <div style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#e3f2fd',
+                      color: '#1565c0',
+                      borderRadius: 20,
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      textAlign: 'center'
+                    }}>
+                      ✍️ Firmado digitalmente
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -2272,7 +2360,7 @@ function App() {
                   onClick={imprimirContrato}
                   style={{
                     padding: '14px 30px',
-                    backgroundColor: '#c62828',
+                    backgroundColor: contrato.firmado ? '#2e7d32' : '#c62828',
                     color: 'white',
                     border: 'none',
                     borderRadius: 8,
@@ -2284,20 +2372,31 @@ function App() {
                     gap: 8
                   }}
                 >
-                  📄 Ver / Imprimir Contrato (PDF)
+                  {contrato.firmado ? '✍️ Ver Contrato Firmado (PDF)' : '📄 Ver / Imprimir Contrato (PDF)'}
                 </button>
                 <p style={{ color: '#666', fontSize: 12, marginTop: 10 }}>
-                  Se abrirá una ventana con tu contrato listo para imprimir o guardar como PDF
+                  {contrato.firmado 
+                    ? 'Tu contrato está firmado digitalmente y cuenta con validez legal'
+                    : 'Se abrirá una ventana con tu contrato listo para imprimir o guardar como PDF'}
                 </p>
               </div>
             </div>
             
-            {/* Fecha de generación */}
-            <p style={{ textAlign: 'center', color: '#999', fontSize: 12 }}>
-              Contrato generado el {new Date(contrato.fechageneracion || contrato.created_at).toLocaleDateString('es-CO', {
-                day: 'numeric', month: 'long', year: 'numeric'
-              })}
-            </p>
+            {/* Fecha de generación y firma */}
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ color: '#999', fontSize: 12, margin: 0 }}>
+                Contrato generado el {new Date(contrato.fechageneracion || contrato.created_at).toLocaleDateString('es-CO', {
+                  day: 'numeric', month: 'long', year: 'numeric'
+                })}
+              </p>
+              {contrato.firmado && contrato.fecha_firma && (
+                <p style={{ color: '#2e7d32', fontSize: 12, margin: '4px 0 0 0', fontWeight: 'bold' }}>
+                  ✓ Firmado el {new Date(contrato.fecha_firma).toLocaleDateString('es-CO', {
+                    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })}
+                </p>
+              )}
+            </div>
           </div>
         ) : (
           <div style={{
