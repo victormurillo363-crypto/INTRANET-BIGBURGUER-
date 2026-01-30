@@ -2065,29 +2065,31 @@ function App() {
       // Parsear las firmas si el contrato está firmado
       let firmaEmpleadorImg = null;
       let firmaTrabajadorImg = null;
+      let fechaFirmaEmpleador = null;
+      let fechaFirmaTrabajador = null;
+      let fechaRegistroEmpleador = null;
       const estaFirmado = contrato.firmado === true;
       const tipoFirmaEmpleador = contrato.tipo_firma_empleador || 'digital';
       
-      // Función auxiliar para extraer la imagen de la firma
-      const extraerImagenFirma = (firmaData) => {
-        if (!firmaData) return null;
+      // Función auxiliar para extraer datos completos de la firma
+      const extraerDatosFirma = (firmaData) => {
+        if (!firmaData) return { imagen: null, fechaFirma: null, fechaRegistro: null };
         
         // Si ya es una URL de imagen base64
         if (typeof firmaData === 'string' && firmaData.startsWith('data:image')) {
-          return firmaData;
+          return { imagen: firmaData, fechaFirma: null, fechaRegistro: null };
         }
         
         // Si es un string JSON, intentar parsearlo
         if (typeof firmaData === 'string') {
           try {
             const parsed = JSON.parse(firmaData);
-            // Puede ser { firma: "data:..." } o { imagen: "data:..." }
             if (parsed && typeof parsed === 'object') {
-              return parsed.firma || parsed.imagen || parsed.image || parsed.data || null;
-            }
-            // Si el parseo devuelve un string, verificar si es base64
-            if (typeof parsed === 'string' && parsed.startsWith('data:image')) {
-              return parsed;
+              return {
+                imagen: parsed.firma || parsed.imagen || parsed.image || parsed.data || null,
+                fechaFirma: parsed.fechaFirma || parsed.timestamp || null,
+                fechaRegistro: parsed.fechaRegistro || null
+              };
             }
           } catch (e) {
             console.log('Error parseando firma:', e);
@@ -2096,10 +2098,14 @@ function App() {
         
         // Si es un objeto directamente
         if (typeof firmaData === 'object' && firmaData !== null) {
-          return firmaData.firma || firmaData.imagen || firmaData.image || firmaData.data || null;
+          return {
+            imagen: firmaData.firma || firmaData.imagen || firmaData.image || firmaData.data || null,
+            fechaFirma: firmaData.fechaFirma || firmaData.timestamp || null,
+            fechaRegistro: firmaData.fechaRegistro || null
+          };
         }
         
-        return null;
+        return { imagen: null, fechaFirma: null, fechaRegistro: null };
       };
       
       if (estaFirmado) {
@@ -2109,12 +2115,21 @@ function App() {
           tipo: typeof contrato.firma_empleador
         });
         
-        firmaEmpleadorImg = extraerImagenFirma(contrato.firma_empleador);
-        firmaTrabajadorImg = extraerImagenFirma(contrato.firma_trabajador);
+        const datosEmpleador = extraerDatosFirma(contrato.firma_empleador);
+        const datosTrabajador = extraerDatosFirma(contrato.firma_trabajador);
+        
+        firmaEmpleadorImg = datosEmpleador.imagen;
+        fechaFirmaEmpleador = datosEmpleador.fechaFirma;
+        fechaRegistroEmpleador = datosEmpleador.fechaRegistro;
+        
+        firmaTrabajadorImg = datosTrabajador.imagen;
+        fechaFirmaTrabajador = datosTrabajador.fechaFirma;
         
         console.log('Firmas extraídas:', {
-          empleador: firmaEmpleadorImg ? 'OK (tiene imagen)' : 'NULL',
-          trabajador: firmaTrabajadorImg ? 'OK (tiene imagen)' : 'NULL'
+          empleador: firmaEmpleadorImg ? 'OK' : 'NULL',
+          fechaEmpleador: fechaFirmaEmpleador,
+          trabajador: firmaTrabajadorImg ? 'OK' : 'NULL',
+          fechaTrabajador: fechaFirmaTrabajador
         });
       }
 
@@ -2244,9 +2259,12 @@ function App() {
                     <div style="font-weight: 700; font-size: 10px;">EMPLEADOR</div>
                     <div style="font-size: 10px;">${datos.representanteLegal || ''}</div>
                     <div style="font-size: 9px; color: #666;">${datos.tipoDocRepresentante || "C.C."} ${datos.cedulaRepresentante || ''}</div>
-                    <div style="font-size: 8px; color: ${tipoFirmaEmpleador === 'electronica' ? '#6b7280' : '#16a34a'}; margin-top: 4px;">
-                      📅 ${contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A'}
-                    </div>
+                    ${tipoFirmaEmpleador === 'electronica' ? `
+                      <div style="font-size: 8px; color: #6b7280; margin-top: 4px;">📋 Registrada: ${fechaRegistroEmpleador ? new Date(fechaRegistroEmpleador).toLocaleDateString('es-CO') : 'N/A'}</div>
+                      <div style="font-size: 8px; color: #9ca3af;">📅 Aplicada: ${fechaFirmaEmpleador ? new Date(fechaFirmaEmpleador).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : (contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A')}</div>
+                    ` : `
+                      <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">📅 ${fechaFirmaEmpleador ? new Date(fechaFirmaEmpleador).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : (contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A')}</div>
+                    `}
                   </div>
                 </div>
                 
@@ -2260,9 +2278,7 @@ function App() {
                     <div style="font-weight: 700; font-size: 10px;">${trabajadorNombre}</div>
                     <div style="font-size: 10px;">${datos.nombreTrabajador || ''}</div>
                     <div style="font-size: 9px; color: #666;">${datos.tipoDocTrabajador || "C.C."} ${datos.cedulaTrabajador || ''}</div>
-                    <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">
-                      📅 ${contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A'}
-                    </div>
+                    <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">📅 ${fechaFirmaTrabajador ? new Date(fechaFirmaTrabajador).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : (contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A')}</div>
                   </div>
                 </div>
               </div>
