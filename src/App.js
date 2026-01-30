@@ -2087,7 +2087,7 @@ function App() {
             if (parsed && typeof parsed === 'object') {
               return {
                 imagen: parsed.firma || parsed.imagen || parsed.image || parsed.data || null,
-                fechaFirma: parsed.fechaFirma || parsed.timestamp || null,
+                fechaFirma: parsed.fechaFirma || parsed.timestamp || parsed.fecha || null,
                 fechaRegistro: parsed.fechaRegistro || null
               };
             }
@@ -2100,12 +2100,39 @@ function App() {
         if (typeof firmaData === 'object' && firmaData !== null) {
           return {
             imagen: firmaData.firma || firmaData.imagen || firmaData.image || firmaData.data || null,
-            fechaFirma: firmaData.fechaFirma || firmaData.timestamp || null,
+            fechaFirma: firmaData.fechaFirma || firmaData.timestamp || firmaData.fecha || null,
             fechaRegistro: firmaData.fechaRegistro || null
           };
         }
         
         return { imagen: null, fechaFirma: null, fechaRegistro: null };
+      };
+      
+      // Función para formatear fecha de forma segura
+      const formatearFecha = (fecha) => {
+        if (!fecha) return 'N/A';
+        
+        // Si ya es un string formateado (contiene "de" o "a." o similar)
+        if (typeof fecha === 'string' && (fecha.includes(' de ') || fecha.includes('a.m.') || fecha.includes('p.m.') || fecha.includes('a. m.') || fecha.includes('p. m.'))) {
+          return fecha;
+        }
+        
+        // Intentar parsear como fecha
+        try {
+          const fechaObj = new Date(fecha);
+          if (isNaN(fechaObj.getTime())) {
+            return typeof fecha === 'string' ? fecha : 'N/A';
+          }
+          return fechaObj.toLocaleString('es-CO', {
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit'
+          });
+        } catch (e) {
+          return typeof fecha === 'string' ? fecha : 'N/A';
+        }
       };
       
       if (estaFirmado) {
@@ -2260,10 +2287,10 @@ function App() {
                     <div style="font-size: 10px;">${datos.representanteLegal || ''}</div>
                     <div style="font-size: 9px; color: #666;">${datos.tipoDocRepresentante || "C.C."} ${datos.cedulaRepresentante || ''}</div>
                     ${tipoFirmaEmpleador === 'electronica' ? `
-                      <div style="font-size: 8px; color: #6b7280; margin-top: 4px;">📋 Registrada: ${fechaRegistroEmpleador ? new Date(fechaRegistroEmpleador).toLocaleDateString('es-CO') : 'N/A'}</div>
-                      <div style="font-size: 8px; color: #9ca3af;">📅 Aplicada: ${fechaFirmaEmpleador ? new Date(fechaFirmaEmpleador).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : (contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A')}</div>
+                      <div style="font-size: 8px; color: #6b7280; margin-top: 4px;">📋 Registrada: ${formatearFecha(fechaRegistroEmpleador)}</div>
+                      <div style="font-size: 8px; color: #9ca3af;">📅 Aplicada: ${formatearFecha(fechaFirmaEmpleador || contrato.fecha_firma)}</div>
                     ` : `
-                      <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">📅 ${fechaFirmaEmpleador ? new Date(fechaFirmaEmpleador).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : (contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A')}</div>
+                      <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">📅 ${formatearFecha(fechaFirmaEmpleador || contrato.fecha_firma)}</div>
                     `}
                   </div>
                 </div>
@@ -2278,7 +2305,7 @@ function App() {
                     <div style="font-weight: 700; font-size: 10px;">${trabajadorNombre}</div>
                     <div style="font-size: 10px;">${datos.nombreTrabajador || ''}</div>
                     <div style="font-size: 9px; color: #666;">${datos.tipoDocTrabajador || "C.C."} ${datos.cedulaTrabajador || ''}</div>
-                    <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">📅 ${fechaFirmaTrabajador ? new Date(fechaFirmaTrabajador).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : (contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A')}</div>
+                    <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">📅 ${formatearFecha(fechaFirmaTrabajador || contrato.fecha_firma)}</div>
                   </div>
                 </div>
               </div>
