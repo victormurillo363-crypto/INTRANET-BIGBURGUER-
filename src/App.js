@@ -1809,22 +1809,22 @@ function App() {
             <title>Certificación Laboral</title>
             <meta charset="UTF-8">
             <style>
-              @page { size: letter; margin: 2.5cm 2.5cm 3cm 2.5cm; }
+              @page { size: letter; margin: 1.5cm 2cm 1.5cm 2cm; }
               body { 
                 font-family: 'Times New Roman', Times, serif; 
-                font-size: 12pt;
-                line-height: 1.8;
+                font-size: 11pt;
+                line-height: 1.6;
                 color: #000;
                 max-width: 21cm;
                 margin: 0 auto;
-                padding: 2cm;
+                padding: 1cm 1.5cm;
                 position: relative;
               }
               .logo-header {
                 position: absolute;
                 top: 0;
                 right: 0;
-                width: 80px;
+                width: 70px;
               }
               .logo-header img {
                 width: 100%;
@@ -1832,34 +1832,45 @@ function App() {
               }
               .encabezado {
                 text-align: center;
-                margin-bottom: 30px;
-                padding-top: 90px;
+                margin-bottom: 15px;
+                padding-top: 70px;
               }
-              .empresa { font-size: 14pt; font-weight: bold; margin-bottom: 5px; }
-              .sede-info { font-size: 10pt; color: #666; }
+              .empresa { font-size: 13pt; font-weight: bold; margin-bottom: 3px; }
+              .sede-info { font-size: 9pt; color: #666; }
               .titulo {
-                font-size: 13pt;
+                font-size: 12pt;
                 font-weight: bold;
                 text-align: center;
-                margin: 30px 0;
+                margin: 20px 0;
                 text-decoration: underline;
               }
-              .fecha { text-align: left; margin: 30px 0 20px 0; }
-              .contenido { text-align: justify; margin: 20px 0; }
+              .fecha { text-align: left; margin: 15px 0; font-size: 11pt; }
+              .contenido { text-align: justify; margin: 15px 0; }
+              .contenido p { margin: 10px 0; }
+              .firma-container {
+                margin-top: 25px;
+                text-align: center;
+              }
               .firma {
-                margin-top: 60px;
+                display: inline-block;
                 text-align: left;
               }
               .linea-firma {
                 border-top: 1px solid #000;
                 width: 250px;
-                margin: 0 0 10px 0;
+                margin: 0 0 8px 0;
               }
-              .nombre-firma { font-weight: bold; margin: 0; }
-              .cargo-firma { margin: 0; font-size: 11pt; }
+              .nombre-firma { font-weight: bold; margin: 0; font-size: 11pt; }
+              .cargo-firma { margin: 0; font-size: 10pt; }
+              .contacto-footer {
+                margin-top: 15px;
+                text-align: center;
+                font-size: 9pt;
+                color: #000;
+              }
               @media print {
-                body { padding: 0; }
-                .logo-header { position: fixed; top: 0; right: 0; width: 70px; }
+                body { padding: 0.5cm 1cm; }
+                .logo-header { position: fixed; top: 0; right: 0; width: 60px; }
               }
             </style>
           </head>
@@ -1880,64 +1891,62 @@ function App() {
             <div class="contenido">
               <p>${genero === "Femenino" ? "La suscrita" : "El suscrito"} <strong>${representante}</strong>, en calidad de Representante Legal de <strong>${razonSocial}</strong>, identificad${genero === "Femenino" ? "a" : "o"} con NIT <strong>${nitSede}</strong>,</p>
               
-              <p style="text-align: center; margin: 25px 0;"><strong>CERTIFICA QUE:</strong></p>
+              <p style="text-align: center; margin: 15px 0;"><strong>CERTIFICA QUE:</strong></p>
               
               <p>El (la) Señor(a) <strong>${nombreEmpleado.toUpperCase()}</strong>, identificado(a) con <strong>Cédula de Ciudadanía ${documento}</strong>, labora en nuestra empresa${fechaIngreso ? ` desde el <strong>${new Date(fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>` : ''}, con un contrato <strong>${tipoContrato}</strong>, desempeñando el cargo de <strong>${cargo.toUpperCase()}</strong>${salarioBase > 0 ? `, devengando un salario básico mensual de <strong>${formatearMoneda(salarioBase)}</strong> más auxilio de transporte de <strong>${formatearMoneda(AUXILIO_TRANSPORTE)}</strong>, para un total devengado de <strong>${formatearMoneda(salarioTotal)}</strong> (${numeroALetras(salarioTotal)} PESOS M/CTE)` : ''}.</p>
               
               <p>La presente certificación se expide a solicitud del interesado para los fines que estime conveniente.</p>
             </div>
 
+            <div class="firma-container">
             ${conFirma && firmaRepresentante ? `
-            <!-- FIRMA CON IMAGEN ELECTRÓNICA -->
-            <div class="firma" style="margin-top: 30px;">
+              <!-- FIRMA CON IMAGEN ELECTRÓNICA -->
               <div style="
-                padding: 10px;
+                padding: 8px;
                 border: 1px solid #6b7280;
                 border-radius: 8px;
                 background: linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%);
-                max-width: 280px;
+                max-width: 260px;
                 display: inline-block;
               ">
-                <div style="text-align: center; margin-bottom: 6px;">
+                <div style="text-align: center; margin-bottom: 4px;">
                   <span style="
                     display: inline-block;
                     background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
                     color: white;
-                    padding: 2px 8px;
+                    padding: 2px 6px;
                     border-radius: 10px;
-                    font-size: 7px;
+                    font-size: 6px;
                     font-weight: 700;
                   ">
                     ✓ FIRMA ELECTRÓNICA
                   </span>
                 </div>
-                <div style="text-align: center; padding: 6px; background: white; border-radius: 6px; border: 1px solid #d1d5db; margin-bottom: 6px;">
-                  <img src="${firmaRepresentante.firma}" alt="Firma Representante" style="max-width: 150px; max-height: 50px; filter: grayscale(100%);"/>
+                <div style="text-align: center; padding: 4px; background: white; border-radius: 4px; border: 1px solid #d1d5db; margin-bottom: 4px;">
+                  <img src="${firmaRepresentante.firma}" alt="Firma Representante" style="max-width: 130px; max-height: 40px; filter: grayscale(100%);"/>
                 </div>
                 <div style="text-align: center;">
-                  <div style="font-weight: 700; font-size: 9px; color: #000;">${representante}</div>
-                  <div style="font-size: 8px; color: #374151;">Representante Legal</div>
-                  <div style="font-size: 7px; color: #374151;">${tipoDocRepresentante} ${cedulaRepresentante}</div>
-                  <div style="font-size: 7px; color: #374151;">NIT ${nitSede}</div>
+                  <div style="font-weight: 700; font-size: 8px; color: #000;">${representante}</div>
+                  <div style="font-size: 7px; color: #374151;">Representante Legal</div>
+                  <div style="font-size: 6px; color: #374151;">${tipoDocRepresentante} ${cedulaRepresentante}</div>
+                  <div style="font-size: 6px; color: #374151;">NIT ${nitSede}</div>
                 </div>
               </div>
-            </div>
-            <div style="margin-top: 20px; font-size: 10pt; color: #000; text-align: center;">
-              <strong>Dirección:</strong> ${direccionSede} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Teléfono:</strong> ${telefonoSede}
-            </div>
             ` : `
-            <!-- FIRMA ESTÁTICA (sin imagen) -->
-            <div class="firma">
-              <div class="linea-firma"></div>
-              <div class="nombre-firma">${representante}</div>
-              <div class="cargo-firma">Representante Legal</div>
-              <div class="cargo-firma">${tipoDocRepresentante} ${cedulaRepresentante}</div>
-              <div class="cargo-firma">NIT ${nitSede}</div>
+              <!-- FIRMA ESTÁTICA (sin imagen) -->
+              <div class="firma">
+                <div class="linea-firma"></div>
+                <div class="nombre-firma">${representante}</div>
+                <div class="cargo-firma">Representante Legal</div>
+                <div class="cargo-firma">${tipoDocRepresentante} ${cedulaRepresentante}</div>
+                <div class="cargo-firma">NIT ${nitSede}</div>
+              </div>
+            `}
             </div>
-            <div style="margin-top: 20px; font-size: 10pt; color: #000; text-align: center;">
+            
+            <div class="contacto-footer">
               <strong>Dirección:</strong> ${direccionSede} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Teléfono:</strong> ${telefonoSede}
             </div>
-            `}
           </body>
         </html>
       `);
