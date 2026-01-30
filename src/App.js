@@ -2236,8 +2236,8 @@ function App() {
             <div class="firma-container">
               <div class="firma-box">
                 ${firmaEmpleadorImg ? `
-                  <div style="height: 80px; display: flex; align-items: flex-end; justify-content: center;">
-                    <img src="${firmaEmpleadorImg}" style="max-height: 75px; max-width: 180px; ${tipoFirmaEmpleador === 'electronica' ? 'filter: grayscale(100%); opacity: 0.7;' : ''}" />
+                  <div style="height: 100px; display: flex; align-items: flex-end; justify-content: center;">
+                    <img src="${firmaEmpleadorImg}" style="max-height: 95px; max-width: 220px; ${tipoFirmaEmpleador === 'electronica' ? 'filter: grayscale(100%); opacity: 0.7;' : ''}" />
                   </div>
                 ` : '<div class="espacio-firma"></div>'}
                 <div class="linea-firma"></div>
@@ -2251,8 +2251,8 @@ function App() {
               </div>
               <div class="firma-box">
                 ${firmaTrabajadorImg ? `
-                  <div style="height: 80px; display: flex; align-items: flex-end; justify-content: center;">
-                    <img src="${firmaTrabajadorImg}" style="max-height: 75px; max-width: 180px;" />
+                  <div style="height: 100px; display: flex; align-items: flex-end; justify-content: center;">
+                    <img src="${firmaTrabajadorImg}" style="max-height: 95px; max-width: 220px;" />
                   </div>
                 ` : '<div class="espacio-firma"></div>'}
                 <div class="linea-firma"></div>
