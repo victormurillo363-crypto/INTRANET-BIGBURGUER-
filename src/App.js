@@ -1795,7 +1795,6 @@ function App() {
       const genero = datosSede?.generoRepresentante || 'Masculino';
       const direccionSede = datosSede?.direccion || '';
       const telefonoSede = datosSede?.telefono || '';
-      const sede = empleado?.sede || '';
       const tipoDocRepresentante = datosSede?.tipoDocRepresentante || 'Cédula de Ciudadanía';
       const cedulaRepresentante = datosSede?.cedulaRepresentante || '';
 
