@@ -1826,26 +1826,13 @@ function App() {
                 position: absolute;
                 top: 0;
                 right: 0;
-                width: 100px;
+                width: 120px;
                 height: auto;
               }
               .logo-header img {
                 width: 100%;
                 height: auto;
                 border-radius: 8px;
-              }
-              .encabezado {
-                text-align: center;
-                margin-bottom: 40px;
-                font-weight: bold;
-                padding-top: 20px;
-              }
-              .info-empresa {
-                text-align: center;
-              }
-              .empresa {
-                font-size: 14pt;
-                margin-bottom: 5px;
               }
               .titulo {
                 font-size: 13pt;
@@ -1882,9 +1869,6 @@ function App() {
                 body {
                   padding: 0;
                 }
-                .encabezado {
-                  display: none;
-                }
                 @page {
                   margin-top: 2.5cm;
                   margin-bottom: 3cm;
@@ -1893,7 +1877,7 @@ function App() {
                   position: fixed;
                   top: 0;
                   right: 0;
-                  width: 90px;
+                  width: 110px;
                 }
                 .fecha {
                   text-align: left;
@@ -1904,12 +1888,6 @@ function App() {
           <body>
             <div class="logo-header">
               <img src="${LOGO_URL}" alt="Big Burguer Logo" />
-            </div>
-            
-            <div class="encabezado">
-              <div class="info-empresa">
-                <div class="empresa">${razonSocial}</div>
-              </div>
             </div>
 
             <div class="fecha">Pereira, ${fechaTexto}</div>
@@ -1928,7 +1906,7 @@ function App() {
 
             ${conFirma && firmaRepresentante ? `
             <!-- FIRMA CON IMAGEN ELECTRÓNICA -->
-            <div class="firma" style="margin-top: 30px;">
+            <div class="firma" style="margin-top: 40px;">
               <div style="
                 padding: 10px;
                 border: 1px solid #6b7280;
@@ -1961,7 +1939,7 @@ function App() {
                 </div>
               </div>
             </div>
-            <div style="margin-top: 20px; font-size: 12pt; color: #000; text-align: center;">
+            <div style="margin-top: 25px; font-size: 13pt; color: #000; text-align: center;">
               <strong>Dirección:</strong> ${direccionSede} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Teléfono:</strong> ${telefonoSede}
             </div>
             ` : `
@@ -1973,7 +1951,7 @@ function App() {
               <div class="cargo-firma">${tipoDocRepresentante} ${cedulaRepresentante}</div>
               <div class="cargo-firma">NIT ${nitSede}</div>
             </div>
-            <div style="margin-top: 20px; font-size: 12pt; color: #000; text-align: center;">
+            <div style="margin-top: 25px; font-size: 13pt; color: #000; text-align: center;">
               <strong>Dirección:</strong> ${direccionSede} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Teléfono:</strong> ${telefonoSede}
             </div>
             `}
