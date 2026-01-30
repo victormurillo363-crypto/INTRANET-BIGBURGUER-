@@ -1847,12 +1847,8 @@ function App() {
               .fecha { text-align: left; margin: 15px 0; font-size: 11pt; }
               .contenido { text-align: justify; margin: 15px 0; }
               .contenido p { margin: 10px 0; }
-              .firma-container {
-                margin-top: 25px;
-                text-align: center;
-              }
               .firma {
-                display: inline-block;
+                margin-top: 25px;
                 text-align: left;
               }
               .linea-firma {
@@ -1863,9 +1859,9 @@ function App() {
               .nombre-firma { font-weight: bold; margin: 0; font-size: 11pt; }
               .cargo-firma { margin: 0; font-size: 10pt; }
               .contacto-footer {
-                margin-top: 15px;
+                margin-top: 20px;
                 text-align: center;
-                font-size: 9pt;
+                font-size: 12pt;
                 color: #000;
               }
               @media print {
@@ -1898,7 +1894,7 @@ function App() {
               <p>La presente certificación se expide a solicitud del interesado para los fines que estime conveniente.</p>
             </div>
 
-            <div class="firma-container">
+            <div class="firma">
             ${conFirma && firmaRepresentante ? `
               <!-- FIRMA CON IMAGEN ELECTRÓNICA -->
               <div style="
@@ -1934,13 +1930,11 @@ function App() {
               </div>
             ` : `
               <!-- FIRMA ESTÁTICA (sin imagen) -->
-              <div class="firma">
-                <div class="linea-firma"></div>
-                <div class="nombre-firma">${representante}</div>
-                <div class="cargo-firma">Representante Legal</div>
-                <div class="cargo-firma">${tipoDocRepresentante} ${cedulaRepresentante}</div>
-                <div class="cargo-firma">NIT ${nitSede}</div>
-              </div>
+              <div class="linea-firma"></div>
+              <div class="nombre-firma">${representante}</div>
+              <div class="cargo-firma">Representante Legal</div>
+              <div class="cargo-firma">${tipoDocRepresentante} ${cedulaRepresentante}</div>
+              <div class="cargo-firma">NIT ${nitSede}</div>
             `}
             </div>
             
