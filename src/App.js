@@ -1652,14 +1652,35 @@ function App() {
               .maybeSingle();
             
             if (data) {
+              // Parsear firma electrónica con validación robusta
+              let firmaElectronica = null;
+              if (data.firma_electronica) {
+                try {
+                  const parsed = typeof data.firma_electronica === 'string'
+                    ? JSON.parse(data.firma_electronica)
+                    : data.firma_electronica;
+                  // Solo aceptar si tiene una imagen base64 válida
+                  if (parsed && parsed.firma && typeof parsed.firma === 'string' && parsed.firma.startsWith('data:image')) {
+                    firmaElectronica = parsed;
+                  } else {
+                    console.warn(`⚠️ Sede "${data.nombre}": firma_electronica sin formato válido`);
+                  }
+                } catch (e) {
+                  console.warn('Error parseando firma_electronica:', e);
+                }
+              }
+              
               setDatosSede({
                 nombre: data.nombre || '',
                 nit: data.nit || '',
                 razonSocial: data.razonsocial || data.razonSocial || 'BIG BURGUER S.A.S',
                 representanteLegal: data.representantelegal || data.representanteLegal || '',
+                tipoDocRepresentante: data.tipodocrepresentante || data.tipoDocRepresentante || 'Cédula de Ciudadanía',
+                cedulaRepresentante: data.cedularepresentante || data.cedulaRepresentante || '',
                 generoRepresentante: data.generorepresentante || data.generoRepresentante || 'Masculino',
                 direccion: data.direccion || '',
-                telefono: data.telefono || ''
+                telefono: data.telefono || '',
+                firmaElectronica: firmaElectronica
               });
             }
           }
@@ -1733,11 +1754,21 @@ function App() {
       return new Intl.NumberFormat('es-CO').format(num);
     };
 
-    const imprimirCarta = () => {
+    const imprimirCarta = (conFirma = true) => {
       const ventanaImpresion = window.open('', '_blank');
       const fechaActual = new Date();
       const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
       const fechaTexto = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} de ${fechaActual.getFullYear()}`;
+      
+      // Obtener firma electrónica validada
+      const firmaRepresentante = (() => {
+        const firma = datosSede?.firmaElectronica;
+        if (!firma) return null;
+        if (typeof firma === 'object' && firma.firma && firma.firma.startsWith('data:image')) {
+          return firma;
+        }
+        return null;
+      })();
       
       // Nombre: combinar nombres y apellidos o usar campo nombre
       const nombreEmpleado = empleado?.nombres && empleado?.apellidos 
@@ -1765,6 +1796,8 @@ function App() {
       const direccionSede = datosSede?.direccion || '';
       const telefonoSede = datosSede?.telefono || '';
       const sede = empleado?.sede || '';
+      const tipoDocRepresentante = datosSede?.tipoDocRepresentante || 'Cédula de Ciudadanía';
+      const cedulaRepresentante = datosSede?.cedulaRepresentante || '';
 
       // URL del logo usando la URL base de la aplicación (funciona en desarrollo y producción)
       const LOGO_URL = window.location.origin + "/logo-bigburguer.jpg";
@@ -1854,14 +1887,57 @@ function App() {
               <p>La presente certificación se expide a solicitud del interesado para los fines que estime conveniente.</p>
             </div>
 
+            ${conFirma && firmaRepresentante ? `
+            <!-- FIRMA CON IMAGEN ELECTRÓNICA -->
+            <div class="firma" style="margin-top: 30px;">
+              <div style="
+                padding: 10px;
+                border: 1px solid #6b7280;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%);
+                max-width: 280px;
+                display: inline-block;
+              ">
+                <div style="text-align: center; margin-bottom: 6px;">
+                  <span style="
+                    display: inline-block;
+                    background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
+                    color: white;
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                    font-size: 7px;
+                    font-weight: 700;
+                  ">
+                    ✓ FIRMA ELECTRÓNICA
+                  </span>
+                </div>
+                <div style="text-align: center; padding: 6px; background: white; border-radius: 6px; border: 1px solid #d1d5db; margin-bottom: 6px;">
+                  <img src="${firmaRepresentante.firma}" alt="Firma Representante" style="max-width: 150px; max-height: 50px; filter: grayscale(100%);"/>
+                </div>
+                <div style="text-align: center;">
+                  <div style="font-weight: 700; font-size: 9px; color: #000;">${representante}</div>
+                  <div style="font-size: 8px; color: #374151;">Representante Legal</div>
+                  <div style="font-size: 7px; color: #374151;">${tipoDocRepresentante} ${cedulaRepresentante}</div>
+                  <div style="font-size: 7px; color: #374151;">NIT ${nitSede}</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 20px; font-size: 10pt; color: #000; text-align: center;">
+              <strong>Dirección:</strong> ${direccionSede} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Teléfono:</strong> ${telefonoSede}
+            </div>
+            ` : `
+            <!-- FIRMA ESTÁTICA (sin imagen) -->
             <div class="firma">
               <div class="linea-firma"></div>
               <div class="nombre-firma">${representante}</div>
               <div class="cargo-firma">Representante Legal</div>
+              <div class="cargo-firma">${tipoDocRepresentante} ${cedulaRepresentante}</div>
               <div class="cargo-firma">NIT ${nitSede}</div>
-              ${direccionSede ? `<div class="cargo-firma">Dirección: ${direccionSede}</div>` : ''}
-              ${telefonoSede ? `<div class="cargo-firma">Teléfono: ${telefonoSede}</div>` : ''}
             </div>
+            <div style="margin-top: 20px; font-size: 10pt; color: #000; text-align: center;">
+              <strong>Dirección:</strong> ${direccionSede} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Teléfono:</strong> ${telefonoSede}
+            </div>
+            `}
           </body>
         </html>
       `);
@@ -1971,34 +2047,108 @@ function App() {
             </p>
           </div>
           
-          {/* Firma */}
+          {/* Firma - Vista previa */}
           <div style={{ marginTop: 50 }}>
-            <div style={{ borderTop: '1px solid #333', width: 220, paddingTop: 8 }}>
-              <p style={{ margin: 0, fontWeight: 'bold' }}>{datosSede?.representanteLegal || 'REPRESENTANTE LEGAL'}</p>
-              <p style={{ margin: '2px 0', fontSize: 11 }}>Representante Legal</p>
-              <p style={{ margin: '2px 0', fontSize: 11 }}>NIT {datosSede?.nit || ''}</p>
-              {datosSede?.direccion && <p style={{ margin: '2px 0', fontSize: 11 }}>Dir: {datosSede.direccion}</p>}
-              {datosSede?.telefono && <p style={{ margin: '2px 0', fontSize: 11 }}>Tel: {datosSede.telefono}</p>}
+            {datosSede?.firmaElectronica ? (
+              <div style={{
+                padding: 10,
+                border: '1px solid #6b7280',
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%)',
+                maxWidth: 260,
+                display: 'inline-block'
+              }}>
+                <div style={{ textAlign: 'center', marginBottom: 6 }}>
+                  <span style={{
+                    display: 'inline-block',
+                    background: 'linear-gradient(135deg, #4b5563 0%, #6b7280 100%)',
+                    color: 'white',
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    fontSize: 8,
+                    fontWeight: 700
+                  }}>
+                    ✓ FIRMA ELECTRÓNICA
+                  </span>
+                </div>
+                <div style={{ textAlign: 'center', padding: 6, background: 'white', borderRadius: 6, border: '1px solid #d1d5db', marginBottom: 6 }}>
+                  <img src={datosSede.firmaElectronica.firma} alt="Firma" style={{ maxWidth: 120, maxHeight: 40, filter: 'grayscale(100%)' }} />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: 10, color: '#000' }}>{datosSede?.representanteLegal || 'REPRESENTANTE LEGAL'}</p>
+                  <p style={{ margin: '2px 0', fontSize: 9, color: '#374151' }}>Representante Legal</p>
+                  <p style={{ margin: '2px 0', fontSize: 8, color: '#374151' }}>{datosSede?.tipoDocRepresentante || 'C.C.'} {datosSede?.cedulaRepresentante || ''}</p>
+                  <p style={{ margin: '2px 0', fontSize: 8, color: '#374151' }}>NIT {datosSede?.nit || ''}</p>
+                </div>
+              </div>
+            ) : (
+              <div style={{ borderTop: '1px solid #333', width: 220, paddingTop: 8 }}>
+                <p style={{ margin: 0, fontWeight: 'bold' }}>{datosSede?.representanteLegal || 'REPRESENTANTE LEGAL'}</p>
+                <p style={{ margin: '2px 0', fontSize: 11 }}>Representante Legal</p>
+                <p style={{ margin: '2px 0', fontSize: 11 }}>NIT {datosSede?.nit || ''}</p>
+              </div>
+            )}
+            {/* Info de contacto centrada */}
+            <div style={{ marginTop: 16, fontSize: 11, color: '#666', textAlign: 'center' }}>
+              {datosSede?.direccion && <span><strong>Dir:</strong> {datosSede.direccion}</span>}
+              {datosSede?.direccion && datosSede?.telefono && <span> &nbsp;|&nbsp; </span>}
+              {datosSede?.telefono && <span><strong>Tel:</strong> {datosSede.telefono}</span>}
             </div>
           </div>
         </div>
         
-        {/* Botón imprimir */}
-        <div style={{ marginTop: 24, textAlign: 'center' }}>
+        {/* Indicador de firma */}
+        {datosSede?.firmaElectronica && (
+          <div style={{ 
+            marginTop: 16, 
+            padding: '8px 16px', 
+            background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+            border: '1px solid #22c55e',
+            borderRadius: 8,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+            color: '#166534'
+          }}>
+            ✓ Esta sede tiene firma electrónica registrada
+          </div>
+        )}
+        
+        {/* Botones imprimir */}
+        <div style={{ marginTop: 24, textAlign: 'center', display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {datosSede?.firmaElectronica && (
+            <button
+              onClick={() => imprimirCarta(true)}
+              style={{
+                padding: '14px 24px',
+                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: 10,
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: 'bold',
+                boxShadow: '0 2px 8px rgba(34, 197, 94, 0.3)'
+              }}
+            >
+              ✍️ Imprimir con Firma
+            </button>
+          )}
           <button
-            onClick={imprimirCarta}
+            onClick={() => imprimirCarta(false)}
             style={{
-              padding: '14px 32px',
+              padding: '14px 24px',
               backgroundColor: '#c62828',
               color: 'white',
               border: 'none',
               borderRadius: 10,
               cursor: 'pointer',
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: 'bold'
             }}
           >
-            🖨️ Imprimir Certificación
+            🖨️ Imprimir sin Firma
           </button>
           <p style={{ marginTop: 12, fontSize: 12, color: '#666' }}>
             La certificación se generará con los datos actuales y podrás imprimirla o guardarla como PDF.
