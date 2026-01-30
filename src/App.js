@@ -2287,8 +2287,8 @@ function App() {
                     <div style="font-size: 10px;">${datos.representanteLegal || ''}</div>
                     <div style="font-size: 9px; color: #666;">${datos.tipoDocRepresentante || "C.C."} ${datos.cedulaRepresentante || ''}</div>
                     ${tipoFirmaEmpleador === 'electronica' ? `
-                      <div style="font-size: 8px; color: #6b7280; margin-top: 4px;">📋 Registrada: ${formatearFecha(fechaRegistroEmpleador)}</div>
-                      <div style="font-size: 8px; color: #9ca3af;">📅 Aplicada: ${formatearFecha(fechaFirmaEmpleador || contrato.fecha_firma)}</div>
+                      <div style="font-size: 8px; color: #6b7280; margin-top: 4px;">📋 Registrada: ${formatearFecha(fechaRegistroEmpleador || fechaFirmaEmpleador)}</div>
+                      <div style="font-size: 8px; color: #9ca3af;">📅 Aplicada: ${formatearFecha(fechaFirmaTrabajador || contrato.fecha_firma)}</div>
                     ` : `
                       <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">📅 ${formatearFecha(fechaFirmaEmpleador || contrato.fecha_firma)}</div>
                     `}
