@@ -2225,37 +2225,52 @@ function App() {
             <p style="margin: 15px 0;"><strong>CIUDAD:</strong> ${datos.ciudad || ''} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>FECHA:</strong> ${datos.fechaFirma || ''}</p>
             
             ${estaFirmado && (firmaEmpleadorImg || firmaTrabajadorImg) ? `
-            <!-- CONTRATO FIRMADO DIGITALMENTE -->
-            <div style="margin-top: 40px; padding: 15px; border: 2px solid #4caf50; border-radius: 8px; background-color: #e8f5e9; text-align: center;">
-              <strong style="color: #2e7d32;">✓ DOCUMENTO FIRMADO DIGITALMENTE</strong>
-              <p style="margin: 5px 0 0 0; font-size: 11px; color: #666;">
-                Fecha de firma: ${contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO') : 'No disponible'}
-              </p>
-            </div>
-            
-            <div class="firma-container">
-              <div class="firma-box">
-                ${firmaEmpleadorImg ? `
-                  <img src="${firmaEmpleadorImg}" style="max-height: 120px; max-width: 250px; margin-bottom: 5px; ${tipoFirmaEmpleador === 'electronica' ? 'filter: grayscale(100%); opacity: 0.7;' : ''}" />
-                ` : '<div class="espacio-firma"></div>'}
-                <div class="linea-firma"></div>
-                <div class="nombre-firma">EMPLEADOR</div>
-                <div class="nombre-firma">${datos.representanteLegal || ''}</div>
-                <div class="cedula-firma">${datos.tipoDocRepresentante || "Cédula de Ciudadanía"} ${datos.cedulaRepresentante || ''}</div>
-                <div class="cedula-firma">Representante Legal</div>
-                <div style="font-size: 9px; color: ${tipoFirmaEmpleador === 'electronica' ? '#666' : '#4caf50'}; margin-top: 4px;">
-                  ${tipoFirmaEmpleador === 'electronica' ? '(Firma Digital Pre-registrada)' : '(Firma Digital)'}
+            <!-- FIRMAS DIGITALES/ELECTRÓNICAS - MISMO DISEÑO QUE CORREGIR 2 -->
+            <div style="margin-top: 30px; padding: 15px; border: 2px solid ${tipoFirmaEmpleador === 'electronica' ? '#6b7280' : '#16a34a'}; border-radius: 12px; background: linear-gradient(135deg, ${tipoFirmaEmpleador === 'electronica' ? '#f9fafb 0%, #e5e7eb' : '#f0fdf4 0%, #dcfce7'} 100%);">
+              <div style="text-align: center; margin-bottom: 15px;">
+                <span style="display: inline-block; background: linear-gradient(135deg, ${tipoFirmaEmpleador === 'electronica' ? '#4b5563 0%, #6b7280' : '#16a34a 0%, #22c55e'} 100%); color: white; padding: 8px 20px; border-radius: 25px; font-size: 12px; font-weight: 700;">
+                  ✓ DOCUMENTO FIRMADO ${tipoFirmaEmpleador === 'electronica' ? 'CON FIRMA ELECTRÓNICA' : 'DIGITALMENTE'}
+                </span>
+              </div>
+              
+              <div style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap;">
+                <!-- Firma Empleador -->
+                <div style="text-align: center; padding: 15px; background: white; border-radius: 10px; border: 1px solid ${tipoFirmaEmpleador === 'electronica' ? '#d1d5db' : '#bbf7d0'}; min-width: 200px;">
+                  ${firmaEmpleadorImg ? `<img src="${firmaEmpleadorImg}" alt="Firma Empleador" style="max-width: 180px; max-height: 60px; margin-bottom: 8px; ${tipoFirmaEmpleador === 'electronica' ? 'filter: grayscale(100%);' : ''}"/>` : ''}
+                  <div style="border-top: 1px solid #1a1a2e; padding-top: 8px;">
+                    <div style="display: inline-block; background: ${tipoFirmaEmpleador === 'electronica' ? '#6b7280' : '#16a34a'}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 8px; font-weight: 600; margin-bottom: 4px;">
+                      ${tipoFirmaEmpleador === 'electronica' ? 'FIRMA ELECTRÓNICA' : 'FIRMA DIGITAL'}
+                    </div>
+                    <div style="font-weight: 700; font-size: 10px;">EMPLEADOR</div>
+                    <div style="font-size: 10px;">${datos.representanteLegal || ''}</div>
+                    <div style="font-size: 9px; color: #666;">${datos.tipoDocRepresentante || "C.C."} ${datos.cedulaRepresentante || ''}</div>
+                    <div style="font-size: 8px; color: ${tipoFirmaEmpleador === 'electronica' ? '#6b7280' : '#16a34a'}; margin-top: 4px;">
+                      📅 ${contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Firma Trabajador (siempre Digital en verde) -->
+                <div style="text-align: center; padding: 15px; background: white; border-radius: 10px; border: 1px solid #bbf7d0; min-width: 200px;">
+                  ${firmaTrabajadorImg ? `<img src="${firmaTrabajadorImg}" alt="Firma Trabajador" style="max-width: 180px; max-height: 60px; margin-bottom: 8px;"/>` : ''}
+                  <div style="border-top: 1px solid #1a1a2e; padding-top: 8px;">
+                    <div style="display: inline-block; background: #16a34a; color: white; padding: 2px 8px; border-radius: 10px; font-size: 8px; font-weight: 600; margin-bottom: 4px;">
+                      FIRMA DIGITAL
+                    </div>
+                    <div style="font-weight: 700; font-size: 10px;">${trabajadorNombre}</div>
+                    <div style="font-size: 10px;">${datos.nombreTrabajador || ''}</div>
+                    <div style="font-size: 9px; color: #666;">${datos.tipoDocTrabajador || "C.C."} ${datos.cedulaTrabajador || ''}</div>
+                    <div style="font-size: 8px; color: #16a34a; margin-top: 4px;">
+                      📅 ${contrato.fecha_firma ? new Date(contrato.fecha_firma).toLocaleString('es-CO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : 'N/A'}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="firma-box">
-                ${firmaTrabajadorImg ? `
-                  <img src="${firmaTrabajadorImg}" style="max-height: 120px; max-width: 250px; margin-bottom: 5px;" />
-                ` : '<div class="espacio-firma"></div>'}
-                <div class="linea-firma"></div>
-                <div class="nombre-firma">${trabajadorNombre}</div>
-                <div class="nombre-firma">${datos.nombreTrabajador || ''}</div>
-                <div class="cedula-firma">${datos.tipoDocTrabajador || "Cédula de Ciudadanía"} ${datos.cedulaTrabajador || ''}</div>
-                ${firmaTrabajadorImg ? '<div style="font-size: 9px; color: #4caf50; margin-top: 4px;">(Firma Digital)</div>' : ''}
+              
+              <div style="text-align: center; margin-top: 12px; font-size: 9px; color: ${tipoFirmaEmpleador === 'electronica' ? '#6b7280' : '#15803d'}; font-style: italic;">
+                ${tipoFirmaEmpleador === 'electronica' 
+                  ? 'Firma del empleador: electrónica pre-registrada | Firma del trabajador: digital' 
+                  : 'Este documento fue firmado digitalmente por ambas partes'}
               </div>
             </div>
             ` : `
