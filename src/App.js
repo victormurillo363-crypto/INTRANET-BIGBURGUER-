@@ -2237,8 +2237,7 @@ function App() {
               <div class="firma-box">
                 ${firmaEmpleadorImg ? `
                   <img src="${firmaEmpleadorImg}" style="max-height: 120px; max-width: 250px; margin-bottom: 5px; ${tipoFirmaEmpleador === 'electronica' ? 'filter: grayscale(100%); opacity: 0.7;' : ''}" />
-                ` : '<div class="espacio-firma"></div>'}
-                <div class="linea-firma"></div>
+                ` : '<div class="espacio-firma"></div><div class="linea-firma"></div>'}
                 <div class="nombre-firma">EMPLEADOR</div>
                 <div class="nombre-firma">${datos.representanteLegal || ''}</div>
                 <div class="cedula-firma">${datos.tipoDocRepresentante || "Cédula de Ciudadanía"} ${datos.cedulaRepresentante || ''}</div>
@@ -2250,8 +2249,7 @@ function App() {
               <div class="firma-box">
                 ${firmaTrabajadorImg ? `
                   <img src="${firmaTrabajadorImg}" style="max-height: 120px; max-width: 250px; margin-bottom: 5px;" />
-                ` : '<div class="espacio-firma"></div>'}
-                <div class="linea-firma"></div>
+                ` : '<div class="espacio-firma"></div><div class="linea-firma"></div>'}
                 <div class="nombre-firma">${trabajadorNombre}</div>
                 <div class="nombre-firma">${datos.nombreTrabajador || ''}</div>
                 <div class="cedula-firma">${datos.tipoDocTrabajador || "Cédula de Ciudadanía"} ${datos.cedulaTrabajador || ''}</div>
