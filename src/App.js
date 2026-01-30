@@ -2068,30 +2068,54 @@ function App() {
       const estaFirmado = contrato.firmado === true;
       const tipoFirmaEmpleador = contrato.tipo_firma_empleador || 'digital';
       
-      if (estaFirmado) {
-        // Parsear firma del empleador
-        if (contrato.firma_empleador) {
+      // Función auxiliar para extraer la imagen de la firma
+      const extraerImagenFirma = (firmaData) => {
+        if (!firmaData) return null;
+        
+        // Si ya es una URL de imagen base64
+        if (typeof firmaData === 'string' && firmaData.startsWith('data:image')) {
+          return firmaData;
+        }
+        
+        // Si es un string JSON, intentar parsearlo
+        if (typeof firmaData === 'string') {
           try {
-            const firmaEmpleadorData = typeof contrato.firma_empleador === 'string' 
-              ? JSON.parse(contrato.firma_empleador) 
-              : contrato.firma_empleador;
-            firmaEmpleadorImg = firmaEmpleadorData.imagen || firmaEmpleadorData;
+            const parsed = JSON.parse(firmaData);
+            // Puede ser { imagen: "data:..." } o directamente la cadena base64
+            if (parsed && typeof parsed === 'object') {
+              return parsed.imagen || parsed.image || parsed.data || null;
+            }
+            // Si el parseo devuelve un string, verificar si es base64
+            if (typeof parsed === 'string' && parsed.startsWith('data:image')) {
+              return parsed;
+            }
           } catch (e) {
-            firmaEmpleadorImg = contrato.firma_empleador;
+            console.log('Error parseando firma:', e);
           }
         }
         
-        // Parsear firma del trabajador
-        if (contrato.firma_trabajador) {
-          try {
-            const firmaTrabajadorData = typeof contrato.firma_trabajador === 'string' 
-              ? JSON.parse(contrato.firma_trabajador) 
-              : contrato.firma_trabajador;
-            firmaTrabajadorImg = firmaTrabajadorData.imagen || firmaTrabajadorData;
-          } catch (e) {
-            firmaTrabajadorImg = contrato.firma_trabajador;
-          }
+        // Si es un objeto directamente
+        if (typeof firmaData === 'object' && firmaData !== null) {
+          return firmaData.imagen || firmaData.image || firmaData.data || null;
         }
+        
+        return null;
+      };
+      
+      if (estaFirmado) {
+        console.log('Contrato firmado, datos de firmas:', {
+          firma_empleador: contrato.firma_empleador,
+          firma_trabajador: contrato.firma_trabajador,
+          tipo: typeof contrato.firma_empleador
+        });
+        
+        firmaEmpleadorImg = extraerImagenFirma(contrato.firma_empleador);
+        firmaTrabajadorImg = extraerImagenFirma(contrato.firma_trabajador);
+        
+        console.log('Firmas extraídas:', {
+          empleador: firmaEmpleadorImg ? 'OK (tiene imagen)' : 'NULL',
+          trabajador: firmaTrabajadorImg ? 'OK (tiene imagen)' : 'NULL'
+        });
       }
 
       win.document.write(`
