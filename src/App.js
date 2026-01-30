@@ -1836,7 +1836,6 @@ function App() {
                 padding-top: 70px;
               }
               .empresa { font-size: 13pt; font-weight: bold; margin-bottom: 3px; }
-              .sede-info { font-size: 9pt; color: #666; }
               .titulo {
                 font-size: 12pt;
                 font-weight: bold;
@@ -1877,7 +1876,6 @@ function App() {
             
             <div class="encabezado">
               <div class="empresa">${razonSocial}</div>
-              <div class="sede-info">Sede: ${sede}</div>
             </div>
 
             <div class="fecha">Pereira, ${fechaTexto}</div>
