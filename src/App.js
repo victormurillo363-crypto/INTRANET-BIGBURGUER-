@@ -150,7 +150,7 @@ function App() {
             .maybeSingle();
           
           const estadoEmpleado = (empleadoData?.estado || '').toLowerCase().trim();
-          if (empleadoData && estadoEmpleado !== 'activo') {
+          if (estadoEmpleado === 'inactivo' || estadoEmpleado === 'retirado' || estadoEmpleado === 'suspendido') {
             // Empleado inactivo - cerrar sesión
             console.log('Empleado inactivo, cerrando sesión');
             localStorage.removeItem('intranet_usuario');
@@ -592,9 +592,9 @@ function App() {
       
       console.log('Estado del empleado:', empleadoData?.estado);
       
-      // Si el empleado existe y NO está activo, bloquear acceso
+      // Bloquear si el empleado tiene estado 'inactivo' (cualquier variación de mayúsculas)
       const estadoEmpleado = (empleadoData?.estado || '').toLowerCase().trim();
-      if (empleadoData && estadoEmpleado !== 'activo') {
+      if (estadoEmpleado === 'inactivo' || estadoEmpleado === 'retirado' || estadoEmpleado === 'suspendido') {
         setErrorLogin('Tu cuenta está inactiva. Contacta al administrador.');
         setCargando(false);
         return;
