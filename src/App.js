@@ -3090,27 +3090,38 @@ function App() {
     useEffect(() => {
       const cargarBloqueos = async () => {
         try {
-          const hoy = new Date().toISOString().split('T')[0];
-          console.log('🔒 Cargando bloqueos para fecha:', hoy);
+          const hoy = new Date();
+          const fechaHoy = hoy.toISOString().split('T')[0];
+          const diaDelMes = hoy.getDate();
+          console.log('🔒 Cargando bloqueos para fecha:', fechaHoy, 'día del mes:', diaDelMes);
           
+          // Cargar todos los bloqueos activos
           const { data, error } = await supabase
             .from('bloqueos_solicitudes')
             .select('*')
-            .eq('activo', true)
-            .lte('fecha_inicio', hoy)
-            .gte('fecha_fin', hoy);
+            .eq('activo', true);
           
-          console.log('🔒 Resultado bloqueos:', { data, error });
+          console.log('🔒 Todos los bloqueos activos:', { data, error });
           
           if (error) {
             console.error('❌ Error cargando bloqueos:', error);
-            // Si la tabla no existe, no mostrar error al usuario
             if (error.code === '42P01') {
               console.log('⚠️ Tabla bloqueos_solicitudes no existe aún');
             }
           } else if (data && data.length > 0) {
-            console.log('🔒 Bloqueos activos encontrados:', data);
-            setBloqueosActivos(data);
+            // Filtrar bloqueos vigentes (por fecha o recurrentes por día del mes)
+            const bloqueosVigentes = data.filter(b => {
+              if (b.es_recurrente) {
+                // Bloqueo recurrente: verificar si el día actual está dentro del rango
+                return diaDelMes >= b.dia_inicio && diaDelMes <= b.dia_fin;
+              } else {
+                // Bloqueo por fechas: verificar rango de fechas
+                return b.fecha_inicio <= fechaHoy && b.fecha_fin >= fechaHoy;
+              }
+            });
+            
+            console.log('🔒 Bloqueos vigentes hoy:', bloqueosVigentes);
+            setBloqueosActivos(bloqueosVigentes);
           } else {
             console.log('✅ No hay bloqueos activos');
           }
@@ -3193,8 +3204,14 @@ function App() {
         // Verificar si el tipo de solicitud está bloqueado
         const bloqueo = verificarBloqueo(tipoSolicitud);
         if (bloqueo) {
-          const fechaFin = new Date(bloqueo.fecha_fin + 'T12:00:00').toLocaleDateString('es-CO');
-          alert(`🚫 Esta solicitud no está disponible en este momento.\n\n${bloqueo.motivo ? '📋 Motivo: ' + bloqueo.motivo + '\n' : ''}📅 Disponible después del: ${fechaFin}\n\nPor favor intente más tarde.`);
+          let mensajeDisponible = '';
+          if (bloqueo.es_recurrente) {
+            mensajeDisponible = `📅 Disponible a partir del día ${bloqueo.dia_fin + 1} de cada mes`;
+          } else {
+            const fechaFin = new Date(bloqueo.fecha_fin + 'T12:00:00').toLocaleDateString('es-CO');
+            mensajeDisponible = `📅 Disponible después del: ${fechaFin}`;
+          }
+          alert(`🚫 Esta solicitud no está disponible en este momento.\n\n${bloqueo.motivo ? '📋 Motivo: ' + bloqueo.motivo + '\n' : ''}${mensajeDisponible}\n\nPor favor intente más tarde.`);
           setEnviando(false);
           return;
         }
