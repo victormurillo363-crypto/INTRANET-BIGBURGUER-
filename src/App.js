@@ -136,29 +136,11 @@ function App() {
   // Verificar si hay sesion guardada al cargar (usando localStorage)
   useEffect(() => {
     // Esperar para que el heartbeat check limpie sesiones inválidas primero
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       const sesionGuardada = localStorage.getItem('intranet_usuario');
       if (sesionGuardada) {
         try {
           const datosUsuario = JSON.parse(sesionGuardada);
-          
-          // Verificar si el empleado sigue activo antes de restaurar sesión
-          const { data: empleadoData } = await supabase
-            .from('empleados')
-            .select('estado')
-            .eq('documento', datosUsuario.usuario)
-            .maybeSingle();
-          
-          const estadoEmpleado = (empleadoData?.estado || '').toLowerCase().trim();
-          if (empleadoData && estadoEmpleado !== 'activo') {
-            // Empleado inactivo - cerrar sesión
-            localStorage.removeItem('intranet_usuario');
-            localStorage.removeItem('intranet_heartbeat');
-            setUsuario(null);
-            setEmpleado(null);
-            return;
-          }
-          
           setUsuario(datosUsuario);
           cargarDatosEmpleado(datosUsuario);
           // Actualizar heartbeat inmediatamente al restaurar sesión
@@ -578,23 +560,6 @@ function App() {
       
       if (!usuarioData) {
         setErrorLogin('Documento o contraseña incorrectos');
-        setCargando(false);
-        return;
-      }
-      
-      // Verificar si el empleado está activo en la tabla empleados
-      const { data: empleadoData } = await supabase
-        .from('empleados')
-        .select('estado')
-        .eq('documento', documento.trim())
-        .maybeSingle();
-      
-      console.log('Estado del empleado:', empleadoData?.estado);
-      
-      // Si el empleado existe y NO está activo, bloquear acceso
-      const estadoEmpleado = (empleadoData?.estado || '').toLowerCase().trim();
-      if (empleadoData && estadoEmpleado !== 'activo') {
-        setErrorLogin('Tu cuenta está inactiva. Contacta al administrador.');
         setCargando(false);
         return;
       }
@@ -1287,65 +1252,32 @@ function App() {
             ⚡ Accesos Rápidos
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-            {menuItems.filter(m => m.id !== 'inicio').map(item => {
-              const bloqueo = moduloBloqueado(item.id);
-              const estaBloqueado = !!bloqueo;
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    if (estaBloqueado) {
-                      alert(`🔒 Este módulo no está disponible para tu usuario.\n\n${bloqueo.motivo ? 'Motivo: ' + bloqueo.motivo : 'Comunícate con Recursos Humanos para más información.'}`);
-                    } else {
-                      setSeccionActiva(item.id);
-                    }
-                  }}
-                  style={{
-                    padding: 16,
-                    backgroundColor: estaBloqueado ? '#f5f5f5' : 'white',
-                    border: estaBloqueado ? '2px solid #ccc' : '2px solid #e0e0e0',
-                    borderRadius: 12,
-                    cursor: estaBloqueado ? 'not-allowed' : 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.2s',
-                    opacity: estaBloqueado ? 0.6 : 1,
-                    position: 'relative'
-                  }}
-                  onMouseOver={e => {
-                    if (!estaBloqueado) {
-                      e.currentTarget.style.borderColor = '#c62828';
-                      e.currentTarget.style.backgroundColor = '#ffebee';
-                    }
-                  }}
-                  onMouseOut={e => {
-                    if (!estaBloqueado) {
-                      e.currentTarget.style.borderColor = '#e0e0e0';
-                      e.currentTarget.style.backgroundColor = 'white';
-                    }
-                  }}
-                >
-                  {estaBloqueado && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      backgroundColor: '#f44336',
-                      color: 'white',
-                      fontSize: 10,
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      fontWeight: 'bold'
-                    }}>🔒</div>
-                  )}
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>{estaBloqueado ? '🔒' : item.icono}</div>
-                  <div style={{ fontWeight: '500', color: estaBloqueado ? '#999' : '#333', fontSize: 13 }}>
-                    {item.nombre}
-                    {estaBloqueado && <div style={{ fontSize: 10, color: '#f44336' }}>Bloqueado</div>}
-                  </div>
-                </button>
-              );
-            })}
+            {menuItems.filter(m => m.id !== 'inicio').map(item => (
+              <button
+                key={item.id}
+                onClick={() => setSeccionActiva(item.id)}
+                style={{
+                  padding: 16,
+                  backgroundColor: 'white',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.borderColor = '#c62828';
+                  e.currentTarget.style.backgroundColor = '#ffebee';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.borderColor = '#e0e0e0';
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}
+              >
+                <div style={{ fontSize: 28, marginBottom: 8 }}>{item.icono}</div>
+                <div style={{ fontWeight: '500', color: '#333', fontSize: 13 }}>{item.nombre}</div>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -4965,32 +4897,23 @@ function App() {
         return;
       }
 
-      const datosAEnviar = {
-        empresa_id: empleado?.empresa_id || usuario?.empresa_id,
-        documento_empleado: empleado?.documento,
-        nombre_empleado: `${empleado?.nombres || ''} ${empleado?.apellidos || ''}`.trim(),
-        datos_originales: datosOriginales,
-        datos_nuevos: cambios,
-        estado: 'pendiente'
-      };
-      
-      console.log('Datos a enviar:', datosAEnviar);
-
       try {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('solicitudes_actualizacion_datos')
-          .insert(datosAEnviar)
-          .select();
-
-        console.log('Respuesta:', { data, error });
+          .insert({
+            empresa_id: empleado?.empresa_id || usuario?.empresa_id,
+            empleado_id: empleado?.id,
+            documento_empleado: empleado?.documento,
+            nombre_empleado: empleado?.nombre,
+            datos_originales: datosOriginales,
+            datos_nuevos: cambios,
+            estado: 'pendiente',
+            created_at: new Date().toISOString()
+          });
 
         if (error) {
           console.error('Error al enviar solicitud:', error);
-          console.error('Mensaje:', error.message);
-          console.error('Detalles:', error.details);
-          console.error('Hint:', error.hint);
-          console.error('Code:', error.code);
-          alert('Error al enviar la solicitud: ' + (error.message || 'Error desconocido'));
+          alert('Error al enviar la solicitud. Inténtalo de nuevo.');
         } else {
           setMensajeExito('✅ Solicitud enviada correctamente. Un administrador revisará tu solicitud.');
           cargarSolicitudesPendientes();
