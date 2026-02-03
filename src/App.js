@@ -564,6 +564,20 @@ function App() {
         return;
       }
       
+      // Verificar si el empleado está activo en la tabla empleados
+      const { data: empleadoData } = await supabase
+        .from('empleados')
+        .select('estado')
+        .eq('documento', documento.trim())
+        .maybeSingle();
+      
+      // Si el empleado existe y está inactivo, bloquear acceso
+      if (empleadoData && empleadoData.estado === 'inactivo') {
+        setErrorLogin('Tu cuenta está inactiva. Contacta al administrador.');
+        setCargando(false);
+        return;
+      }
+      
       // Usuario encontrado - preparar datos
       const datosUsuario = {
         id: usuarioData.id,
