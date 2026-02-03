@@ -3428,7 +3428,10 @@ function App() {
                         </div>
                       )}
                       <div style={{ fontSize: 12, marginTop: 4 }}>
-                        Disponible después del: {new Date(verificarBloqueo('todas').fecha_fin + 'T12:00:00').toLocaleDateString('es-CO')}
+                        {verificarBloqueo('todas').es_recurrente 
+                          ? `Disponible a partir del día ${verificarBloqueo('todas').dia_fin + 1} de este mes`
+                          : `Disponible después del: ${new Date(verificarBloqueo('todas').fecha_fin + 'T12:00:00').toLocaleDateString('es-CO')}`
+                        }
                       </div>
                     </div>
                   )}
@@ -3443,7 +3446,13 @@ function App() {
                           type="button"
                           onClick={() => {
                             if (estaBloqueado) {
-                              alert(`🚫 Este tipo de solicitud no está disponible.\n\n${bloqueoTipo.motivo ? 'Motivo: ' + bloqueoTipo.motivo + '\n' : ''}Disponible después del: ${new Date(bloqueoTipo.fecha_fin + 'T12:00:00').toLocaleDateString('es-CO')}`);
+                              let mensajeDisponible = '';
+                              if (bloqueoTipo.es_recurrente) {
+                                mensajeDisponible = `Disponible a partir del día ${bloqueoTipo.dia_fin + 1} de este mes`;
+                              } else {
+                                mensajeDisponible = `Disponible después del: ${new Date(bloqueoTipo.fecha_fin + 'T12:00:00').toLocaleDateString('es-CO')}`;
+                              }
+                              alert(`🚫 Este tipo de solicitud no está disponible.\n\n${bloqueoTipo.motivo ? 'Motivo: ' + bloqueoTipo.motivo + '\n' : ''}${mensajeDisponible}`);
                             } else {
                               setTipoSolicitud(tipo.id);
                             }
