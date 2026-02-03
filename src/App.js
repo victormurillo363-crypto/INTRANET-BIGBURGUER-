@@ -136,11 +136,29 @@ function App() {
   // Verificar si hay sesion guardada al cargar (usando localStorage)
   useEffect(() => {
     // Esperar para que el heartbeat check limpie sesiones inválidas primero
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const sesionGuardada = localStorage.getItem('intranet_usuario');
       if (sesionGuardada) {
         try {
           const datosUsuario = JSON.parse(sesionGuardada);
+          
+          // Verificar si el empleado sigue activo antes de restaurar sesión
+          const { data: empleadoData } = await supabase
+            .from('empleados')
+            .select('estado')
+            .eq('documento', datosUsuario.usuario)
+            .maybeSingle();
+          
+          const estadoEmpleado = (empleadoData?.estado || '').toLowerCase().trim();
+          if (empleadoData && estadoEmpleado !== 'activo') {
+            // Empleado inactivo - cerrar sesión
+            localStorage.removeItem('intranet_usuario');
+            localStorage.removeItem('intranet_heartbeat');
+            setUsuario(null);
+            setEmpleado(null);
+            return;
+          }
+          
           setUsuario(datosUsuario);
           cargarDatosEmpleado(datosUsuario);
           // Actualizar heartbeat inmediatamente al restaurar sesión
