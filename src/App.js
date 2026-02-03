@@ -3091,6 +3091,8 @@ function App() {
       const cargarBloqueos = async () => {
         try {
           const hoy = new Date().toISOString().split('T')[0];
+          console.log('🔒 Cargando bloqueos para fecha:', hoy);
+          
           const { data, error } = await supabase
             .from('bloqueos_solicitudes')
             .select('*')
@@ -3098,8 +3100,19 @@ function App() {
             .lte('fecha_inicio', hoy)
             .gte('fecha_fin', hoy);
           
-          if (!error && data) {
+          console.log('🔒 Resultado bloqueos:', { data, error });
+          
+          if (error) {
+            console.error('❌ Error cargando bloqueos:', error);
+            // Si la tabla no existe, no mostrar error al usuario
+            if (error.code === '42P01') {
+              console.log('⚠️ Tabla bloqueos_solicitudes no existe aún');
+            }
+          } else if (data && data.length > 0) {
+            console.log('🔒 Bloqueos activos encontrados:', data);
             setBloqueosActivos(data);
+          } else {
+            console.log('✅ No hay bloqueos activos');
           }
         } catch (err) {
           console.log('Error cargando bloqueos:', err);
