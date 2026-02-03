@@ -141,22 +141,26 @@ function App() {
       if (sesionGuardada) {
         try {
           const datosUsuario = JSON.parse(sesionGuardada);
+          console.log('🔐 Verificando estado del empleado:', datosUsuario.usuario);
           
           // Verificar si el empleado sigue activo antes de restaurar sesión
-          const { data: empleadoData } = await supabase
+          const { data: empleadoData, error: empError } = await supabase
             .from('empleados')
             .select('activo')
             .eq('documento', datosUsuario.usuario)
             .maybeSingle();
           
+          console.log('🔐 Resultado verificación activo:', empleadoData, 'Error:', empError);
+          
           // Bloquear si el empleado existe y tiene activo = false
           if (empleadoData && empleadoData.activo === false) {
             // Empleado inactivo - cerrar sesión
-            console.log('Empleado inactivo, cerrando sesión');
+            console.log('🚫 Empleado inactivo, cerrando sesión');
             localStorage.removeItem('intranet_usuario');
             localStorage.removeItem('intranet_heartbeat');
             setUsuario(null);
             setEmpleado(null);
+            alert('Tu cuenta está inactiva. Contacta al administrador.');
             return;
           }
           
