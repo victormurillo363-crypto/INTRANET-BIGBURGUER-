@@ -141,29 +141,36 @@ function App() {
       if (sesionGuardada) {
         try {
           const datosUsuario = JSON.parse(sesionGuardada);
-          console.log('🔐 Verificando estado del empleado:', datosUsuario.usuario);
+          
+          console.log('🔐 Verificando estado del empleado al restaurar sesión:', datosUsuario.usuario);
           
           // Verificar si el empleado sigue activo antes de restaurar sesión
           const { data: empleadoData, error: empError } = await supabase
             .from('empleados')
-            .select('activo')
+            .select('activo, estado')
             .eq('documento', datosUsuario.usuario)
             .maybeSingle();
           
           console.log('🔐 Resultado verificación activo:', empleadoData, 'Error:', empError);
           
-          // Bloquear si el empleado existe y tiene activo = false
-          if (empleadoData && empleadoData.activo === false) {
-            // Empleado inactivo - cerrar sesión
-            console.log('🚫 Empleado inactivo, cerrando sesión');
-            localStorage.removeItem('intranet_usuario');
-            localStorage.removeItem('intranet_heartbeat');
-            setUsuario(null);
-            setEmpleado(null);
-            alert('Tu cuenta está inactiva. Contacta al administrador.');
-            return;
+          // Bloquear si el empleado existe y está inactivo
+          if (empleadoData) {
+            const estaInactivo = empleadoData.activo === false || 
+                                empleadoData.estado === 'inactivo' || 
+                                empleadoData.estado === 'Inactivo' ||
+                                empleadoData.estado === 'INACTIVO';
+            
+            if (estaInactivo) {
+              // Empleado inactivo - cerrar sesión
+              console.log('🚫 Empleado inactivo, cerrando sesión guardada');
+              localStorage.removeItem('intranet_usuario');
+              localStorage.removeItem('intranet_heartbeat');
+              alert('Tu cuenta de empleado ha sido desactivada. Contacta al administrador.');
+              return; // No restaurar sesión
+            }
           }
           
+          // Empleado activo - restaurar sesión normal
           setUsuario(datosUsuario);
           cargarDatosEmpleado(datosUsuario);
           // Actualizar heartbeat inmediatamente al restaurar sesión
@@ -189,6 +196,25 @@ function App() {
         .maybeSingle();
       
       if (emp && !error) {
+        // ============================================
+        // VERIFICAR SI EL EMPLEADO ESTÁ ACTIVO
+        // ============================================
+        const estaInactivo = emp.activo === false || 
+                            emp.estado === 'inactivo' || 
+                            emp.estado === 'Inactivo' ||
+                            emp.estado === 'INACTIVO';
+        
+        if (estaInactivo) {
+          console.log('🚫 Empleado inactivo detectado en cargarDatosEmpleado, cerrando sesión');
+          localStorage.removeItem('intranet_usuario');
+          localStorage.removeItem('intranet_heartbeat');
+          setUsuario(null);
+          setEmpleado(null);
+          setCargando(false);
+          alert('Tu cuenta de empleado está inactiva. Contacta al administrador.');
+          return;
+        }
+        
         setEmpleado(emp);
         
         // Cargar bloqueos de módulos para este empleado
@@ -587,20 +613,32 @@ function App() {
         return;
       }
       
-      // Verificar si el empleado está activo en la tabla empleados
-      const { data: empleadoData } = await supabase
+      // ============================================
+      // VERIFICAR SI EL EMPLEADO ESTÁ ACTIVO EN LA TABLA EMPLEADOS
+      // ============================================
+      const { data: empleadoData, error: empError } = await supabase
         .from('empleados')
-        .select('activo')
+        .select('activo, estado')
         .eq('documento', documento.trim())
         .maybeSingle();
       
-      console.log('Empleado activo:', empleadoData?.activo);
+      console.log('🔐 Verificando estado del empleado:', documento.trim());
+      console.log('🔐 Resultado verificación empleado:', empleadoData, 'Error:', empError);
       
-      // Bloquear si el empleado existe y tiene activo = false
-      if (empleadoData && empleadoData.activo === false) {
-        setErrorLogin('Tu cuenta está inactiva. Contacta al administrador.');
-        setCargando(false);
-        return;
+      // Bloquear acceso si el empleado está inactivo
+      // Verificar tanto el campo 'activo' como el campo 'estado'
+      if (empleadoData) {
+        const estaInactivo = empleadoData.activo === false || 
+                            empleadoData.estado === 'inactivo' || 
+                            empleadoData.estado === 'Inactivo' ||
+                            empleadoData.estado === 'INACTIVO';
+        
+        if (estaInactivo) {
+          console.log('🚫 Empleado inactivo, bloqueando acceso');
+          setErrorLogin('Tu cuenta de empleado está inactiva. Contacta al administrador.');
+          setCargando(false);
+          return;
+        }
       }
       
       // Usuario encontrado - preparar datos
