@@ -4930,23 +4930,32 @@ function App() {
         return;
       }
 
+      const datosAEnviar = {
+        empresa_id: empleado?.empresa_id || usuario?.empresa_id,
+        documento_empleado: empleado?.documento,
+        nombre_empleado: `${empleado?.nombres || ''} ${empleado?.apellidos || ''}`.trim(),
+        datos_originales: datosOriginales,
+        datos_nuevos: cambios,
+        estado: 'pendiente'
+      };
+      
+      console.log('Datos a enviar:', datosAEnviar);
+
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('solicitudes_actualizacion_datos')
-          .insert({
-            empresa_id: empleado?.empresa_id || usuario?.empresa_id,
-            empleado_id: empleado?.id,
-            documento_empleado: empleado?.documento,
-            nombre_empleado: `${empleado?.nombres || ''} ${empleado?.apellidos || ''}`.trim(),
-            datos_originales: datosOriginales,
-            datos_nuevos: cambios,
-            estado: 'pendiente',
-            created_at: new Date().toISOString()
-          });
+          .insert(datosAEnviar)
+          .select();
+
+        console.log('Respuesta:', { data, error });
 
         if (error) {
           console.error('Error al enviar solicitud:', error);
-          alert('Error al enviar la solicitud. Inténtalo de nuevo.');
+          console.error('Mensaje:', error.message);
+          console.error('Detalles:', error.details);
+          console.error('Hint:', error.hint);
+          console.error('Code:', error.code);
+          alert('Error al enviar la solicitud: ' + (error.message || 'Error desconocido'));
         } else {
           setMensajeExito('✅ Solicitud enviada correctamente. Un administrador revisará tu solicitud.');
           cargarSolicitudesPendientes();
