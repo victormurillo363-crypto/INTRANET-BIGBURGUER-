@@ -4937,7 +4937,7 @@ function App() {
             empresa_id: empleado?.empresa_id || usuario?.empresa_id,
             empleado_id: empleado?.id,
             documento_empleado: empleado?.documento,
-            nombre_empleado: empleado?.nombre,
+            nombre_empleado: `${empleado?.nombres || ''} ${empleado?.apellidos || ''}`.trim(),
             datos_originales: datosOriginales,
             datos_nuevos: cambios,
             estado: 'pendiente',
