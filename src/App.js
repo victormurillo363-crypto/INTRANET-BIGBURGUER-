@@ -571,8 +571,11 @@ function App() {
         .eq('documento', documento.trim())
         .maybeSingle();
       
-      // Si el empleado existe y está inactivo, bloquear acceso
-      if (empleadoData && empleadoData.estado === 'inactivo') {
+      console.log('Estado del empleado:', empleadoData?.estado);
+      
+      // Si el empleado existe y NO está activo, bloquear acceso
+      const estadoEmpleado = (empleadoData?.estado || '').toLowerCase().trim();
+      if (empleadoData && estadoEmpleado !== 'activo') {
         setErrorLogin('Tu cuenta está inactiva. Contacta al administrador.');
         setCargando(false);
         return;
