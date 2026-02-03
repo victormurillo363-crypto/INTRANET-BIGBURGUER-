@@ -1252,32 +1252,65 @@ function App() {
             ⚡ Accesos Rápidos
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-            {menuItems.filter(m => m.id !== 'inicio').map(item => (
-              <button
-                key={item.id}
-                onClick={() => setSeccionActiva(item.id)}
-                style={{
-                  padding: 16,
-                  backgroundColor: 'white',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: 12,
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={e => {
-                  e.currentTarget.style.borderColor = '#c62828';
-                  e.currentTarget.style.backgroundColor = '#ffebee';
-                }}
-                onMouseOut={e => {
-                  e.currentTarget.style.borderColor = '#e0e0e0';
-                  e.currentTarget.style.backgroundColor = 'white';
-                }}
-              >
-                <div style={{ fontSize: 28, marginBottom: 8 }}>{item.icono}</div>
-                <div style={{ fontWeight: '500', color: '#333', fontSize: 13 }}>{item.nombre}</div>
-              </button>
-            ))}
+            {menuItems.filter(m => m.id !== 'inicio').map(item => {
+              const bloqueo = moduloBloqueado(item.id);
+              const estaBloqueado = !!bloqueo;
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    if (estaBloqueado) {
+                      alert(`🔒 Este módulo no está disponible para tu usuario.\n\n${bloqueo.motivo ? 'Motivo: ' + bloqueo.motivo : 'Comunícate con Recursos Humanos para más información.'}`);
+                    } else {
+                      setSeccionActiva(item.id);
+                    }
+                  }}
+                  style={{
+                    padding: 16,
+                    backgroundColor: estaBloqueado ? '#f5f5f5' : 'white',
+                    border: estaBloqueado ? '2px solid #ccc' : '2px solid #e0e0e0',
+                    borderRadius: 12,
+                    cursor: estaBloqueado ? 'not-allowed' : 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s',
+                    opacity: estaBloqueado ? 0.6 : 1,
+                    position: 'relative'
+                  }}
+                  onMouseOver={e => {
+                    if (!estaBloqueado) {
+                      e.currentTarget.style.borderColor = '#c62828';
+                      e.currentTarget.style.backgroundColor = '#ffebee';
+                    }
+                  }}
+                  onMouseOut={e => {
+                    if (!estaBloqueado) {
+                      e.currentTarget.style.borderColor = '#e0e0e0';
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }
+                  }}
+                >
+                  {estaBloqueado && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      backgroundColor: '#f44336',
+                      color: 'white',
+                      fontSize: 10,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      fontWeight: 'bold'
+                    }}>🔒</div>
+                  )}
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>{estaBloqueado ? '🔒' : item.icono}</div>
+                  <div style={{ fontWeight: '500', color: estaBloqueado ? '#999' : '#333', fontSize: 13 }}>
+                    {item.nombre}
+                    {estaBloqueado && <div style={{ fontSize: 10, color: '#f44336' }}>Bloqueado</div>}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
