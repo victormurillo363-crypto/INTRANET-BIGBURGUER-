@@ -46,6 +46,9 @@ function App() {
   const [sesionExpirada, setSesionExpirada] = useState(false);
   const [avisos, setAvisos] = useState([]);
   const [avisoSeleccionado, setAvisoSeleccionado] = useState(null);
+  
+  // Estado para bloqueos de módulos por empleado
+  const [bloqueosModulos, setBloqueosModulos] = useState([]);
 
   // ============================================
   // TIMEOUT DE INACTIVIDAD - 10 MINUTOS
@@ -165,6 +168,9 @@ function App() {
       if (emp && !error) {
         setEmpleado(emp);
         
+        // Cargar bloqueos de módulos para este empleado
+        await cargarBloqueosModulos(emp.documento);
+        
         // Guardar el ID del empleado para buscar nóminas
         const empleadoId = emp.id || emp.documento;
         console.log('👤 Empleado encontrado, ID:', empleadoId, 'Documento:', emp.documento);
@@ -225,6 +231,59 @@ function App() {
       console.error('Error cargando datos:', error);
     }
     setCargando(false);
+  };
+
+  // Cargar bloqueos de módulos para el empleado actual (incluyendo bloqueos para TODOS)
+  const cargarBloqueosModulos = async (documento) => {
+    try {
+      console.log('🔍 Cargando bloqueos para documento:', documento);
+      // Cargar bloqueos específicos del empleado Y bloqueos para TODOS
+      const { data, error } = await supabase
+        .from('bloqueos_modulos_empleado')
+        .select('*')
+        .in('documento_empleado', [documento, 'TODOS'])
+        .eq('activo', true);
+      
+      console.log('🔒 Bloqueos de módulos cargados:', { data, error, documento });
+      
+      if (error) {
+        console.error('❌ Error cargando bloqueos:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        console.log('✅ Bloqueos encontrados:', data.length, data);
+        setBloqueosModulos(data);
+      } else {
+        console.log('ℹ️ No hay bloqueos para este empleado');
+        setBloqueosModulos([]);
+      }
+    } catch (error) {
+      console.error('❌ Error en cargarBloqueosModulos:', error);
+    }
+  };
+
+  // Verificar si un módulo está bloqueado para el empleado actual
+  const moduloBloqueado = (moduloId) => {
+    // Mapear IDs del menú a IDs de bloqueo
+    const mapeoModulos = {
+      'desprendible': 'desprendible',
+      'prestamos': 'prestamos',
+      'carta-laboral': 'carta_laboral',
+      'contrato': 'contrato',
+      'horarios': 'horarios',
+      'solicitudes': 'solicitudes',
+      'actualizacion-datos': 'actualizar_datos',
+      'reglamento': 'reglamento',
+      'formatos': 'formatos'
+    };
+    
+    const idBloqueo = mapeoModulos[moduloId] || moduloId;
+    // Buscar bloqueo específico para el empleado O bloqueo para TODOS
+    return bloqueosModulos.find(b => 
+      b.modulo === idBloqueo && 
+      (b.documento_empleado === empleado?.documento || b.documento_empleado === 'TODOS')
+    );
   };
 
   const cargarNominas = async (empleadoId, documento) => {
@@ -5145,29 +5204,52 @@ function App() {
           padding: '20px 0'
         }}>
           <nav>
-            {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setSeccionActiva(item.id)}
-                style={{
-                  width: '100%',
-                  padding: '14px 20px',
-                  backgroundColor: seccionActiva === item.id ? '#ffebee' : 'transparent',
-                  border: 'none',
-                  borderLeft: seccionActiva === item.id ? '4px solid #c62828' : '4px solid transparent',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  textAlign: 'left',
-                  color: seccionActiva === item.id ? '#c62828' : '#333',
-                  fontWeight: seccionActiva === item.id ? 'bold' : 'normal'
-                }}
-              >
-                <span style={{ fontSize: 20 }}>{item.icono}</span>
-                <span>{item.nombre}</span>
-              </button>
-            ))}
+            {menuItems.map(item => {
+              const bloqueo = moduloBloqueado(item.id);
+              const estaBloqueado = !!bloqueo && item.id !== 'inicio';
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    if (estaBloqueado) {
+                      alert(`🔒 Este módulo no está disponible para tu usuario.\n\n${bloqueo.motivo ? 'Motivo: ' + bloqueo.motivo : 'Comunícate con Recursos Humanos para más información.'}`);
+                    } else {
+                      setSeccionActiva(item.id);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    backgroundColor: estaBloqueado ? '#f5f5f5' : (seccionActiva === item.id ? '#ffebee' : 'transparent'),
+                    border: 'none',
+                    borderLeft: seccionActiva === item.id && !estaBloqueado ? '4px solid #c62828' : '4px solid transparent',
+                    cursor: estaBloqueado ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    textAlign: 'left',
+                    color: estaBloqueado ? '#999' : (seccionActiva === item.id ? '#c62828' : '#333'),
+                    fontWeight: seccionActiva === item.id && !estaBloqueado ? 'bold' : 'normal',
+                    opacity: estaBloqueado ? 0.6 : 1,
+                    position: 'relative'
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>{estaBloqueado ? '🔒' : item.icono}</span>
+                  <span>{item.nombre}</span>
+                  {estaBloqueado && (
+                    <span style={{ 
+                      fontSize: 9, 
+                      color: '#999',
+                      position: 'absolute',
+                      right: 10
+                    }}>
+                      Bloqueado
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
           
           {/* Info empresa */}
