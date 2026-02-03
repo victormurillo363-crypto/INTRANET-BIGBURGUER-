@@ -3069,6 +3069,9 @@ function App() {
     const [archivosAdjuntos, setArchivosAdjuntos] = useState([]);
     const [subiendoArchivo, setSubiendoArchivo] = useState(false);
     
+    // Bloqueos de solicitudes
+    const [bloqueosActivos, setBloqueosActivos] = useState([]);
+    
     // Campos adicionales para tipos específicos
     const [valorAdelanto, setValorAdelanto] = useState('');
     const [propuestaPago, setPropuestaPago] = useState('');
@@ -3082,6 +3085,37 @@ function App() {
     const [esAccidenteLaboral, setEsAccidenteLaboral] = useState(false);
     const [archivoIncapacidad, setArchivoIncapacidad] = useState(null);
     const [subiendoArchivoIncapacidad, setSubiendoArchivoIncapacidad] = useState(false);
+
+    // Cargar bloqueos de solicitudes al montar
+    useEffect(() => {
+      const cargarBloqueos = async () => {
+        try {
+          const hoy = new Date().toISOString().split('T')[0];
+          const { data, error } = await supabase
+            .from('bloqueos_solicitudes')
+            .select('*')
+            .eq('activo', true)
+            .lte('fecha_inicio', hoy)
+            .gte('fecha_fin', hoy);
+          
+          if (!error && data) {
+            setBloqueosActivos(data);
+          }
+        } catch (err) {
+          console.log('Error cargando bloqueos:', err);
+        }
+      };
+      cargarBloqueos();
+    }, []);
+
+    // Verificar si un tipo de solicitud está bloqueado
+    const verificarBloqueo = (tipo) => {
+      // Buscar bloqueo específico para este tipo o bloqueo de "todas"
+      const bloqueo = bloqueosActivos.find(b => 
+        b.tipo_solicitud === tipo || b.tipo_solicitud === 'todas'
+      );
+      return bloqueo;
+    };
 
     // Cargar solicitudes cuando se cambia a la pestaña estado
     useEffect(() => {
@@ -3143,6 +3177,15 @@ function App() {
       setEnviando(true);
       
       try {
+        // Verificar si el tipo de solicitud está bloqueado
+        const bloqueo = verificarBloqueo(tipoSolicitud);
+        if (bloqueo) {
+          const fechaFin = new Date(bloqueo.fecha_fin + 'T12:00:00').toLocaleDateString('es-CO');
+          alert(`🚫 Esta solicitud no está disponible en este momento.\n\n${bloqueo.motivo ? '📋 Motivo: ' + bloqueo.motivo + '\n' : ''}📅 Disponible después del: ${fechaFin}\n\nPor favor intente más tarde.`);
+          setEnviando(false);
+          return;
+        }
+        
         // Validación especial para incapacidad/permiso
         if (tipoSolicitud === 'incapacidad_permiso') {
           if (!numeroDias || !fechaInicialIncapacidad) {
@@ -3337,25 +3380,77 @@ function App() {
                   <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>
                     Tipo de solicitud *
                   </label>
+                  {/* Mensaje si hay bloqueo de todas las solicitudes */}
+                  {verificarBloqueo('todas') && (
+                    <div style={{
+                      backgroundColor: '#ffebee',
+                      border: '2px solid #f44336',
+                      borderRadius: 8,
+                      padding: 12,
+                      marginBottom: 12,
+                      color: '#c62828',
+                      textAlign: 'center'
+                    }}>
+                      🚫 <strong>Las solicitudes están temporalmente bloqueadas</strong>
+                      {verificarBloqueo('todas').motivo && (
+                        <div style={{ fontSize: 12, marginTop: 4 }}>
+                          Motivo: {verificarBloqueo('todas').motivo}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 12, marginTop: 4 }}>
+                        Disponible después del: {new Date(verificarBloqueo('todas').fecha_fin + 'T12:00:00').toLocaleDateString('es-CO')}
+                      </div>
+                    </div>
+                  )}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                    {tiposSolicitud.map(tipo => (
-                      <button
-                        key={tipo.id}
-                        type="button"
-                        onClick={() => setTipoSolicitud(tipo.id)}
-                        style={{
-                          padding: 16,
-                          backgroundColor: tipoSolicitud === tipo.id ? '#ffebee' : '#f5f5f5',
-                          border: tipoSolicitud === tipo.id ? '2px solid #d32f2f' : '1px solid #e0e0e0',
-                          borderRadius: 8,
-                          cursor: 'pointer',
-                          textAlign: 'center'
-                        }}
-                      >
-                        <div style={{ fontSize: 24 }}>{tipo.icono}</div>
-                        <div style={{ fontSize: 12, marginTop: 4 }}>{tipo.nombre}</div>
-                      </button>
-                    ))}
+                    {tiposSolicitud.map(tipo => {
+                      const bloqueoTipo = verificarBloqueo(tipo.id);
+                      const estaBloqueado = !!bloqueoTipo;
+                      
+                      return (
+                        <button
+                          key={tipo.id}
+                          type="button"
+                          onClick={() => {
+                            if (estaBloqueado) {
+                              alert(`🚫 Este tipo de solicitud no está disponible.\n\n${bloqueoTipo.motivo ? 'Motivo: ' + bloqueoTipo.motivo + '\n' : ''}Disponible después del: ${new Date(bloqueoTipo.fecha_fin + 'T12:00:00').toLocaleDateString('es-CO')}`);
+                            } else {
+                              setTipoSolicitud(tipo.id);
+                            }
+                          }}
+                          style={{
+                            padding: 16,
+                            backgroundColor: estaBloqueado ? '#f5f5f5' : (tipoSolicitud === tipo.id ? '#ffebee' : '#f5f5f5'),
+                            border: estaBloqueado ? '2px dashed #ccc' : (tipoSolicitud === tipo.id ? '2px solid #d32f2f' : '1px solid #e0e0e0'),
+                            borderRadius: 8,
+                            cursor: estaBloqueado ? 'not-allowed' : 'pointer',
+                            textAlign: 'center',
+                            opacity: estaBloqueado ? 0.5 : 1,
+                            position: 'relative'
+                          }}
+                        >
+                          {estaBloqueado && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 4,
+                              right: 4,
+                              fontSize: 14
+                            }}>
+                              🔒
+                            </div>
+                          )}
+                          <div style={{ fontSize: 24 }}>{tipo.icono}</div>
+                          <div style={{ fontSize: 12, marginTop: 4, color: estaBloqueado ? '#999' : 'inherit' }}>
+                            {tipo.nombre}
+                          </div>
+                          {estaBloqueado && (
+                            <div style={{ fontSize: 9, color: '#999', marginTop: 2 }}>
+                              No disponible
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 
