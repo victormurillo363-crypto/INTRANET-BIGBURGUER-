@@ -328,11 +328,34 @@ function App() {
     };
     
     const idBloqueo = mapeoModulos[moduloId] || moduloId;
+    
     // Buscar bloqueo específico para el empleado O bloqueo para TODOS
-    return bloqueosModulos.find(b => 
-      b.modulo === idBloqueo && 
-      (b.documento_empleado === empleado?.documento || b.documento_empleado === 'TODOS')
-    );
+    const bloqueo = bloqueosModulos.find(b => {
+      // Verificar que el módulo coincida y sea para este empleado o TODOS
+      if (b.modulo !== idBloqueo) return false;
+      if (b.documento_empleado !== empleado?.documento && b.documento_empleado !== 'TODOS') return false;
+      if (!b.activo) return false;
+      
+      // Verificar vigencia por fechas
+      const hoy = new Date();
+      const diaHoy = hoy.getDate();
+      const fechaHoyStr = hoy.toISOString().split('T')[0];
+      
+      // Si es bloqueo recurrente mensual
+      if (b.es_recurrente && b.dia_inicio && b.dia_fin) {
+        return diaHoy >= b.dia_inicio && diaHoy <= b.dia_fin;
+      }
+      
+      // Si es bloqueo por fechas específicas
+      if (b.fecha_inicio && b.fecha_fin && b.fecha_inicio !== '2000-01-01') {
+        return fechaHoyStr >= b.fecha_inicio && fechaHoyStr <= b.fecha_fin;
+      }
+      
+      // Si no tiene fechas configuradas, es bloqueo permanente
+      return true;
+    });
+    
+    return bloqueo;
   };
 
   const cargarNominas = async (empleadoId, documento) => {
