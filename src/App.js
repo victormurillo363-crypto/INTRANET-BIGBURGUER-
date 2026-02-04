@@ -396,6 +396,22 @@ function App() {
       
       if (data) {
         console.log('✅ Nóminas encontradas:', data.length);
+        // DEBUG: Mostrar todos los campos de la primera nómina para identificar el campo correcto
+        if (data.length > 0) {
+          console.log('📊 Campos de la primera nómina:', Object.keys(data[0]));
+          console.log('📊 Datos completos de nóminas:', data.map(n => ({
+            id: n.id,
+            periodo: n.periodo,
+            quincena: n.quincena,
+            num_quincena: n.num_quincena,
+            tipo_quincena: n.tipo_quincena,
+            mes: n.mes,
+            anio: n.anio,
+            fecha_inicio: n.fecha_inicio,
+            fecha_fin: n.fecha_fin,
+            created_at: n.created_at
+          })));
+        }
         setNominas(data);
       }
     } catch (e) {
