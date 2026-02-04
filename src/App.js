@@ -1382,25 +1382,53 @@ function App() {
     };
 
     // Función para calcular el rango de la quincena desde una fecha
-    const getRangoQuincena = (fechaISO) => {
+    // Si la nómina tiene el campo 'quincena' (1 o 2), se usa ese valor directamente
+    const getRangoQuincena = (fechaISO, quincenaFromNomina = null) => {
       if (!fechaISO) return { inicio: '', fin: '' };
       
-      const date = new Date(fechaISO);
-      const yyyy = date.getFullYear();
-      const mm = date.getMonth();
-      const dd = date.getDate();
-      const half = dd <= 15 ? 1 : 2;
+      // Parsear la fecha manualmente para evitar desfase de zona horaria
+      // Las fechas ISO vienen como "YYYY-MM-DD" y JavaScript las interpreta en UTC
+      let yyyy, mm, dd;
+      if (typeof fechaISO === 'string' && fechaISO.includes('-')) {
+        const partes = fechaISO.split('T')[0].split('-');
+        yyyy = parseInt(partes[0], 10);
+        mm = parseInt(partes[1], 10) - 1; // Los meses en JS van de 0-11
+        dd = parseInt(partes[2], 10);
+      } else {
+        const date = new Date(fechaISO);
+        yyyy = date.getFullYear();
+        mm = date.getMonth();
+        dd = date.getDate();
+      }
+      
+      // Usar la quincena que viene de la nómina si existe, sino calcular por fecha
+      let half;
+      if (quincenaFromNomina !== null && quincenaFromNomina !== undefined) {
+        // El campo quincena puede ser 1, 2, "1", "2", "Primera", "Segunda"
+        if (quincenaFromNomina === 1 || quincenaFromNomina === '1' || quincenaFromNomina === 'Primera' || quincenaFromNomina === 'primera') {
+          half = 1;
+        } else if (quincenaFromNomina === 2 || quincenaFromNomina === '2' || quincenaFromNomina === 'Segunda' || quincenaFromNomina === 'segunda') {
+          half = 2;
+        } else {
+          half = dd <= 15 ? 1 : 2;
+        }
+      } else {
+        half = dd <= 15 ? 1 : 2;
+      }
       
       // Calcular los días de la quincena
       const lastDay = new Date(yyyy, mm + 1, 0).getDate();
       const start = half === 1 ? 1 : 16;
       const end = half === 1 ? 15 : lastDay;
       
+      // Crear fecha local para mostrar el mes correctamente
+      const fechaMes = new Date(yyyy, mm, 1);
+      
       return {
         inicio: new Date(yyyy, mm, start),
         fin: new Date(yyyy, mm, end),
         quincena: half === 1 ? 'Primera' : 'Segunda',
-        mes: date.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+        mes: fechaMes.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
       };
     };
 
@@ -1438,7 +1466,7 @@ function App() {
     };
 
     const horasTotales = nominaSeleccionada ? getHorasTotales(nominaSeleccionada) : null;
-    const rangoQuincena = nominaSeleccionada ? getRangoQuincena(nominaSeleccionada.periodo) : null;
+    const rangoQuincena = nominaSeleccionada ? getRangoQuincena(nominaSeleccionada.periodo, nominaSeleccionada.quincena) : null;
     const metodoLiquidacion = nominaSeleccionada ? getMetodoLiquidacion(nominaSeleccionada) : null;
     // Método 2 = sin_recargos = no mostrar horas extras
     const esMetodo2 = metodoLiquidacion === 'sin_recargos';
@@ -1467,7 +1495,7 @@ function App() {
             ) : (
               <div style={{ display: 'grid', gap: 12 }}>
                 {nominas.map(nomina => {
-                  const rango = getRangoQuincena(nomina.periodo);
+                  const rango = getRangoQuincena(nomina.periodo, nomina.quincena);
                   return (
                   <button
                     key={nomina.id}
