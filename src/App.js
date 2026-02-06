@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_CONFIG } from './config';
@@ -46,6 +47,9 @@ function App() {
   const [sesionExpirada, setSesionExpirada] = useState(false);
   const [avisos, setAvisos] = useState([]);
   const [avisoSeleccionado, setAvisoSeleccionado] = useState(null);
+  
+  // Estado para ausencias del empleado (incapacidades, vacaciones, permisos)
+  const [ausencias, setAusencias] = useState([]);
   
   // Estado para bloqueos de módulos por empleado
   const [bloqueosModulos, setBloqueosModulos] = useState([]);
@@ -252,6 +256,7 @@ function App() {
         await Promise.all([
           cargarNominas(empleadoId, emp.documento),
           cargarHorarios(emp.id), // Usar ID del empleado para horarios
+          cargarAusencias(emp.id), // Cargar ausencias (incapacidades, vacaciones)
           cargarSolicitudes(emp.documento)
         ]);
       } else {
@@ -588,6 +593,31 @@ function App() {
       }
     } catch (e) {
       console.log('Error cargando avisos:', e);
+    }
+  };
+
+  // Cargar ausencias del empleado (incapacidades, vacaciones, permisos, etc.)
+  const cargarAusencias = async (empleadoId) => {
+    try {
+      console.log('📋 Cargando ausencias para empleado ID:', empleadoId);
+      
+      const { data, error } = await supabase
+        .from('ausencias')
+        .select('id, empleadoid, tipo, fechainicio, fechafin, periodo, motivo, razon, diastotales')
+        .eq('empleadoid', empleadoId)
+        .order('fechainicio', { ascending: false });
+      
+      if (error) {
+        console.log('Error cargando ausencias:', error);
+        return;
+      }
+      
+      if (data) {
+        console.log('📋 Ausencias cargadas:', data.length);
+        setAusencias(data);
+      }
+    } catch (e) {
+      console.log('Tabla ausencias no disponible:', e);
     }
   };
 
@@ -2970,6 +3000,18 @@ function App() {
       horariosPorFecha[h.fecha] = h;
     });
     
+    // Función para obtener ausencia de una fecha específica
+    const getAusenciaFecha = (fechaStr) => {
+      for (const ausencia of ausencias) {
+        const inicio = ausencia.fechainicio;
+        const fin = ausencia.fechafin;
+        if (fechaStr >= inicio && fechaStr <= fin) {
+          return ausencia;
+        }
+      }
+      return null;
+    };
+    
     // Generar semanas para el mes actual y anterior
     const generarSemanasDelMes = (year, month) => {
       const semanas = [];
@@ -3064,6 +3106,10 @@ function App() {
                 const evento = eventos[fechaStr];
                 const esFestivo = !!festivo;
                 
+                // Verificar si hay ausencia para esta fecha
+                const ausencia = getAusenciaFecha(fechaStr);
+                const tipoAusencia = ausencia?.tipo; // Vacaciones, Incapacidad, Permiso, Suspensión, etc.
+                
                 // Determinar color de fondo
                 let bgColor = 'white';
                 if (!esDelMes) bgColor = '#f5f5f5';
@@ -3121,8 +3167,37 @@ function App() {
                       </div>
                     )}
                     
-                    {/* Contenido del horario */}
-                    {horario && esDelMes && (
+                    {/* Mostrar ausencia (Incapacidad, Vacaciones, Permiso, etc.) */}
+                    {ausencia && esDelMes && (
+                      <div style={{
+                        backgroundColor: tipoAusencia === 'Vacaciones' ? '#dbeafe' : 
+                                        tipoAusencia === 'Incapacidad' ? '#fce7f3' : 
+                                        tipoAusencia === 'Suspensión' ? '#fee2e2' : 
+                                        tipoAusencia === 'Permiso' ? '#fef3c7' : '#e5e7eb',
+                        color: tipoAusencia === 'Vacaciones' ? '#1e40af' : 
+                               tipoAusencia === 'Incapacidad' ? '#9d174d' : 
+                               tipoAusencia === 'Suspensión' ? '#b91c1c' : 
+                               tipoAusencia === 'Permiso' ? '#92400e' : '#374151',
+                        padding: '6px 6px',
+                        borderRadius: 4,
+                        textAlign: 'center',
+                        fontWeight: '800',
+                        fontSize: 11,
+                        border: tipoAusencia === 'Vacaciones' ? '2px solid #3b82f6' : 
+                                tipoAusencia === 'Incapacidad' ? '2px solid #ec4899' : 
+                                tipoAusencia === 'Suspensión' ? '2px solid #ef4444' : 
+                                tipoAusencia === 'Permiso' ? '2px solid #f59e0b' : '2px solid #9ca3af'
+                      }}>
+                        {tipoAusencia === 'Vacaciones' && '🏖️ Vacaciones'}
+                        {tipoAusencia === 'Incapacidad' && '🏥 Incapacidad'}
+                        {tipoAusencia === 'Suspensión' && '⚠️ Suspensión'}
+                        {tipoAusencia === 'Permiso' && '📋 Permiso'}
+                        {!['Vacaciones', 'Incapacidad', 'Suspensión', 'Permiso'].includes(tipoAusencia) && `📌 ${tipoAusencia}`}
+                      </div>
+                    )}
+                    
+                    {/* Contenido del horario (solo si NO hay ausencia) */}
+                    {horario && esDelMes && !ausencia && (
                       <div style={{ fontSize: 12 }}>
                         {horario.es_descanso ? (
                           <div style={{
@@ -3262,6 +3337,18 @@ function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 18, height: 18, backgroundColor: '#9c27b0', borderRadius: 3 }}></div>
                 <span style={{ fontSize: 11 }}>Evento</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#dbeafe', border: '2px solid #3b82f6', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>🏖️ Vacaciones</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#fce7f3', border: '2px solid #ec4899', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>🏥 Incapacidad</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>📋 Permiso</span>
               </div>
             </div>
             
