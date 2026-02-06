@@ -3003,9 +3003,10 @@ function App() {
     // Función para obtener ausencia de una fecha específica
     const getAusenciaFecha = (fechaStr) => {
       for (const ausencia of ausencias) {
-        const inicio = ausencia.fechainicio;
-        const fin = ausencia.fechafin;
-        if (fechaStr >= inicio && fechaStr <= fin) {
+        // Asegurarse de que las fechas estén en formato YYYY-MM-DD
+        const inicio = ausencia.fechainicio?.split('T')[0] || ausencia.fechainicio;
+        const fin = ausencia.fechafin?.split('T')[0] || ausencia.fechafin;
+        if (inicio && fin && fechaStr >= inicio && fechaStr <= fin) {
           return ausencia;
         }
       }
