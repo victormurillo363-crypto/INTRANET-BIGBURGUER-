@@ -622,20 +622,48 @@ function App() {
   };
 
   // Función para que el empleado responda a una propuesta de RRHH
-  const responderPropuesta = async (solicitudId, textoRespuesta) => {
+  const responderPropuesta = async (solicitudId, textoRespuesta, archivosAdjuntos = []) => {
     if (!textoRespuesta || !textoRespuesta.trim()) {
       alert('Por favor escribe tu respuesta');
       return;
     }
     
     try {
+      // Primero obtener la solicitud actual para el historial
+      const { data: solicitudActual, error: fetchError } = await supabase
+        .from('solicitudes_empleados')
+        .select('historial_conversacion')
+        .eq('id', solicitudId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Obtener historial existente
+      const historialExistente = solicitudActual?.historial_conversacion || [];
+      
+      // Crear nuevo mensaje para el historial
+      const nuevoMensaje = {
+        tipo: 'empleado',
+        mensaje: textoRespuesta.trim(),
+        archivos: archivosAdjuntos,
+        fecha: new Date().toISOString()
+      };
+      
+      const updateData = {
+        respuesta_empleado: textoRespuesta.trim(),
+        fecha_respuesta_empleado: new Date().toISOString(),
+        historial_conversacion: [...historialExistente, nuevoMensaje]
+        // El estado sigue en 'en_proceso' hasta que RRHH dé respuesta definitiva
+      };
+      
+      // Agregar archivos adjuntos si hay
+      if (archivosAdjuntos.length > 0) {
+        updateData.archivos_respuesta_empleado = JSON.stringify(archivosAdjuntos);
+      }
+      
       const { error } = await supabase
         .from('solicitudes_empleados')
-        .update({ 
-          respuesta_empleado: textoRespuesta.trim(),
-          fecha_respuesta_empleado: new Date().toISOString()
-          // El estado sigue en 'en_proceso' hasta que RRHH dé respuesta definitiva
-        })
+        .update(updateData)
         .eq('id', solicitudId);
       
       if (error) throw error;
@@ -648,6 +676,48 @@ function App() {
     } catch (error) {
       console.error('Error respondiendo propuesta:', error);
       alert('❌ Error al procesar tu respuesta');
+    }
+  };
+
+  // Estado para archivos de respuesta del empleado
+  const [archivosRespuestaEmpleado, setArchivosRespuestaEmpleado] = useState({});
+  const [subiendoArchivoEmpleado, setSubiendoArchivoEmpleado] = useState(false);
+
+  // Función para subir archivo de respuesta del empleado
+  const subirArchivoRespuestaEmpleado = async (file, solicitudId) => {
+    setSubiendoArchivoEmpleado(true);
+    try {
+      const timestamp = Date.now();
+      const fileName = `respuesta_empleado_${solicitudId}_${timestamp}_${file.name}`;
+      const filePath = `solicitudes/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('documentos')
+        .getPublicUrl(filePath);
+      
+      const nuevoArchivo = {
+        nombre: file.name,
+        url: urlData.publicUrl,
+        tipo: file.type,
+        fecha: new Date().toISOString()
+      };
+      
+      setArchivosRespuestaEmpleado(prev => ({
+        ...prev,
+        [solicitudId]: [...(prev[solicitudId] || []), nuevoArchivo]
+      }));
+      
+    } catch (error) {
+      console.error('Error subiendo archivo:', error);
+      alert('Error al subir el archivo');
+    } finally {
+      setSubiendoArchivoEmpleado(false);
     }
   };
 
@@ -4445,10 +4515,91 @@ function App() {
                                 marginBottom: 12
                               }}
                             />
+                            
+                            {/* Sección para adjuntar archivos */}
+                            <div style={{ marginBottom: 12 }}>
+                              <div style={{ fontSize: 12, fontWeight: 'bold', color: '#7b1fa2', marginBottom: 8 }}>
+                                📎 Adjuntar documentos (opcional):
+                              </div>
+                              <div style={{
+                                border: '2px dashed #ce93d8',
+                                borderRadius: 8,
+                                padding: 12,
+                                textAlign: 'center',
+                                backgroundColor: 'white'
+                              }}>
+                                <input
+                                  type="file"
+                                  id={`archivo-respuesta-${sol.id}`}
+                                  multiple
+                                  onChange={async (e) => {
+                                    const files = Array.from(e.target.files);
+                                    for (const file of files) {
+                                      await subirArchivoRespuestaEmpleado(file, sol.id);
+                                    }
+                                    e.target.value = '';
+                                  }}
+                                  style={{ display: 'none' }}
+                                />
+                                <label
+                                  htmlFor={`archivo-respuesta-${sol.id}`}
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '8px 16px',
+                                    backgroundColor: '#f5f5f5',
+                                    border: '1px solid #ce93d8',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 13,
+                                    color: '#7b1fa2'
+                                  }}
+                                >
+                                  {subiendoArchivoEmpleado ? '⏳ Subiendo...' : '📁 Seleccionar archivos'}
+                                </label>
+                              </div>
+                              
+                              {/* Mostrar archivos seleccionados */}
+                              {archivosRespuestaEmpleado[sol.id] && archivosRespuestaEmpleado[sol.id].length > 0 && (
+                                <div style={{ marginTop: 8 }}>
+                                  {archivosRespuestaEmpleado[sol.id].map((archivo, idx) => (
+                                    <div key={idx} style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '6px 10px',
+                                      backgroundColor: '#e8f5e9',
+                                      borderRadius: 6,
+                                      marginBottom: 4,
+                                      fontSize: 12
+                                    }}>
+                                      <span>📄 {archivo.nombre}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setArchivosRespuestaEmpleado(prev => ({
+                                          ...prev,
+                                          [sol.id]: prev[sol.id].filter((_, i) => i !== idx)
+                                        }))}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: '#c62828',
+                                          cursor: 'pointer',
+                                          fontSize: 14
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            
                             <button
                               onClick={() => {
                                 const textarea = document.getElementById(`respuesta-${sol.id}`);
-                                responderPropuesta(sol.id, textarea.value);
+                                const archivos = archivosRespuestaEmpleado[sol.id] || [];
+                                responderPropuesta(sol.id, textarea.value, archivos);
                               }}
                               style={{
                                 width: '100%',
@@ -4467,6 +4618,55 @@ function App() {
                           </div>
                         )}
 
+                        {/* Historial de conversación */}
+                        {sol.historial_conversacion && sol.historial_conversacion.length > 0 && (
+                          <div style={{ 
+                            marginTop: 12, 
+                            padding: 12, 
+                            backgroundColor: '#f5f5f5', 
+                            borderRadius: 8,
+                            border: '1px solid #ddd',
+                            maxHeight: '250px',
+                            overflowY: 'auto'
+                          }}>
+                            <div style={{ 
+                              fontWeight: 'bold', 
+                              color: '#333', 
+                              marginBottom: 10,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              fontSize: 12
+                            }}>
+                              <span>📜</span> Historial de Conversación:
+                            </div>
+                            {sol.historial_conversacion.map((msg, idx) => (
+                              <div key={idx} style={{
+                                padding: 10,
+                                marginBottom: 6,
+                                borderRadius: 6,
+                                backgroundColor: msg.tipo === 'admin' ? '#e3f2fd' : '#e8f5e9',
+                                borderLeft: `3px solid ${msg.tipo === 'admin' ? '#2196f3' : '#4caf50'}`
+                              }}>
+                                <div style={{ fontSize: 10, color: '#666', marginBottom: 3 }}>
+                                  {msg.tipo === 'admin' ? '👔 RRHH' : '👤 Tú'} - {new Date(msg.fecha).toLocaleString('es-CO')}
+                                </div>
+                                <p style={{ margin: 0, color: '#333', fontSize: 12 }}>{msg.mensaje}</p>
+                                {msg.archivos && msg.archivos.length > 0 && (
+                                  <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                    {msg.archivos.map((arch, i) => (
+                                      <a key={i} href={arch.url} target="_blank" rel="noopener noreferrer"
+                                        style={{ fontSize: 10, color: '#1976d2', textDecoration: 'none' }}>
+                                        📎 {arch.nombre}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         {/* Mostrar respuesta del empleado ya enviada */}
                         {sol.respuesta_empleado && (
                           <div style={{
@@ -4477,7 +4677,7 @@ function App() {
                             border: '1px solid #4caf50'
                           }}>
                             <div style={{ fontSize: 12, fontWeight: 'bold', color: '#2e7d32', marginBottom: 4 }}>
-                              ✅ Tu respuesta:
+                              ✅ Tu última respuesta:
                             </div>
                             <p style={{ margin: 0, fontSize: 13, color: '#333' }}>{sol.respuesta_empleado}</p>
                             {sol.fecha_respuesta_empleado && (
@@ -4485,8 +4685,38 @@ function App() {
                                 Enviada: {new Date(sol.fecha_respuesta_empleado).toLocaleString('es-CO')}
                               </div>
                             )}
+                            {/* Mostrar archivos adjuntos enviados */}
+                            {(() => {
+                              let archivosEnviados = sol.archivos_respuesta_empleado;
+                              if (typeof archivosEnviados === 'string') {
+                                try { archivosEnviados = JSON.parse(archivosEnviados); } catch(e) { archivosEnviados = []; }
+                              }
+                              return archivosEnviados && archivosEnviados.length > 0 ? (
+                                <div style={{ marginTop: 8 }}>
+                                  <div style={{ fontSize: 11, color: '#2e7d32', marginBottom: 4 }}>📎 Archivos adjuntos:</div>
+                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                    {archivosEnviados.map((arch, i) => (
+                                      <a key={i} href={arch.url} target="_blank" rel="noopener noreferrer"
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          padding: '4px 8px',
+                                          backgroundColor: '#c8e6c9',
+                                          borderRadius: 4,
+                                          fontSize: 11,
+                                          color: '#1b5e20',
+                                          textDecoration: 'none',
+                                          gap: 4
+                                        }}>
+                                        📄 {arch.nombre}
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null;
+                            })()}
                             {sol.estado === 'en_proceso' && (
-                              <div style={{ fontSize: 11, color: '#ff9800', marginTop: 4, fontWeight: 'bold' }}>
+                              <div style={{ fontSize: 11, color: '#ff9800', marginTop: 8, fontWeight: 'bold' }}>
                                 ⏳ Esperando respuesta definitiva de RRHH...
                               </div>
                             )}
