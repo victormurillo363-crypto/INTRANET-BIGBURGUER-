@@ -3581,11 +3581,14 @@ function App() {
           
           // 📱 Enviar SMS de notificación al número configurado
           try {
-            const { data: configData } = await supabase
+            console.log('📱 Buscando configuración de notificaciones SMS...');
+            const { data: configData, error: configError } = await supabase
               .from('configuracion_sistema')
               .select('telefono_notificaciones, nombre_receptor')
               .eq('id', 'principal')
               .single();
+            
+            console.log('📱 Config encontrada:', configData, 'Error:', configError);
             
             if (configData?.telefono_notificaciones) {
               const tipoNombre = {
@@ -3601,10 +3604,12 @@ function App() {
               
               const mensajeSMS = `🔔 BigBurguer - Nueva Solicitud
 📋 Tipo: ${tipoNombre}
-👤 Empleado: ${empleado?.nombre || usuario.nombre}
+👤 Empleado: ${empleado?.nombre || empleado?.nombres || usuario.nombre}
 📄 Doc: ${empleado?.documento || usuario.usuario}
 📅 Fecha: ${new Date().toLocaleDateString('es-CO')}
 ✏️ Revise el panel de administración.`;
+              
+              console.log('📱 Enviando SMS a:', configData.telefono_notificaciones);
               
               // Enviar SMS via API
               fetch('/api/enviar-sms', {
@@ -3615,8 +3620,13 @@ function App() {
                   mensaje: mensajeSMS 
                 })
               }).then(r => r.json()).then(result => {
+                console.log('📱 Resultado SMS:', result);
                 if (result.ok) console.log('📱 SMS notificación enviado');
+                else console.warn('📱 Error SMS:', result);
               }).catch(err => console.warn('SMS no enviado:', err));
+            } else {
+              console.warn('📱 No hay teléfono de notificaciones configurado');
+            }
             }
           } catch (smsErr) {
             console.warn('Error al enviar notificación SMS:', smsErr);
