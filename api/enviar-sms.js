@@ -2,6 +2,16 @@
 // Se despliega automáticamente en Vercel como /api/enviar-sms
 
 export default async function handler(req, res) {
+  // Configurar CORS para permitir peticiones desde el panel de administración
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Manejar preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   // Solo permitir POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
