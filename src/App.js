@@ -3457,19 +3457,9 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
               console.log('⚠️ Tabla bloqueos_solicitudes no existe aún');
             }
           } else if (data && data.length > 0) {
-            // Filtrar bloqueos vigentes (por fecha o recurrentes por día del mes)
-            const bloqueosVigentes = data.filter(b => {
-              if (b.es_recurrente) {
-                // Bloqueo recurrente: verificar si el día actual está dentro del rango
-                return diaDelMes >= b.dia_inicio && diaDelMes <= b.dia_fin;
-              } else {
-                // Bloqueo por fechas: verificar rango de fechas
-                return b.fecha_inicio <= fechaHoy && b.fecha_fin >= fechaHoy;
-              }
-            });
-            
-            console.log('🔒 Bloqueos vigentes hoy:', bloqueosVigentes);
-            setBloqueosActivos(bloqueosVigentes);
+            // Guardar TODOS los bloqueos activos - la verificación de vigencia se hace en tiempo real
+            console.log('🔒 Bloqueos activos cargados:', data.length);
+            setBloqueosActivos(data);
           } else {
             console.log('✅ No hay bloqueos activos');
           }
@@ -3480,12 +3470,25 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
       cargarBloqueos();
     }, []);
 
-    // Verificar si un tipo de solicitud está bloqueado
+    // Verificar si un tipo de solicitud está bloqueado (verificación en tiempo real)
     const verificarBloqueo = (tipo) => {
+      const hoy = new Date();
+      const diaDelMes = hoy.getDate();
+      const fechaHoy = hoy.toISOString().split('T')[0];
+      
       // Buscar bloqueo específico para este tipo o bloqueo de "todas"
-      const bloqueo = bloqueosActivos.find(b => 
-        b.tipo_solicitud === tipo || b.tipo_solicitud === 'todas'
-      );
+      const bloqueo = bloqueosActivos.find(b => {
+        if (b.tipo_solicitud !== tipo && b.tipo_solicitud !== 'todas') return false;
+        
+        // Verificar vigencia en tiempo real
+        if (b.es_recurrente) {
+          // Bloqueo recurrente: verificar si el día actual está dentro del rango
+          return diaDelMes >= b.dia_inicio && diaDelMes <= b.dia_fin;
+        } else {
+          // Bloqueo por fechas: verificar rango de fechas
+          return b.fecha_inicio <= fechaHoy && b.fecha_fin >= fechaHoy;
+        }
+      });
       return bloqueo;
     };
 
