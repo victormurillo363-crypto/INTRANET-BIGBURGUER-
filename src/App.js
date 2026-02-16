@@ -3593,21 +3593,21 @@ function App() {
             if (configData?.telefono_notificaciones) {
               const tipoNombre = {
                 'incapacidad_permiso': 'Incapacidad/Permiso',
-                'adelanto_nomina': 'Adelanto de Nómina',
+                'adelanto_nomina': 'Adelanto de Nomina',
                 'cambio_eps': 'Cambio de EPS',
-                'documentos_vinculacion': 'Documentos Vinculación',
-                'documentos_actualizacion': 'Docs. Actualización',
+                'documentos_vinculacion': 'Documentos Vinculacion',
+                'documentos_actualizacion': 'Docs. Actualizacion',
                 'vacaciones': 'Vacaciones',
                 'permiso': 'Permiso',
                 'otro': 'Otra Solicitud'
               }[tipoSolicitud] || tipoSolicitud;
               
-              const mensajeSMS = `🔔 BigBurguer - Nueva Solicitud
-📋 Tipo: ${tipoNombre}
-👤 Empleado: ${empleado?.nombre || empleado?.nombres || usuario.nombre}
-📄 Doc: ${empleado?.documento || usuario.usuario}
-📅 Fecha: ${new Date().toLocaleDateString('es-CO')}
-✏️ Revise el panel de administración.`;
+              const mensajeSMS = `BigBurguer - Nueva Solicitud
+Tipo: ${tipoNombre}
+Empleado: ${empleado?.nombre || empleado?.nombres || usuario.nombre}
+Doc: ${empleado?.documento || usuario.usuario}
+Fecha: ${new Date().toLocaleDateString('es-CO')}
+Revise el panel de administracion.`;
               
               console.log('📱 Enviando SMS a:', configData.telefono_notificaciones);
               
