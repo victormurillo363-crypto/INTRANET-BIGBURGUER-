@@ -642,6 +642,44 @@ function App() {
       
       alert('✅ Tu respuesta ha sido enviada. RRHH revisará y te dará una respuesta definitiva.');
       
+      // Enviar SMS al admin notificando la respuesta del empleado
+      try {
+        console.log('Buscando configuracion de notificaciones para SMS...');
+        const { data: configData, error: configError } = await supabase
+          .from('configuracion_sistema')
+          .select('telefono_notificaciones, nombre_receptor')
+          .eq('id', 'principal')
+          .single();
+        
+        if (configData?.telefono_notificaciones) {
+          const nombreEmpleado = empleado?.nombre || empleado?.nombres || usuario?.nombre || 'Empleado';
+          const docEmpleado = empleado?.documento || usuario?.usuario || '';
+          
+          const mensajeSMS = `BigBurguer - Respuesta a REQUERIMIENTO
+Empleado: ${nombreEmpleado}
+Doc: ${docEmpleado}
+Fecha: ${new Date().toLocaleDateString('es-CO')}
+El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.`;
+          
+          console.log('Enviando SMS de respuesta a REQUERIMIENTO a:', configData.telefono_notificaciones);
+          
+          fetch('/api/enviar-sms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              telefono: configData.telefono_notificaciones, 
+              mensaje: mensajeSMS 
+            })
+          }).then(r => r.json()).then(result => {
+            console.log('Resultado SMS respuesta REQUERIMIENTO:', result);
+            if (result.ok) console.log('SMS notificacion de respuesta enviado');
+            else console.warn('Error SMS:', result);
+          }).catch(err => console.warn('SMS no enviado:', err));
+        }
+      } catch (smsErr) {
+        console.warn('Error al enviar notificacion SMS:', smsErr);
+      }
+      
       // Recargar solicitudes
       const doc = empleado?.documento || usuario?.usuario;
       if (doc) await cargarSolicitudes(doc);
