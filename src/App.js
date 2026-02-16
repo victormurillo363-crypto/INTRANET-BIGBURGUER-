@@ -645,7 +645,7 @@ function App() {
       // Enviar SMS al admin notificando la respuesta del empleado
       try {
         console.log('Buscando configuracion de notificaciones para SMS...');
-        const { data: configData, error: configError } = await supabase
+        const { data: configData } = await supabase
           .from('configuracion_sistema')
           .select('telefono_notificaciones, nombre_receptor')
           .eq('id', 'principal')
