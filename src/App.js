@@ -3578,6 +3578,50 @@ function App() {
         
         if (!error) {
           alert('✅ Solicitud radicada correctamente. Número de radicado: ' + data.id.substring(0, 8).toUpperCase());
+          
+          // 📱 Enviar SMS de notificación al número configurado
+          try {
+            const { data: configData } = await supabase
+              .from('configuracion_sistema')
+              .select('telefono_notificaciones, nombre_receptor')
+              .eq('id', 'principal')
+              .single();
+            
+            if (configData?.telefono_notificaciones) {
+              const tipoNombre = {
+                'incapacidad_permiso': 'Incapacidad/Permiso',
+                'adelanto_nomina': 'Adelanto de Nómina',
+                'cambio_eps': 'Cambio de EPS',
+                'documentos_vinculacion': 'Documentos Vinculación',
+                'documentos_actualizacion': 'Docs. Actualización',
+                'vacaciones': 'Vacaciones',
+                'permiso': 'Permiso',
+                'otro': 'Otra Solicitud'
+              }[tipoSolicitud] || tipoSolicitud;
+              
+              const mensajeSMS = `🔔 BigBurguer - Nueva Solicitud
+📋 Tipo: ${tipoNombre}
+👤 Empleado: ${empleado?.nombre || usuario.nombre}
+📄 Doc: ${empleado?.documento || usuario.usuario}
+📅 Fecha: ${new Date().toLocaleDateString('es-CO')}
+✏️ Revise el panel de administración.`;
+              
+              // Enviar SMS via API
+              fetch('/api/enviar-sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  telefono: configData.telefono_notificaciones, 
+                  mensaje: mensajeSMS 
+                })
+              }).then(r => r.json()).then(result => {
+                if (result.ok) console.log('📱 SMS notificación enviado');
+              }).catch(err => console.warn('SMS no enviado:', err));
+            }
+          } catch (smsErr) {
+            console.warn('Error al enviar notificación SMS:', smsErr);
+          }
+          
           setPestanaActiva('estado');
           setTipoSolicitud('');
           setDescripcion('');
