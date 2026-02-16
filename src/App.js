@@ -3627,7 +3627,6 @@ function App() {
             } else {
               console.warn('📱 No hay teléfono de notificaciones configurado');
             }
-            }
           } catch (smsErr) {
             console.warn('Error al enviar notificación SMS:', smsErr);
           }
