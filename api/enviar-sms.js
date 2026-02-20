@@ -36,6 +36,9 @@ export default async function handler(req, res) {
   // Formatear número de teléfono para Onurix (sin + pero con código de país)
   let numeroFormateado = telefono.toString().replace(/\D/g, '');
   
+  console.log('📱 Teléfono original:', telefono);
+  console.log('📱 Solo dígitos:', numeroFormateado, 'Longitud:', numeroFormateado.length);
+  
   // Si es número colombiano sin código de país, agregarlo
   if (numeroFormateado.length === 10 && numeroFormateado.startsWith('3')) {
     numeroFormateado = '57' + numeroFormateado;
@@ -45,6 +48,17 @@ export default async function handler(req, res) {
   if (numeroFormateado.startsWith('+')) {
     numeroFormateado = numeroFormateado.substring(1);
   }
+  
+  // Asegurar que el número tenga exactamente 12 dígitos (57 + 10)
+  if (numeroFormateado.length !== 12) {
+    console.error('❌ Número mal formateado:', numeroFormateado, 'Longitud:', numeroFormateado.length);
+    return res.status(400).json({ 
+      error: 'Formato de teléfono inválido', 
+      detalle: `El número debe tener 12 dígitos (57 + 10). Recibido: ${numeroFormateado} (${numeroFormateado.length} dígitos)`
+    });
+  }
+  
+  console.log('📱 Número formateado final:', numeroFormateado);
 
   try {
     // Usar API de Onurix con form-urlencoded (formato correcto)
