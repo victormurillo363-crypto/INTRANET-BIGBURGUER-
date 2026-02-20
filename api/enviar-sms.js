@@ -47,18 +47,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Usar API de Onurix
-    const url = `https://www.onurix.com/api/v1/sms/send?client=${ONURIX_CLIENT}&key=${ONURIX_KEY}`;
+    // Usar API de Onurix con form-urlencoded (formato correcto)
+    const url = 'https://www.onurix.com/api/v1/sms/send';
+    
+    const formData = new URLSearchParams();
+    formData.append('client', ONURIX_CLIENT);
+    formData.append('key', ONURIX_KEY);
+    formData.append('phone', numeroFormateado);
+    formData.append('sms', mensaje);
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify({
-        phone: numeroFormateado,
-        sms: mensaje
-      }),
+      body: formData.toString(),
     });
 
     const data = await response.json();
