@@ -655,11 +655,11 @@ function App() {
           const nombreEmpleado = empleado?.nombre || empleado?.nombres || usuario?.nombre || 'Empleado';
           const docEmpleado = empleado?.documento || usuario?.usuario || '';
           
-          const mensajeSMS = `BigBurguer - Respuesta a REQUERIMIENTO
+          const mensajeSMS = `Respuesta a REQUERIMIENTO
 Empleado: ${nombreEmpleado}
 Doc: ${docEmpleado}
 Fecha: ${new Date().toLocaleDateString('es-CO')}
-El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.`;
+El empleado ha respondido. Revise el panel.`;
           
           console.log('Enviando SMS de respuesta a REQUERIMIENTO a:', configData.telefono_notificaciones);
           
@@ -3643,12 +3643,12 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                 'otro': 'Otra Solicitud'
               }[tipoSolicitud] || tipoSolicitud;
               
-              const mensajeSMS = `BigBurguer - Nueva Solicitud
+              const mensajeSMS = `Nueva Solicitud
 Tipo: ${tipoNombre}
 Empleado: ${empleado?.nombre || empleado?.nombres || usuario.nombre}
 Doc: ${empleado?.documento || usuario.usuario}
 Fecha: ${new Date().toLocaleDateString('es-CO')}
-Revise el panel de administracion.`;
+Revise el panel.`;
               
               console.log('📱 Enviando SMS a:', configData.telefono_notificaciones);
               
