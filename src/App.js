@@ -635,7 +635,7 @@ function App() {
       
       const { data, error } = await supabase
         .from('empleados')
-        .select('id, nombres, apellidos, nombre, documento, cargo, sede, fechanacimiento, activo')
+        .select('*')
         .eq('empresa_id', empresaId)
         .eq('activo', true);
       
@@ -645,11 +645,11 @@ function App() {
       }
       
       if (data) {
-        console.log('🎂 Empleados cargados para cumpleaños:', data.length);
+        console.log('🎂 Empleados cargados para cumpleaños:', data.length, data);
         // Mapear fechanacimiento a fechaNacimiento para compatibilidad con el modal
         const empleadosMapeados = data.map(emp => ({
           ...emp,
-          fechaNacimiento: emp.fechanacimiento || ''
+          fechaNacimiento: emp.fechanacimiento || emp.fechaNacimiento || ''
         }));
         setEmpleadosCumple(empleadosMapeados);
       }
