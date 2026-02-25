@@ -3049,12 +3049,15 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         try {
           const hoy = new Date();
           const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+          const mesSiguiente = new Date(hoy.getFullYear(), hoy.getMonth() + 2, 0); // Fin del mes siguiente
           const fechaInicio = mesAnterior.toISOString().split('T')[0];
+          const fechaFin = mesSiguiente.toISOString().split('T')[0];
           
           const { data } = await supabase
             .from('horarios')
             .select('eventos, eventos_por_dia, semana_inicio, semana_fin')
             .gte('semana_fin', fechaInicio)
+            .lte('semana_inicio', fechaFin)
             .order('semana_inicio', { ascending: false });
           
           if (data) {
@@ -3142,13 +3145,20 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
     };
     
     const hoy = new Date();
+    const diaActual = hoy.getDate();
+    const esPrimeraQuincena = diaActual <= 15; // Días 1-15 = primera quincena
+    
     const mesActual = { year: hoy.getFullYear(), month: hoy.getMonth() };
     const mesAnterior = hoy.getMonth() === 0 
       ? { year: hoy.getFullYear() - 1, month: 11 }
       : { year: hoy.getFullYear(), month: hoy.getMonth() - 1 };
+    const mesSiguiente = hoy.getMonth() === 11
+      ? { year: hoy.getFullYear() + 1, month: 0 }
+      : { year: hoy.getFullYear(), month: hoy.getMonth() + 1 };
     
     const semanasActual = generarSemanasDelMes(mesActual.year, mesActual.month);
     const semanasAnterior = generarSemanasDelMes(mesAnterior.year, mesAnterior.month);
+    const semanasSiguiente = generarSemanasDelMes(mesSiguiente.year, mesSiguiente.month);
     
     const renderizarCalendario = (semanas, year, month) => {
       const hoyStr = hoy.toISOString().split('T')[0];
@@ -3386,7 +3396,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         <h2 style={{ color: '#c62828', marginBottom: 10 }}>🕐 Mis Horarios</h2>
         
         <p style={{ color: '#666', marginBottom: 20, fontSize: 14 }}>
-          📅 Calendario de horarios - Mes actual y mes anterior
+          📅 Calendario de horarios - {esPrimeraQuincena ? 'Mes actual y mes anterior' : 'Mes actual y mes siguiente'}
         </p>
         
         {horarios.length === 0 ? (
@@ -3456,8 +3466,11 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
             {/* Mes Actual */}
             {renderizarCalendario(semanasActual, mesActual.year, mesActual.month)}
             
-            {/* Mes Anterior */}
-            {renderizarCalendario(semanasAnterior, mesAnterior.year, mesAnterior.month)}
+            {/* Mes Anterior (solo en primera quincena) o Mes Siguiente (solo en segunda quincena) */}
+            {esPrimeraQuincena 
+              ? renderizarCalendario(semanasAnterior, mesAnterior.year, mesAnterior.month)
+              : renderizarCalendario(semanasSiguiente, mesSiguiente.year, mesSiguiente.month)
+            }
           </div>
         )}
       </div>
@@ -5656,6 +5669,36 @@ Revise el panel de administracion.`;
                 </button>
               );
             })}
+            
+            {/* Botón Cumpleaños en el menú lateral */}
+            <button
+              onClick={() => setMostrarCumpleanos(true)}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderLeft: '4px solid transparent',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                textAlign: 'left',
+                color: '#333',
+                fontWeight: 'normal'
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.backgroundColor = '#fdf2f8';
+                e.currentTarget.style.borderLeftColor = '#ec4899';
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderLeftColor = 'transparent';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>🎂</span>
+              <span>Cumpleaños</span>
+            </button>
           </nav>
           
           {/* Info empresa */}
