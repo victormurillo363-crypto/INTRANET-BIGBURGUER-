@@ -53,6 +53,10 @@ function App() {
   
   // Estado para bloqueos de módulos por empleado
   const [bloqueosModulos, setBloqueosModulos] = useState([]);
+  
+  // Estados para cumpleaños de empleados
+  const [mostrarCumpleanos, setMostrarCumpleanos] = useState(false);
+  const [empleadosCumple, setEmpleadosCumple] = useState([]);
 
   // ============================================
   // TIMEOUT DE INACTIVIDAD - 10 MINUTOS
@@ -250,6 +254,9 @@ function App() {
           
           // Cargar avisos de la intranet
           await cargarAvisos(empresaId);
+          
+          // Cargar empleados de la empresa para cumpleaños
+          await cargarEmpleadosCumple(empresaId);
         }
         
         // Cargar datos adicionales usando ID para nóminas y horarios, documento para el resto
@@ -621,6 +628,31 @@ function App() {
     }
   };
 
+  // Cargar empleados de la empresa para mostrar cumpleaños
+  const cargarEmpleadosCumple = async (empresaId) => {
+    try {
+      console.log('🎂 Cargando empleados para cumpleaños, empresa ID:', empresaId);
+      
+      const { data, error } = await supabase
+        .from('empleados')
+        .select('id, nombres, apellidos, nombre, documento, cargo, sede, fechaNacimiento, activo')
+        .eq('empresa_id', empresaId)
+        .eq('activo', true);
+      
+      if (error) {
+        console.log('Error cargando empleados:', error);
+        return;
+      }
+      
+      if (data) {
+        console.log('🎂 Empleados cargados para cumpleaños:', data.length);
+        setEmpleadosCumple(data);
+      }
+    } catch (e) {
+      console.log('Error cargando empleados cumpleaños:', e);
+    }
+  };
+
   // Función para que el empleado responda a una propuesta de RRHH
   const responderPropuesta = async (solicitudId, textoRespuesta) => {
     if (!textoRespuesta || !textoRespuesta.trim()) {
@@ -655,11 +687,11 @@ function App() {
           const nombreEmpleado = empleado?.nombre || empleado?.nombres || usuario?.nombre || 'Empleado';
           const docEmpleado = empleado?.documento || usuario?.usuario || '';
           
-          const mensajeSMS = `Respuesta a REQUERIMIENTO
+          const mensajeSMS = `BigBurguer - Respuesta a REQUERIMIENTO
 Empleado: ${nombreEmpleado}
 Doc: ${docEmpleado}
 Fecha: ${new Date().toLocaleDateString('es-CO')}
-El empleado ha respondido. Revise el panel.`;
+El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.`;
           
           console.log('Enviando SMS de respuesta a REQUERIMIENTO a:', configData.telefono_notificaciones);
           
@@ -1428,6 +1460,38 @@ El empleado ha respondido. Revise el panel.`;
               })}
             </div>
           )}
+        </div>
+        
+        {/* Botón de Cumpleaños */}
+        <div style={{ marginBottom: 32 }}>
+          <button
+            onClick={() => setMostrarCumpleanos(true)}
+            style={{
+              background: 'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              fontWeight: '600',
+              fontSize: '14px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(236, 72, 153, 0.3)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(236, 72, 153, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(236, 72, 153, 0.3)';
+            }}
+          >
+            🎂 Cumpleaños
+          </button>
         </div>
         
         {/* Accesos rápidos */}
@@ -3643,12 +3707,12 @@ El empleado ha respondido. Revise el panel.`;
                 'otro': 'Otra Solicitud'
               }[tipoSolicitud] || tipoSolicitud;
               
-              const mensajeSMS = `Nueva Solicitud
+              const mensajeSMS = `BigBurguer - Nueva Solicitud
 Tipo: ${tipoNombre}
 Empleado: ${empleado?.nombre || empleado?.nombres || usuario.nombre}
 Doc: ${empleado?.documento || usuario.usuario}
 Fecha: ${new Date().toLocaleDateString('es-CO')}
-Revise el panel.`;
+Revise el panel de administracion.`;
               
               console.log('📱 Enviando SMS a:', configData.telefono_notificaciones);
               
@@ -5637,6 +5701,621 @@ Revise el panel.`;
           )}
         </main>
       </div>
+      
+      {/* Modal de Cumpleaños */}
+      {mostrarCumpleanos && (() => {
+        const hoy = new Date();
+        const mesActual = hoy.getMonth();
+        const diaActual = hoy.getDate();
+        
+        const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        // Colores por mes (estacionales)
+        const COLORES_MES = [
+          { bg: '#dbeafe', header: 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)', text: '#1e40af' }, // Enero - Azul
+          { bg: '#fce7f3', header: 'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)', text: '#9d174d' }, // Febrero - Rosa
+          { bg: '#d1fae5', header: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)', text: '#065f46' }, // Marzo - Verde
+          { bg: '#fef3c7', header: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)', text: '#92400e' }, // Abril - Amarillo
+          { bg: '#e0e7ff', header: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)', text: '#3730a3' }, // Mayo - Indigo
+          { bg: '#ffedd5', header: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', text: '#9a3412' }, // Junio - Naranja
+          { bg: '#fee2e2', header: 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)', text: '#991b1b' }, // Julio - Rojo
+          { bg: '#fae8ff', header: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)', text: '#6b21a8' }, // Agosto - Púrpura
+          { bg: '#ccfbf1', header: 'linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%)', text: '#0f766e' }, // Septiembre - Teal
+          { bg: '#fef9c3', header: 'linear-gradient(135deg, #eab308 0%, #facc15 100%)', text: '#854d0e' }, // Octubre - Dorado
+          { bg: '#f1f5f9', header: 'linear-gradient(135deg, #64748b 0%, #94a3b8 100%)', text: '#334155' }, // Noviembre - Gris
+          { bg: '#dcfce7', header: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)', text: '#166534' }  // Diciembre - Verde
+        ];
+        
+        // Procesar cumpleaños de empleados activos
+        const cumpleanosPorMes = {};
+        MESES.forEach((_, i) => cumpleanosPorMes[i] = []);
+        
+        const empleadosActivos = empleadosCumple.filter(emp => emp.activo !== false);
+        
+        empleadosActivos.forEach(emp => {
+          if (emp.fechaNacimiento) {
+            const fecha = new Date(emp.fechaNacimiento + 'T00:00:00');
+            if (!isNaN(fecha.getTime())) {
+              const mes = fecha.getMonth();
+              const dia = fecha.getDate();
+              const edad = hoy.getFullYear() - fecha.getFullYear();
+              cumpleanosPorMes[mes].push({
+                ...emp,
+                dia,
+                edad,
+                esHoy: mes === mesActual && dia === diaActual,
+                esEsteMes: mes === mesActual,
+                esteAno: hoy.getFullYear()
+              });
+            }
+          }
+        });
+        
+        // Ordenar cada mes por día
+        Object.keys(cumpleanosPorMes).forEach(mes => {
+          cumpleanosPorMes[mes].sort((a, b) => a.dia - b.dia);
+        });
+        
+        // Cumpleaños de hoy
+        const cumpleanosHoy = cumpleanosPorMes[mesActual].filter(c => c.esHoy);
+        
+        // Próximos cumpleaños (siguientes 30 días)
+        const proximosCumpleanos = [];
+        for (let i = 0; i < 30; i++) {
+          const fechaCheck = new Date(hoy);
+          fechaCheck.setDate(hoy.getDate() + i);
+          const mesCheck = fechaCheck.getMonth();
+          const diaCheck = fechaCheck.getDate();
+          cumpleanosPorMes[mesCheck].forEach(c => {
+            if (c.dia === diaCheck && i > 0) {
+              proximosCumpleanos.push({ ...c, diasFaltan: i, mesIdx: mesCheck });
+            }
+          });
+        }
+        
+        // Estadísticas
+        const totalCumpleanos = Object.values(cumpleanosPorMes).flat().length;
+        const cumpleEsteMes = cumpleanosPorMes[mesActual].length;
+        const mesesConMasCumples = MESES.map((nombre, idx) => ({ nombre, cantidad: cumpleanosPorMes[idx].length, idx }))
+          .sort((a, b) => b.cantidad - a.cantidad).slice(0, 3);
+        
+        return (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+            borderRadius: '20px',
+            width: '95%',
+            maxWidth: '1300px',
+            maxHeight: '92vh',
+            overflow: 'hidden',
+            boxShadow: '0 25px 80px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1)',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Header Mejorado */}
+            <div style={{
+              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)',
+              padding: '24px 30px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Decoración de fondo */}
+              <div style={{
+                position: 'absolute',
+                top: -20,
+                right: -20,
+                width: 150,
+                height: 150,
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '50%'
+              }} />
+              <div style={{
+                position: 'absolute',
+                bottom: -30,
+                left: '30%',
+                width: 100,
+                height: 100,
+                background: 'rgba(255,255,255,0.08)',
+                borderRadius: '50%'
+              }} />
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, zIndex: 1 }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  background: 'rgba(255,255,255,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 32,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}>
+                  🎂
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, color: 'white', fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px' }}>
+                    Cumpleaños del Equipo
+                  </h2>
+                  <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+                    <span style={{ 
+                      color: 'rgba(255,255,255,0.95)', 
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}>
+                      👥 {empleadosActivos.length} empleados activos
+                    </span>
+                    <span style={{ 
+                      color: 'rgba(255,255,255,0.95)', 
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}>
+                      📅 {MESES[mesActual]} {hoy.getFullYear()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setMostrarCumpleanos(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderRadius: 12,
+                  width: 44,
+                  height: 44,
+                  fontSize: 20,
+                  cursor: 'pointer',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s',
+                  zIndex: 1
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Tarjetas de estadísticas */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 16,
+              padding: '20px 24px',
+              background: '#f8fafc',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                borderRadius: 12,
+                padding: 16,
+                border: '1px solid #fbbf24'
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#92400e' }}>{cumpleanosHoy.length}</div>
+                <div style={{ fontSize: 12, color: '#b45309', fontWeight: 600 }}>🎉 Hoy</div>
+              </div>
+              <div style={{
+                background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+                borderRadius: 12,
+                padding: 16,
+                border: '1px solid #60a5fa'
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#1e40af' }}>{proximosCumpleanos.filter(p => p.diasFaltan <= 7).length}</div>
+                <div style={{ fontSize: 12, color: '#1d4ed8', fontWeight: 600 }}>📅 Esta semana</div>
+              </div>
+              <div style={{
+                background: 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)',
+                borderRadius: 12,
+                padding: 16,
+                border: '1px solid #f472b6'
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#9d174d' }}>{cumpleEsteMes}</div>
+                <div style={{ fontSize: 12, color: '#be185d', fontWeight: 600 }}>📆 Este mes</div>
+              </div>
+              <div style={{
+                background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)',
+                borderRadius: 12,
+                padding: 16,
+                border: '1px solid #818cf8'
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#3730a3' }}>{totalCumpleanos}</div>
+                <div style={{ fontSize: 12, color: '#4338ca', fontWeight: 600 }}>🎂 Total año</div>
+              </div>
+            </div>
+            
+            {/* Contenido */}
+            <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+              {/* Cumpleaños de hoy - Especial */}
+              {cumpleanosHoy.length > 0 && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fed7aa 100%)',
+                  borderRadius: 16,
+                  padding: 24,
+                  marginBottom: 24,
+                  border: '3px solid #f59e0b',
+                  boxShadow: '0 8px 32px rgba(245, 158, 11, 0.25)',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    fontSize: 60,
+                    opacity: 0.15
+                  }}>🎊</div>
+                  <h3 style={{ 
+                    margin: '0 0 20px 0', 
+                    color: '#78350f', 
+                    fontSize: 20, 
+                    fontWeight: 800,
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 10 
+                  }}>
+                    <span style={{
+                      background: '#f59e0b',
+                      color: 'white',
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      fontSize: 14
+                    }}>🎉 HOY</span>
+                    ¡Feliz Cumpleaños!
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                    {cumpleanosHoy.map(emp => (
+                      <div key={emp.id} style={{
+                        background: 'white',
+                        borderRadius: 14,
+                        padding: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 16,
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.1)',
+                        border: '2px solid #fbbf24',
+                        minWidth: 280
+                      }}>
+                        <div style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 14,
+                          background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: 22,
+                          fontWeight: 800,
+                          boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)'
+                        }}>
+                          {emp.nombres?.charAt(0)}{emp.apellidos?.charAt(0)}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 800, color: '#1e293b', fontSize: 16 }}>
+                            {emp.nombres} {emp.apellidos}
+                          </div>
+                          <div style={{ color: '#64748b', fontSize: 13, marginTop: 2 }}>{emp.cargo}</div>
+                          <div style={{ 
+                            color: 'white',
+                            background: 'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
+                            fontSize: 12, 
+                            fontWeight: 700,
+                            padding: '4px 10px',
+                            borderRadius: 20,
+                            display: 'inline-block',
+                            marginTop: 6
+                          }}>
+                            🎈 Cumple {emp.edad} años
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Próximos cumpleaños - Mejorado */}
+              {proximosCumpleanos.length > 0 && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                  borderRadius: 16,
+                  padding: 24,
+                  marginBottom: 24,
+                  border: '2px solid #7dd3fc'
+                }}>
+                  <h3 style={{ 
+                    margin: '0 0 18px 0', 
+                    color: '#0c4a6e', 
+                    fontSize: 17, 
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <span style={{
+                      background: 'linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%)',
+                      color: 'white',
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      fontSize: 13
+                    }}>📅</span>
+                    Próximos 30 días
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                    {proximosCumpleanos.slice(0, 12).map((emp, idx) => (
+                      <div key={idx} style={{
+                        background: 'white',
+                        borderRadius: 10,
+                        padding: '12px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        border: emp.diasFaltan <= 3 ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                        minWidth: 220,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                      }}>
+                        <div style={{
+                          background: emp.diasFaltan === 1 
+                            ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)'
+                            : emp.diasFaltan <= 3 
+                              ? 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)'
+                              : COLORES_MES[emp.mesIdx].header,
+                          borderRadius: 8,
+                          padding: '6px 10px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: 'white',
+                          textAlign: 'center',
+                          minWidth: 60
+                        }}>
+                          {emp.diasFaltan === 1 ? '🔔 Mañana' : `${emp.diasFaltan} días`}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
+                            {emp.nombres?.split(' ')[0]} {emp.apellidos?.split(' ')[0]}
+                          </div>
+                          <div style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}>
+                            {emp.dia} de {MESES[emp.mesIdx]}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Calendario anual por meses - Colorido */}
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ 
+                  margin: '0 0 8px 0', 
+                  color: '#1e293b', 
+                  fontSize: 17, 
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <span style={{
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                    color: 'white',
+                    padding: '5px 10px',
+                    borderRadius: 6,
+                    fontSize: 13
+                  }}>📆</span>
+                  Calendario Anual
+                </h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
+                  Meses con más cumpleaños: {mesesConMasCumples.map(m => `${m.nombre} (${m.cantidad})`).join(', ')}
+                </p>
+              </div>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+                gap: 18 
+              }}>
+                {MESES.map((nombreMes, mesIdx) => {
+                  const cumplesMes = cumpleanosPorMes[mesIdx];
+                  const esMesActual = mesIdx === mesActual;
+                  const colores = COLORES_MES[mesIdx];
+                  
+                  return (
+                    <div 
+                      key={mesIdx}
+                      style={{
+                        background: esMesActual ? colores.bg : '#ffffff',
+                        borderRadius: 14,
+                        border: esMesActual ? `3px solid ${colores.text}` : '1px solid #e5e7eb',
+                        overflow: 'hidden',
+                        boxShadow: esMesActual ? '0 8px 24px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.04)',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <div style={{
+                        background: colores.header,
+                        padding: '12px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ 
+                          fontWeight: 700, 
+                          fontSize: 15,
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}>
+                          {esMesActual && <span>👉</span>}
+                          {nombreMes}
+                        </span>
+                        <span style={{
+                          background: 'rgba(255,255,255,0.25)',
+                          padding: '4px 12px',
+                          borderRadius: 12,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: 'white'
+                        }}>
+                          {cumplesMes.length} {cumplesMes.length === 1 ? 'cumple' : 'cumples'}
+                        </span>
+                      </div>
+                      <div style={{ padding: 12, minHeight: 70, background: esMesActual ? colores.bg : '#fafafa' }}>
+                        {cumplesMes.length === 0 ? (
+                          <div style={{ 
+                            color: '#9ca3af', 
+                            fontSize: 13, 
+                            textAlign: 'center',
+                            padding: 16,
+                            fontStyle: 'italic'
+                          }}>
+                            Sin cumpleaños este mes
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {cumplesMes.map((emp, idx) => (
+                              <div 
+                                key={idx}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 10,
+                                  padding: '8px 10px',
+                                  background: emp.esHoy 
+                                    ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' 
+                                    : 'white',
+                                  borderRadius: 8,
+                                  border: emp.esHoy ? '2px solid #f59e0b' : '1px solid #e5e7eb'
+                                }}
+                              >
+                                <div style={{
+                                  minWidth: 32,
+                                  height: 32,
+                                  borderRadius: 8,
+                                  background: emp.esHoy 
+                                    ? 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)'
+                                    : colores.header,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: 'white'
+                                }}>
+                                  {emp.dia}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ 
+                                    fontWeight: 600, 
+                                    fontSize: 13, 
+                                    color: '#1e293b',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                  }}>
+                                    {emp.nombres?.split(' ')[0]} {emp.apellidos?.split(' ')[0]}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                                    {emp.sede || emp.cargo || 'Sin sede'}
+                                  </div>
+                                </div>
+                                {emp.esHoy && <span style={{ fontSize: 16 }}>🎉</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Footer Mejorado */}
+            <div style={{
+              padding: '16px 24px',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+              borderTop: '2px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', gap: 20, fontSize: 13 }}>
+                <span style={{ 
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  🎂 <strong style={{ color: '#1e293b' }}>{totalCumpleanos}</strong> cumpleaños registrados
+                </span>
+                <span style={{ 
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  📊 <strong style={{ color: '#1e293b' }}>{Math.round(totalCumpleanos / 12)}</strong> promedio por mes
+                </span>
+              </div>
+              <button
+                onClick={() => setMostrarCumpleanos(false)}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                  color: 'white',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(124, 58, 237, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.3)';
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
       
       {/* Estilos para impresión */}
       <style>{`
