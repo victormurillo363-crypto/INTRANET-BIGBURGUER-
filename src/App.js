@@ -635,7 +635,7 @@ function App() {
       
       const { data, error } = await supabase
         .from('empleados')
-        .select('id, nombres, apellidos, nombre, documento, cargo, sede, fechaNacimiento, activo')
+        .select('id, nombres, apellidos, nombre, documento, cargo, sede, fechanacimiento, activo')
         .eq('empresa_id', empresaId)
         .eq('activo', true);
       
@@ -646,7 +646,12 @@ function App() {
       
       if (data) {
         console.log('🎂 Empleados cargados para cumpleaños:', data.length);
-        setEmpleadosCumple(data);
+        // Mapear fechanacimiento a fechaNacimiento para compatibilidad con el modal
+        const empleadosMapeados = data.map(emp => ({
+          ...emp,
+          fechaNacimiento: emp.fechanacimiento || ''
+        }));
+        setEmpleadosCumple(empleadosMapeados);
       }
     } catch (e) {
       console.log('Error cargando empleados cumpleaños:', e);
@@ -1462,44 +1467,36 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
           )}
         </div>
         
-        {/* Botón de Cumpleaños */}
-        <div style={{ marginBottom: 32 }}>
-          <button
-            onClick={() => setMostrarCumpleanos(true)}
-            style={{
-              background: 'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
-              color: 'white',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              fontWeight: '600',
-              fontSize: '14px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(236, 72, 153, 0.3)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(236, 72, 153, 0.4)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(236, 72, 153, 0.3)';
-            }}
-          >
-            🎂 Cumpleaños
-          </button>
-        </div>
-        
         {/* Accesos rápidos */}
         <div>
           <h3 style={{ color: '#333', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             ⚡ Accesos Rápidos
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+            {/* Botón de Cumpleaños */}
+            <button
+              onClick={() => setMostrarCumpleanos(true)}
+              style={{
+                padding: 16,
+                backgroundColor: 'white',
+                border: '2px solid #e0e0e0',
+                borderRadius: 12,
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.borderColor = '#ec4899';
+                e.currentTarget.style.backgroundColor = '#fdf2f8';
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.borderColor = '#e0e0e0';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              <div style={{ fontSize: 28, marginBottom: 8 }}>🎂</div>
+              <div style={{ fontWeight: '500', color: '#333', fontSize: 13 }}>Cumpleaños</div>
+            </button>
             {menuItems.filter(m => m.id !== 'inicio').map(item => {
               const bloqueo = moduloBloqueado(item.id);
               const estaBloqueado = !!bloqueo;
