@@ -458,13 +458,13 @@ function App() {
     try {
       console.log('📅 Buscando horarios para empleado ID:', empleadoId);
       
-      // Calcular fechas: mes actual y mes anterior
+      // Calcular fechas: mes anterior, mes actual y mes siguiente
       const hoy = new Date();
       const primerDiaMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
-      const ultimoDiaMesActual = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+      const ultimoDiaMesSiguiente = new Date(hoy.getFullYear(), hoy.getMonth() + 2, 0); // Incluir mes siguiente
       
       const fechaInicio = primerDiaMesAnterior.toISOString().split('T')[0];
-      const fechaFin = ultimoDiaMesActual.toISOString().split('T')[0];
+      const fechaFin = ultimoDiaMesSiguiente.toISOString().split('T')[0];
       
       console.log('📆 Buscando horarios desde', fechaInicio, 'hasta', fechaFin);
       
