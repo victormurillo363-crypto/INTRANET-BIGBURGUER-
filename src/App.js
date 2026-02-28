@@ -659,20 +659,33 @@ function App() {
   };
 
   // Función para que el empleado responda a una propuesta de RRHH
-  const responderPropuesta = async (solicitudId, textoRespuesta) => {
+  const responderPropuesta = async (solicitudId, textoRespuesta, archivosRespuesta = [], guardarEnFicha = false) => {
     if (!textoRespuesta || !textoRespuesta.trim()) {
       alert('Por favor escribe tu respuesta');
       return;
     }
     
     try {
+      // Preparar datos de actualización
+      const datosActualizacion = { 
+        respuesta_empleado: textoRespuesta.trim(),
+        fecha_respuesta_empleado: new Date().toISOString()
+        // El estado sigue en 'en_proceso' hasta que RRHH dé respuesta definitiva
+      };
+      
+      // Si hay archivos adjuntos, agregarlos
+      if (archivosRespuesta.length > 0) {
+        datosActualizacion.archivos_respuesta_empleado = JSON.stringify(archivosRespuesta);
+      }
+      
+      // Si se marca guardar en ficha, agregar flag
+      if (guardarEnFicha) {
+        datosActualizacion.guardar_en_ficha = true;
+      }
+      
       const { error } = await supabase
         .from('solicitudes_empleados')
-        .update({ 
-          respuesta_empleado: textoRespuesta.trim(),
-          fecha_respuesta_empleado: new Date().toISOString()
-          // El estado sigue en 'en_proceso' hasta que RRHH dé respuesta definitiva
-        })
+        .update(datosActualizacion)
         .eq('id', solicitudId);
       
       if (error) throw error;
@@ -3477,6 +3490,224 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
     );
   };
 
+  // Componente para que el empleado responda a solicitudes con archivos adjuntos
+  const FormularioRespuestaEmpleado = ({ solicitudId, onEnviar, empleadoDoc }) => {
+    const [textoRespuesta, setTextoRespuesta] = useState('');
+    const [archivosRespuesta, setArchivosRespuesta] = useState([]);
+    const [subiendoArchivo, setSubiendoArchivo] = useState(false);
+    const [guardarEnFicha, setGuardarEnFicha] = useState(false);
+    const [enviando, setEnviando] = useState(false);
+
+    // Función para subir archivo
+    const subirArchivoRespuesta = async (archivo) => {
+      setSubiendoArchivo(true);
+      try {
+        const nombreArchivo = `solicitudes/respuesta_${solicitudId}_${Date.now()}_${archivo.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const { error } = await supabase.storage
+          .from('empleados-docs')
+          .upload(nombreArchivo, archivo);
+        
+        if (error) throw error;
+        
+        const { data: urlData } = supabase.storage
+          .from('empleados-docs')
+          .getPublicUrl(nombreArchivo);
+        
+        setArchivosRespuesta(prev => [...prev, {
+          nombre: archivo.name,
+          url: urlData.publicUrl,
+          tipo: archivo.type,
+          tamaño: archivo.size,
+          fecha: new Date().toISOString()
+        }]);
+      } catch (error) {
+        console.error('Error subiendo archivo:', error);
+        alert('❌ Error al subir el archivo');
+      }
+      setSubiendoArchivo(false);
+    };
+
+    const eliminarArchivo = (index) => {
+      setArchivosRespuesta(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleEnviar = async () => {
+      if (!textoRespuesta.trim()) {
+        alert('Por favor escribe tu respuesta');
+        return;
+      }
+      setEnviando(true);
+      try {
+        await onEnviar(solicitudId, textoRespuesta, archivosRespuesta, guardarEnFicha);
+      } catch (e) {
+        console.error('Error enviando respuesta:', e);
+      }
+      setEnviando(false);
+    };
+
+    return (
+      <div style={{
+        marginTop: 16,
+        padding: 16,
+        backgroundColor: '#f3e5f5',
+        borderRadius: 12,
+        border: '2px solid #ce93d8'
+      }}>
+        <div style={{ 
+          fontWeight: 'bold', 
+          color: '#7b1fa2', 
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}>
+          <span style={{ fontSize: 20 }}>📨</span>
+          RRHH te ha enviado una propuesta. Por favor responde:
+        </div>
+        
+        <textarea
+          value={textoRespuesta}
+          onChange={(e) => setTextoRespuesta(e.target.value)}
+          rows={3}
+          placeholder="Escribe tu respuesta aquí... (ej: Acepto la propuesta / No estoy de acuerdo porque...)"
+          style={{
+            width: '100%',
+            padding: 12,
+            border: '1px solid #ce93d8',
+            borderRadius: 8,
+            resize: 'vertical',
+            boxSizing: 'border-box',
+            marginBottom: 12
+          }}
+        />
+
+        {/* Sección de archivos adjuntos */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold', fontSize: 13, color: '#7b1fa2' }}>
+            📎 Adjuntar archivos (opcional)
+          </label>
+          <div style={{
+            border: '2px dashed #ce93d8',
+            borderRadius: 8,
+            padding: 12,
+            textAlign: 'center',
+            backgroundColor: '#faf5fb'
+          }}>
+            <input
+              type="file"
+              id={`archivo-respuesta-${solicitudId}`}
+              multiple
+              onChange={async (e) => {
+                const files = Array.from(e.target.files);
+                for (const file of files) {
+                  await subirArchivoRespuesta(file);
+                }
+                e.target.value = '';
+              }}
+              style={{ display: 'none' }}
+            />
+            <label
+              htmlFor={`archivo-respuesta-${solicitudId}`}
+              style={{
+                display: 'inline-block',
+                padding: '8px 16px',
+                backgroundColor: '#e1bee7',
+                border: '1px solid #ce93d8',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontSize: 13
+              }}
+            >
+              {subiendoArchivo ? '⏳ Subiendo...' : '📁 Seleccionar archivos'}
+            </label>
+            <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9c27b0' }}>
+              PDFs, imágenes, documentos (máx. 5MB por archivo)
+            </p>
+          </div>
+          
+          {/* Lista de archivos adjuntos */}
+          {archivosRespuesta.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              {archivosRespuesta.map((archivo, idx) => (
+                <div key={idx} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '6px 10px',
+                  backgroundColor: '#e8f5e9',
+                  borderRadius: 6,
+                  marginBottom: 4,
+                  fontSize: 12
+                }}>
+                  <a href={archivo.url} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'none' }}>
+                    📄 {archivo.nombre}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => eliminarArchivo(idx)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#c62828',
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Checkbox para guardar en ficha del empleado */}
+        {archivosRespuesta.length > 0 && (
+          <div style={{ 
+            marginBottom: 12, 
+            padding: 10, 
+            backgroundColor: '#fff3e0', 
+            borderRadius: 8,
+            border: '1px solid #ffb74d'
+          }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={guardarEnFicha}
+                onChange={(e) => setGuardarEnFicha(e.target.checked)}
+                style={{ width: 18, height: 18 }}
+              />
+              <span style={{ color: '#e65100' }}>
+                📂 <strong>Guardar archivos en mi ficha de empleado</strong>
+              </span>
+            </label>
+            <p style={{ margin: '6px 0 0 26px', fontSize: 11, color: '#f57c00' }}>
+              Los documentos quedarán almacenados permanentemente en tu expediente laboral.
+            </p>
+          </div>
+        )}
+
+        <button
+          onClick={handleEnviar}
+          disabled={enviando || subiendoArchivo}
+          style={{
+            width: '100%',
+            padding: '12px 20px',
+            backgroundColor: enviando || subiendoArchivo ? '#b39ddb' : '#7b1fa2',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            cursor: enviando || subiendoArchivo ? 'not-allowed' : 'pointer',
+            fontWeight: 'bold',
+            fontSize: 14
+          }}
+        >
+          {enviando ? '⏳ Enviando...' : '📤 Enviar Respuesta'}
+        </button>
+      </div>
+    );
+  };
+
   // RADICAR SOLICITUD
   const SeccionSolicitudes = () => {
     // Usar el estado del padre para la pestaña activa
@@ -4582,58 +4813,11 @@ Revise el panel de administracion.`;
 
                         {/* Formulario para responder a propuesta de RRHH */}
                         {sol.requiere_confirmacion && sol.estado === 'en_proceso' && !sol.respuesta_empleado && (
-                          <div style={{
-                            marginTop: 16,
-                            padding: 16,
-                            backgroundColor: '#f3e5f5',
-                            borderRadius: 12,
-                            border: '2px solid #ce93d8'
-                          }}>
-                            <div style={{ 
-                              fontWeight: 'bold', 
-                              color: '#7b1fa2', 
-                              marginBottom: 12,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 8
-                            }}>
-                              <span style={{ fontSize: 20 }}>📨</span>
-                              RRHH te ha enviado una propuesta. Por favor responde:
-                            </div>
-                            <textarea
-                              id={`respuesta-${sol.id}`}
-                              rows={3}
-                              placeholder="Escribe tu respuesta aquí... (ej: Acepto la propuesta / No estoy de acuerdo porque...)"
-                              style={{
-                                width: '100%',
-                                padding: 12,
-                                border: '1px solid #ce93d8',
-                                borderRadius: 8,
-                                resize: 'vertical',
-                                boxSizing: 'border-box',
-                                marginBottom: 12
-                              }}
-                            />
-                            <button
-                              onClick={() => {
-                                const textarea = document.getElementById(`respuesta-${sol.id}`);
-                                responderPropuesta(sol.id, textarea.value);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '12px 20px',
-                                backgroundColor: '#7b1fa2',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: 8,
-                                cursor: 'pointer',
-                                fontWeight: 'bold',
-                                fontSize: 14
-                              }}
-                            >
-                              📤 Enviar Respuesta
-                            </button>
-                          </div>
+                          <FormularioRespuestaEmpleado 
+                            solicitudId={sol.id} 
+                            onEnviar={responderPropuesta}
+                            empleadoDoc={empleado?.documento || usuario?.usuario}
+                          />
                         )}
 
                         {/* Mostrar respuesta del empleado ya enviada */}
@@ -4649,6 +4833,46 @@ Revise el panel de administracion.`;
                               ✅ Tu respuesta:
                             </div>
                             <p style={{ margin: 0, fontSize: 13, color: '#333' }}>{sol.respuesta_empleado}</p>
+                            
+                            {/* Mostrar archivos adjuntos de la respuesta */}
+                            {sol.archivos_respuesta_empleado && (() => {
+                              let archivosResp = [];
+                              try {
+                                archivosResp = typeof sol.archivos_respuesta_empleado === 'string' 
+                                  ? JSON.parse(sol.archivos_respuesta_empleado) 
+                                  : sol.archivos_respuesta_empleado;
+                              } catch(e) { archivosResp = []; }
+                              
+                              return archivosResp.length > 0 && (
+                                <div style={{ marginTop: 8, padding: 8, backgroundColor: '#c8e6c9', borderRadius: 6 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 'bold', color: '#1b5e20', marginBottom: 4 }}>
+                                    📎 Archivos adjuntos:
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {archivosResp.map((arch, idx) => (
+                                      <a
+                                        key={idx}
+                                        href={arch.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          padding: '4px 8px',
+                                          backgroundColor: 'white',
+                                          borderRadius: 4,
+                                          fontSize: 11,
+                                          color: '#2e7d32',
+                                          textDecoration: 'none',
+                                          border: '1px solid #81c784'
+                                        }}
+                                      >
+                                        📄 {arch.nombre}
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            
                             {sol.fecha_respuesta_empleado && (
                               <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
                                 Enviada: {new Date(sol.fecha_respuesta_empleado).toLocaleString('es-CO')}
