@@ -3661,32 +3661,6 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
           )}
         </div>
 
-        {/* Checkbox para guardar en ficha del empleado */}
-        {archivosRespuesta.length > 0 && (
-          <div style={{ 
-            marginBottom: 12, 
-            padding: 10, 
-            backgroundColor: '#fff3e0', 
-            borderRadius: 8,
-            border: '1px solid #ffb74d'
-          }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-              <input
-                type="checkbox"
-                checked={guardarEnFicha}
-                onChange={(e) => setGuardarEnFicha(e.target.checked)}
-                style={{ width: 18, height: 18 }}
-              />
-              <span style={{ color: '#e65100' }}>
-                📂 <strong>Guardar archivos en mi ficha de empleado</strong>
-              </span>
-            </label>
-            <p style={{ margin: '6px 0 0 26px', fontSize: 11, color: '#f57c00' }}>
-              Los documentos quedarán almacenados permanentemente en tu expediente laboral.
-            </p>
-          </div>
-        )}
-
         <button
           onClick={handleEnviar}
           disabled={enviando || subiendoArchivo}
