@@ -3495,7 +3495,6 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
     const [textoRespuesta, setTextoRespuesta] = useState('');
     const [archivosRespuesta, setArchivosRespuesta] = useState([]);
     const [subiendoArchivo, setSubiendoArchivo] = useState(false);
-    const [guardarEnFicha, setGuardarEnFicha] = useState(false);
     const [enviando, setEnviando] = useState(false);
 
     // Función para subir archivo
@@ -3538,7 +3537,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
       }
       setEnviando(true);
       try {
-        await onEnviar(solicitudId, textoRespuesta, archivosRespuesta, guardarEnFicha);
+        await onEnviar(solicitudId, textoRespuesta, archivosRespuesta, false);
       } catch (e) {
         console.error('Error enviando respuesta:', e);
       }
