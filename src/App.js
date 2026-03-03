@@ -3712,6 +3712,120 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
     const [archivoIncapacidad, setArchivoIncapacidad] = useState(null);
     const [subiendoArchivoIncapacidad, setSubiendoArchivoIncapacidad] = useState(false);
 
+    // === ESTADOS PARA SOLICITUDES DEL EMPLEADOR ===
+    const [solicitudesEmpleador, setSolicitudesEmpleador] = useState([]);
+    const [cargandoSolicitudesEmpleador, setCargandoSolicitudesEmpleador] = useState(false);
+    const [solicitudEmpleadorSeleccionada, setSolicitudEmpleadorSeleccionada] = useState(null);
+    const [respuestaEmpleado, setRespuestaEmpleado] = useState('');
+    const [archivosRespuestaEmpleado, setArchivosRespuestaEmpleado] = useState([]);
+    const [enviandoRespuestaEmpleado, setEnviandoRespuestaEmpleado] = useState(false);
+    const [subiendoArchivoRespuestaEmpleado, setSubiendoArchivoRespuestaEmpleado] = useState(false);
+
+    // Cargar solicitudes del empleador dirigidas a este empleado
+    const cargarSolicitudesEmpleador = async () => {
+      setCargandoSolicitudesEmpleador(true);
+      try {
+        const doc = empleado?.documento || usuario?.usuario;
+        if (!doc) {
+          console.log('No hay documento de empleado para cargar solicitudes del empleador');
+          setCargandoSolicitudesEmpleador(false);
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('solicitudes_empleador')
+          .select('*')
+          .eq('empleado_documento', doc)
+          .order('fecha_creacion', { ascending: false });
+        
+        if (error) {
+          if (error.code === '42P01') {
+            console.log('⚠️ Tabla solicitudes_empleador no existe aún');
+          } else {
+            console.error('Error cargando solicitudes del empleador:', error);
+          }
+        } else {
+          setSolicitudesEmpleador(data || []);
+          console.log('📬 Solicitudes del empleador cargadas:', data?.length || 0);
+        }
+      } catch (err) {
+        console.error('Error cargando solicitudes del empleador:', err);
+      }
+      setCargandoSolicitudesEmpleador(false);
+    };
+
+    // Subir archivo de respuesta del empleado
+    const subirArchivoRespuestaEmpleado = async (archivo) => {
+      setSubiendoArchivoRespuestaEmpleado(true);
+      try {
+        const nombreArchivo = `solicitudes_empleador/respuesta_${Date.now()}_${archivo.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const { error } = await supabase.storage
+          .from('empleados-docs')
+          .upload(nombreArchivo, archivo);
+        
+        if (error) throw error;
+        
+        const { data: urlData } = supabase.storage
+          .from('empleados-docs')
+          .getPublicUrl(nombreArchivo);
+        
+        setArchivosRespuestaEmpleado(prev => [...prev, {
+          nombre: archivo.name,
+          url: urlData.publicUrl
+        }]);
+      } catch (error) {
+        console.error('Error subiendo archivo:', error);
+        alert('Error al subir el archivo');
+      }
+      setSubiendoArchivoRespuestaEmpleado(false);
+    };
+
+    // Enviar respuesta del empleado a una solicitud del empleador
+    const enviarRespuestaEmpleado = async () => {
+      if (!solicitudEmpleadorSeleccionada) return;
+      if (!respuestaEmpleado.trim()) {
+        alert('Por favor escribe tu respuesta');
+        return;
+      }
+
+      setEnviandoRespuestaEmpleado(true);
+      try {
+        const updateData = {
+          estado: 'respondida',
+          respuesta_empleado: respuestaEmpleado.trim(),
+          fecha_respuesta_empleado: new Date().toISOString()
+        };
+
+        if (archivosRespuestaEmpleado.length > 0) {
+          updateData.archivos_respuesta_empleado = JSON.stringify(archivosRespuestaEmpleado);
+        }
+
+        const { error } = await supabase
+          .from('solicitudes_empleador')
+          .update(updateData)
+          .eq('id', solicitudEmpleadorSeleccionada.id);
+
+        if (error) throw error;
+
+        alert('✅ Respuesta enviada correctamente');
+        setSolicitudEmpleadorSeleccionada(null);
+        setRespuestaEmpleado('');
+        setArchivosRespuestaEmpleado([]);
+        cargarSolicitudesEmpleador();
+      } catch (error) {
+        console.error('Error enviando respuesta:', error);
+        alert('❌ Error al enviar la respuesta: ' + (error.message || 'Error desconocido'));
+      }
+      setEnviandoRespuestaEmpleado(false);
+    };
+
+    // Cargar solicitudes del empleador al cambiar a esa pestaña
+    useEffect(() => {
+      if (pestanaActiva === 'empleador') {
+        cargarSolicitudesEmpleador();
+      }
+    }, [pestanaActiva]);
+
     // Cargar bloqueos de solicitudes al montar
     useEffect(() => {
       const cargarBloqueos = async () => {
@@ -4069,6 +4183,42 @@ Revise el panel de administracion.`;
                   justifyContent: 'center'
                 }}>
                   {solicitudes.filter(s => s.estado === 'recibido' || s.estado === 'en_proceso').length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setPestanaActiva('empleador')}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: pestanaActiva === 'empleador' ? '#1565c0' : '#f5f5f5',
+                color: pestanaActiva === 'empleador' ? 'white' : '#333',
+                border: 'none',
+                borderRadius: '8px 8px 0 0',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 14,
+                position: 'relative'
+              }}
+            >
+              📬 Del Empleador
+              {/* Badge para solicitudes pendientes del empleador */}
+              {solicitudesEmpleador.filter(s => s.estado === 'pendiente').length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: -5,
+                  right: -5,
+                  backgroundColor: '#1565c0',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: 20,
+                  height: 20,
+                  fontSize: 11,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold'
+                }}>
+                  {solicitudesEmpleador.filter(s => s.estado === 'pendiente').length}
                 </span>
               )}
             </button>
@@ -4856,6 +5006,240 @@ Revise el panel de administracion.`;
                                 ⏳ Esperando respuesta definitiva de RRHH...
                               </div>
                             )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pestaña Solicitudes del Empleador */}
+          {pestanaActiva === 'empleador' && (
+            <div>
+              <h3 style={{ color: '#1565c0', marginBottom: 20, marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                📬 Solicitudes del Empleador
+              </h3>
+              <p style={{ color: '#666', fontSize: 13, marginBottom: 20 }}>
+                Aquí aparecen las solicitudes que la empresa te ha enviado para que respondas.
+              </p>
+
+              {cargandoSolicitudesEmpleador ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                  <div style={{ fontSize: 40, marginBottom: 16 }}>⏳</div>
+                  <p>Cargando solicitudes...</p>
+                </div>
+              ) : solicitudesEmpleador.length === 0 ? (
+                <div style={{
+                  padding: 40,
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 12,
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: 60, marginBottom: 16 }}>📭</div>
+                  <h3>No tienes solicitudes del empleador</h3>
+                  <p style={{ color: '#666' }}>
+                    Cuando la empresa te envíe alguna solicitud, aparecerá aquí.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {solicitudesEmpleador.map(sol => {
+                    let archivosAdj = [];
+                    try {
+                      if (sol.archivos_adjuntos) {
+                        archivosAdj = typeof sol.archivos_adjuntos === 'string' 
+                          ? JSON.parse(sol.archivos_adjuntos) 
+                          : sol.archivos_adjuntos;
+                      }
+                    } catch (e) { archivosAdj = []; }
+
+                    return (
+                      <div
+                        key={sol.id}
+                        style={{
+                          padding: 16,
+                          backgroundColor: sol.estado === 'pendiente' ? '#fff3e0' : '#e8f5e9',
+                          border: sol.estado === 'pendiente' ? '2px solid #ff9800' : '1px solid #4caf50',
+                          borderRadius: 12
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <span style={{
+                                padding: '2px 8px',
+                                backgroundColor: sol.prioridad === 'urgente' ? '#f44336' : sol.prioridad === 'alta' ? '#ff9800' : '#4caf50',
+                                color: 'white',
+                                borderRadius: 4,
+                                fontSize: 10,
+                                fontWeight: 'bold'
+                              }}>
+                                {sol.prioridad === 'urgente' ? '🔴 URGENTE' : sol.prioridad === 'alta' ? '🟠 ALTA' : '🟢 NORMAL'}
+                              </span>
+                              <span style={{ fontSize: 11, color: '#999' }}>
+                                📅 {new Date(sol.fecha_creacion).toLocaleDateString('es-CO')}
+                              </span>
+                            </div>
+                            <div style={{ fontWeight: 'bold', fontSize: 16, color: '#1565c0', marginBottom: 8 }}>
+                              {sol.asunto}
+                            </div>
+                            <p style={{ margin: '0 0 12px', color: '#333', fontSize: 14, lineHeight: 1.5 }}>
+                              {sol.descripcion}
+                            </p>
+
+                            {/* Archivos adjuntos */}
+                            {archivosAdj.length > 0 && (
+                              <div style={{ marginBottom: 12, padding: 10, backgroundColor: '#e3f2fd', borderRadius: 8 }}>
+                                <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 6 }}>📎 Archivos adjuntos:</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                  {archivosAdj.map((arch, idx) => (
+                                    <a
+                                      key={idx}
+                                      href={arch.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{
+                                        padding: '4px 8px',
+                                        backgroundColor: 'white',
+                                        borderRadius: 4,
+                                        fontSize: 11,
+                                        color: '#1565c0',
+                                        textDecoration: 'none'
+                                      }}
+                                    >
+                                      📄 {arch.nombre}
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <span style={{
+                            padding: '6px 12px',
+                            backgroundColor: sol.estado === 'pendiente' ? '#ff9800' : '#4caf50',
+                            color: 'white',
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 'bold'
+                          }}>
+                            {sol.estado === 'pendiente' ? '⏳ PENDIENTE' : '✅ RESPONDIDA'}
+                          </span>
+                        </div>
+
+                        {/* Si ya respondió, mostrar la respuesta */}
+                        {sol.respuesta_empleado && (
+                          <div style={{
+                            marginTop: 12,
+                            padding: 12,
+                            backgroundColor: '#e8f5e9',
+                            borderRadius: 8,
+                            border: '1px solid #4caf50'
+                          }}>
+                            <div style={{ fontSize: 12, fontWeight: 'bold', color: '#2e7d32', marginBottom: 4 }}>
+                              ✅ Tu respuesta:
+                            </div>
+                            <p style={{ margin: 0, fontSize: 13, color: '#333' }}>{sol.respuesta_empleado}</p>
+                            {sol.fecha_respuesta_empleado && (
+                              <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                                Enviada: {new Date(sol.fecha_respuesta_empleado).toLocaleString('es-CO')}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Si está pendiente, mostrar formulario para responder */}
+                        {sol.estado === 'pendiente' && sol.requiere_respuesta && (
+                          <div style={{
+                            marginTop: 12,
+                            padding: 16,
+                            backgroundColor: '#fafafa',
+                            borderRadius: 8,
+                            border: '1px dashed #ccc'
+                          }}>
+                            <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold', fontSize: 13 }}>
+                              ✍️ Tu respuesta:
+                            </label>
+                            <textarea
+                              value={solicitudEmpleadorSeleccionada?.id === sol.id ? respuestaEmpleado : ''}
+                              onChange={(e) => {
+                                setSolicitudEmpleadorSeleccionada(sol);
+                                setRespuestaEmpleado(e.target.value);
+                              }}
+                              onFocus={() => setSolicitudEmpleadorSeleccionada(sol)}
+                              placeholder="Escribe tu respuesta aquí..."
+                              rows={3}
+                              style={{
+                                width: '100%',
+                                padding: 12,
+                                border: '1px solid #ddd',
+                                borderRadius: 8,
+                                resize: 'vertical',
+                                boxSizing: 'border-box',
+                                marginBottom: 12
+                              }}
+                            />
+                            
+                            {/* Subir archivos */}
+                            <div style={{ marginBottom: 12 }}>
+                              <input
+                                type="file"
+                                multiple
+                                onChange={(e) => {
+                                  setSolicitudEmpleadorSeleccionada(sol);
+                                  Array.from(e.target.files).forEach(file => subirArchivoRespuestaEmpleado(file));
+                                }}
+                                disabled={subiendoArchivoRespuestaEmpleado}
+                                style={{ fontSize: 12 }}
+                              />
+                              {subiendoArchivoRespuestaEmpleado && <span style={{ fontSize: 11, color: '#666' }}> ⏳ Subiendo...</span>}
+                              {archivosRespuestaEmpleado.length > 0 && solicitudEmpleadorSeleccionada?.id === sol.id && (
+                                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                  {archivosRespuestaEmpleado.map((arch, idx) => (
+                                    <span key={idx} style={{ padding: '4px 8px', backgroundColor: '#e3f2fd', borderRadius: 4, fontSize: 11 }}>
+                                      📄 {arch.nombre}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                setSolicitudEmpleadorSeleccionada(sol);
+                                enviarRespuestaEmpleado();
+                              }}
+                              disabled={enviandoRespuestaEmpleado || (solicitudEmpleadorSeleccionada?.id === sol.id && !respuestaEmpleado.trim())}
+                              style={{
+                                padding: '10px 20px',
+                                backgroundColor: '#1565c0',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 8,
+                                cursor: enviandoRespuestaEmpleado ? 'wait' : 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: 13
+                              }}
+                            >
+                              {enviandoRespuestaEmpleado ? '⏳ Enviando...' : '📤 Enviar Respuesta'}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Si no requiere respuesta */}
+                        {sol.estado === 'pendiente' && !sol.requiere_respuesta && (
+                          <div style={{
+                            marginTop: 12,
+                            padding: 10,
+                            backgroundColor: '#e3f2fd',
+                            borderRadius: 8,
+                            textAlign: 'center',
+                            fontSize: 13,
+                            color: '#1565c0'
+                          }}>
+                            ℹ️ Esta solicitud es solo informativa, no requiere respuesta.
                           </div>
                         )}
                       </div>
