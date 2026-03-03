@@ -3807,6 +3807,42 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
 
         if (error) throw error;
 
+        // 📱 Enviar SMS al admin notificando la respuesta del empleado
+        try {
+          // Obtener configuración de notificaciones
+          const { data: configData } = await supabase
+            .from('configuracion_sistema')
+            .select('telefono_notificaciones, nombre_receptor')
+            .eq('id', 'principal')
+            .single();
+          
+          if (configData?.telefono_notificaciones) {
+            const nombreEmpleado = empleado?.nombre || usuario?.usuario || 'Un empleado';
+            const mensaje = `BIGBURGUER - ${nombreEmpleado} ha respondido a la solicitud: "${solicitudEmpleadorSeleccionada.asunto}". Revise el sistema para ver los detalles.`;
+            
+            fetch('/api/enviar-sms', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                telefono: configData.telefono_notificaciones,
+                mensaje: mensaje
+              })
+            }).then(res => res.json())
+              .then(data => {
+                if (data.ok) {
+                  console.log('📱 SMS enviado al admin:', configData.nombre_receptor || 'Admin');
+                } else {
+                  console.warn('📱 No se pudo enviar SMS:', data.error);
+                }
+              })
+              .catch(err => console.warn('Error enviando SMS:', err));
+          } else {
+            console.log('📱 No hay teléfono de notificaciones configurado');
+          }
+        } catch (smsErr) {
+          console.warn('Error al intentar enviar SMS:', smsErr);
+        }
+
         alert('✅ Respuesta enviada correctamente');
         setSolicitudEmpleadorSeleccionada(null);
         setRespuestaEmpleado('');
