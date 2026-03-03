@@ -5965,7 +5965,7 @@ Revise el panel de administracion.`;
       { campo: 'nombres', label: 'Nombres', tipo: 'text' },
       { campo: 'apellidos', label: 'Apellidos', tipo: 'text' },
       { campo: 'documento', label: 'Número de Documento', tipo: 'text', disabled: true },
-      { campo: 'tipodoc', label: 'Tipo de Documento', tipo: 'select', opciones: ['Cédula de ciudadanía', 'Cédula de extranjería', 'Tarjeta de identidad', 'Pasaporte'] },
+      { campo: 'tipodoc', label: 'Tipo de Documento', tipo: 'select', opciones: ['Cédula de ciudadanía', 'Cédula de extranjería', 'Tarjeta de identidad', 'Registro civil', 'Permiso de protección temporal PPT', 'Pasaporte', 'Cédula venezolana'] },
       { campo: 'fechanacimiento', label: 'Fecha de Nacimiento', tipo: 'date' },
       { campo: 'rh', label: 'Grupo Sanguíneo (RH)', tipo: 'select', opciones: ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'] },
       { campo: 'genero', label: 'Género', tipo: 'select', opciones: ['Masculino', 'Femenino', 'Otro'] },
