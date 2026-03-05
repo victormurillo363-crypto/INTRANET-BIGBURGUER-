@@ -5854,6 +5854,20 @@ Revise el panel de administracion.`;
                       </span>
                     </div>
                   )}
+
+                  {/* Motivo del préstamo */}
+                  {prestamo.motivo && (
+                    <div style={{
+                      marginTop: 12,
+                      padding: 10,
+                      background: '#FFF8E1',
+                      borderRadius: 8,
+                      border: '1px solid #FFE082'
+                    }}>
+                      <p style={{ margin: 0, fontSize: 11, color: '#F57F17', fontWeight: 600 }}>📝 Motivo</p>
+                      <p style={{ margin: '4px 0 0', fontSize: 13, color: '#333' }}>{prestamo.motivo}</p>
+                    </div>
+                  )}
                 </div>
               );
             })}
