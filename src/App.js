@@ -694,37 +694,62 @@ function App() {
       
       // Enviar SMS al admin notificando la respuesta del empleado
       try {
-        console.log('Buscando configuracion de notificaciones para SMS...');
+        const empresaId = empleado?.empresa_id || usuario?.empresa_id;
+        console.log('Buscando configuracion de notificaciones SMS para empresa:', empresaId);
+        
         const { data: configData } = await supabase
-          .from('configuracion_sistema')
-          .select('telefono_notificaciones, nombre_receptor')
-          .eq('id', 'principal')
+          .from('empresas')
+          .select('telefono_solicitudes_1, nombre_receptor_1, telefono_solicitudes_2, nombre_receptor_2')
+          .eq('id', empresaId)
           .single();
         
-        if (configData?.telefono_notificaciones) {
-          const nombreEmpleado = empleado?.nombre || empleado?.nombres || usuario?.nombre || 'Empleado';
-          const docEmpleado = empleado?.documento || usuario?.usuario || '';
-          
-          const mensajeSMS = `BigBurguer - Respuesta a REQUERIMIENTO
+        const nombreEmpleado = empleado?.nombre || empleado?.nombres || usuario?.nombre || 'Empleado';
+        const docEmpleado = empleado?.documento || usuario?.usuario || '';
+        
+        const mensajeSMS = `BigBurguer - Respuesta a REQUERIMIENTO
 Empleado: ${nombreEmpleado}
 Doc: ${docEmpleado}
 Fecha: ${new Date().toLocaleDateString('es-CO')}
 El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.`;
-          
-          console.log('Enviando SMS de respuesta a REQUERIMIENTO a:', configData.telefono_notificaciones);
+        
+        // Enviar SMS al teléfono 1 (si está configurado)
+        if (configData?.telefono_solicitudes_1) {
+          console.log('Enviando SMS #1 de respuesta a REQUERIMIENTO a:', configData.telefono_solicitudes_1);
           
           fetch('/api/enviar-sms', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-              telefono: configData.telefono_notificaciones, 
+              telefono: configData.telefono_solicitudes_1, 
               mensaje: mensajeSMS 
             })
           }).then(r => r.json()).then(result => {
-            console.log('Resultado SMS respuesta REQUERIMIENTO:', result);
-            if (result.ok) console.log('SMS notificacion de respuesta enviado');
-            else console.warn('Error SMS:', result);
-          }).catch(err => console.warn('SMS no enviado:', err));
+            console.log('Resultado SMS #1 respuesta REQUERIMIENTO:', result);
+            if (result.ok) console.log('SMS #1 notificacion de respuesta enviado');
+            else console.warn('Error SMS #1:', result);
+          }).catch(err => console.warn('SMS #1 no enviado:', err));
+        }
+        
+        // Enviar SMS al teléfono 2 (si está configurado)
+        if (configData?.telefono_solicitudes_2) {
+          console.log('Enviando SMS #2 de respuesta a REQUERIMIENTO a:', configData.telefono_solicitudes_2);
+          
+          fetch('/api/enviar-sms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              telefono: configData.telefono_solicitudes_2, 
+              mensaje: mensajeSMS 
+            })
+          }).then(r => r.json()).then(result => {
+            console.log('Resultado SMS #2 respuesta REQUERIMIENTO:', result);
+            if (result.ok) console.log('SMS #2 notificacion de respuesta enviado');
+            else console.warn('Error SMS #2:', result);
+          }).catch(err => console.warn('SMS #2 no enviado:', err));
+        }
+        
+        if (!configData?.telefono_solicitudes_1 && !configData?.telefono_solicitudes_2) {
+          console.log('📱 No hay teléfonos de notificaciones configurados para esta empresa');
         }
       } catch (smsErr) {
         console.warn('Error al enviar notificacion SMS:', smsErr);
@@ -3809,35 +3834,59 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
 
         // 📱 Enviar SMS al admin notificando la respuesta del empleado
         try {
-          // Obtener configuración de notificaciones
+          const empresaId = empleado?.empresa_id || usuario?.empresa_id;
+          // Obtener configuración de notificaciones desde tabla empresas
           const { data: configData } = await supabase
-            .from('configuracion_sistema')
-            .select('telefono_notificaciones, nombre_receptor')
-            .eq('id', 'principal')
+            .from('empresas')
+            .select('telefono_solicitudes_1, nombre_receptor_1, telefono_solicitudes_2, nombre_receptor_2')
+            .eq('id', empresaId)
             .single();
           
-          if (configData?.telefono_notificaciones) {
-            const nombreEmpleado = empleado?.nombre || usuario?.usuario || 'Un empleado';
-            const mensaje = `BIGBURGUER - ${nombreEmpleado} ha respondido a la solicitud: "${solicitudEmpleadorSeleccionada.asunto}". Revise el sistema para ver los detalles.`;
-            
+          const nombreEmpleado = empleado?.nombre || usuario?.usuario || 'Un empleado';
+          const mensaje = `BIGBURGUER - ${nombreEmpleado} ha respondido a la solicitud: "${solicitudEmpleadorSeleccionada.asunto}". Revise el sistema para ver los detalles.`;
+          
+          // Enviar SMS al teléfono 1 (si está configurado)
+          if (configData?.telefono_solicitudes_1) {
             fetch('/api/enviar-sms', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                telefono: configData.telefono_notificaciones,
+                telefono: configData.telefono_solicitudes_1,
                 mensaje: mensaje
               })
             }).then(res => res.json())
               .then(data => {
                 if (data.ok) {
-                  console.log('📱 SMS enviado al admin:', configData.nombre_receptor || 'Admin');
+                  console.log('📱 SMS #1 enviado al admin:', configData.nombre_receptor_1 || 'Admin 1');
                 } else {
-                  console.warn('📱 No se pudo enviar SMS:', data.error);
+                  console.warn('📱 No se pudo enviar SMS #1:', data.error);
                 }
               })
-              .catch(err => console.warn('Error enviando SMS:', err));
-          } else {
-            console.log('📱 No hay teléfono de notificaciones configurado');
+              .catch(err => console.warn('Error enviando SMS #1:', err));
+          }
+          
+          // Enviar SMS al teléfono 2 (si está configurado)
+          if (configData?.telefono_solicitudes_2) {
+            fetch('/api/enviar-sms', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                telefono: configData.telefono_solicitudes_2,
+                mensaje: mensaje
+              })
+            }).then(res => res.json())
+              .then(data => {
+                if (data.ok) {
+                  console.log('📱 SMS #2 enviado al admin:', configData.nombre_receptor_2 || 'Admin 2');
+                } else {
+                  console.warn('📱 No se pudo enviar SMS #2:', data.error);
+                }
+              })
+              .catch(err => console.warn('Error enviando SMS #2:', err));
+          }
+          
+          if (!configData?.telefono_solicitudes_1 && !configData?.telefono_solicitudes_2) {
+            console.log('📱 No hay teléfonos de notificaciones configurados para esta empresa');
           }
         } catch (smsErr) {
           console.warn('Error al intentar enviar SMS:', smsErr);
@@ -4048,53 +4097,76 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         if (!error) {
           alert('✅ Solicitud radicada correctamente. Número de radicado: ' + data.id.substring(0, 8).toUpperCase());
           
-          // 📱 Enviar SMS de notificación al número configurado
+          // 📱 Enviar SMS de notificación a los números configurados para esta empresa
           try {
-            console.log('📱 Buscando configuración de notificaciones SMS...');
+            const empresaId = empleado?.empresa_id || usuario.empresa_id;
+            console.log('📱 Buscando configuración de notificaciones SMS para empresa:', empresaId);
+            
             const { data: configData, error: configError } = await supabase
-              .from('configuracion_sistema')
-              .select('telefono_notificaciones, nombre_receptor')
-              .eq('id', 'principal')
+              .from('empresas')
+              .select('telefono_solicitudes_1, nombre_receptor_1, telefono_solicitudes_2, nombre_receptor_2')
+              .eq('id', empresaId)
               .single();
             
-            console.log('📱 Config encontrada:', configData, 'Error:', configError);
+            console.log('📱 Config SMS empresa encontrada:', configData, 'Error:', configError);
             
-            if (configData?.telefono_notificaciones) {
-              const tipoNombre = {
-                'incapacidad_permiso': 'Incapacidad/Permiso',
-                'adelanto_nomina': 'Adelanto de Nomina',
-                'cambio_eps': 'Cambio de EPS',
-                'documentos_vinculacion': 'Documentos Vinculacion',
-                'documentos_actualizacion': 'Docs. Actualizacion',
-                'vacaciones': 'Vacaciones',
-                'permiso': 'Permiso',
-                'otro': 'Otra Solicitud'
-              }[tipoSolicitud] || tipoSolicitud;
-              
-              const mensajeSMS = `BigBurguer - Nueva Solicitud
+            // Construir mensaje SMS
+            const tipoNombre = {
+              'incapacidad_permiso': 'Incapacidad/Permiso',
+              'adelanto_nomina': 'Adelanto de Nomina',
+              'cambio_eps': 'Cambio de EPS',
+              'documentos_vinculacion': 'Documentos Vinculacion',
+              'documentos_actualizacion': 'Docs. Actualizacion',
+              'vacaciones': 'Vacaciones',
+              'permiso': 'Permiso',
+              'otro': 'Otra Solicitud'
+            }[tipoSolicitud] || tipoSolicitud;
+            
+            const mensajeSMS = `BigBurguer - Nueva Solicitud
 Tipo: ${tipoNombre}
 Empleado: ${empleado?.nombre || empleado?.nombres || usuario.nombre}
 Doc: ${empleado?.documento || usuario.usuario}
 Fecha: ${new Date().toLocaleDateString('es-CO')}
 Revise el panel de administracion.`;
+            
+            // Enviar SMS al teléfono 1 (si está configurado)
+            if (configData?.telefono_solicitudes_1) {
+              console.log('📱 Enviando SMS al teléfono 1:', configData.telefono_solicitudes_1, '(' + configData.nombre_receptor_1 + ')');
               
-              console.log('📱 Enviando SMS a:', configData.telefono_notificaciones);
-              
-              // Enviar SMS via API
               fetch('/api/enviar-sms', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                  telefono: configData.telefono_notificaciones, 
+                  telefono: configData.telefono_solicitudes_1, 
                   mensaje: mensajeSMS 
                 })
               }).then(r => r.json()).then(result => {
-                console.log('📱 Resultado SMS:', result);
-                if (result.ok) console.log('📱 SMS notificación enviado');
-                else console.warn('📱 Error SMS:', result);
-              }).catch(err => console.warn('SMS no enviado:', err));
-            } else {
-              console.warn('📱 No hay teléfono de notificaciones configurado');
+                console.log('📱 Resultado SMS #1:', result);
+                if (result.ok) console.log('📱 SMS #1 enviado a:', configData.nombre_receptor_1 || 'Receptor 1');
+                else console.warn('📱 Error SMS #1:', result);
+              }).catch(err => console.warn('SMS #1 no enviado:', err));
+            }
+            
+            // Enviar SMS al teléfono 2 (si está configurado)
+            if (configData?.telefono_solicitudes_2) {
+              console.log('📱 Enviando SMS al teléfono 2:', configData.telefono_solicitudes_2, '(' + configData.nombre_receptor_2 + ')');
+              
+              fetch('/api/enviar-sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  telefono: configData.telefono_solicitudes_2, 
+                  mensaje: mensajeSMS 
+                })
+              }).then(r => r.json()).then(result => {
+                console.log('📱 Resultado SMS #2:', result);
+                if (result.ok) console.log('📱 SMS #2 enviado a:', configData.nombre_receptor_2 || 'Receptor 2');
+                else console.warn('📱 Error SMS #2:', result);
+              }).catch(err => console.warn('SMS #2 no enviado:', err));
+            }
+            
+            if (!configData?.telefono_solicitudes_1 && !configData?.telefono_solicitudes_2) {
+              console.warn('📱 No hay teléfonos de notificaciones configurados para esta empresa');
             }
           } catch (smsErr) {
             console.warn('Error al enviar notificación SMS:', smsErr);
