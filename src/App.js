@@ -2430,6 +2430,37 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
     // Campos correctos según estructura tabla
     const fechaIngresoEmpleado = empleado?.fechaingreso || empleado?.fecha_ingreso || '';
     const tipoContratoEmpleado = empleado?.tipocontrato || empleado?.tipo_contrato || 'Término Indefinido';
+    
+    // Función para normalizar el tipo de documento del empleado (vista previa)
+    const normalizarTipoDoc = (tipo) => {
+      if (!tipo) return 'Cédula de Ciudadanía';
+      const tipoLower = tipo.toLowerCase().trim();
+      if (tipoLower.includes('ppt') || tipoLower.includes('permiso de protección') || tipoLower.includes('permiso de proteccion') || tipoLower.includes('protección temporal') || tipoLower.includes('proteccion temporal')) {
+        return 'Permiso de Protección Temporal PPT';
+      }
+      if (tipoLower === 'cc' || tipoLower.includes('cédula de ciudadanía') || tipoLower.includes('cedula de ciudadania') || (tipoLower.includes('cedula') && tipoLower.includes('ciudadan'))) {
+        return 'Cédula de Ciudadanía';
+      }
+      if (tipoLower === 'ce' || tipoLower.includes('cédula de extranjería') || tipoLower.includes('cedula de extranjeria') || tipoLower.includes('extranjeria') || tipoLower.includes('extranjería')) {
+        return 'Cédula de Extranjería';
+      }
+      if (tipoLower === 'ti' || tipoLower.includes('tarjeta de identidad') || tipoLower.includes('tarjeta identidad')) {
+        return 'Tarjeta de Identidad';
+      }
+      if (tipoLower === 'rc' || tipoLower.includes('registro civil')) {
+        return 'Registro Civil';
+      }
+      if (tipoLower.includes('pasaporte')) {
+        return 'Pasaporte';
+      }
+      if (tipoLower.includes('venezolana') || tipoLower.includes('cedula venezolana') || tipoLower.includes('cédula venezolana')) {
+        return 'Cédula Venezolana';
+      }
+      return tipo;
+    };
+    
+    // Tipo de documento del empleado normalizado
+    const tipoDocEmpleado = normalizarTipoDoc(empleado?.tipodoc || empleado?.tipoDoc || empleado?.tipo_doc || empleado?.tipo_documento || '');
 
     return (
       <div>
@@ -2480,7 +2511,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
             
             <p>
               El (la) Señor(a) <strong>{nombreCompleto.toUpperCase()}</strong>, 
-              identificado(a) con <strong>Cédula de Ciudadanía {empleado?.documento || usuario?.usuario}</strong>, 
+              identificado(a) con <strong>{tipoDocEmpleado} N° {empleado?.documento || usuario?.usuario}</strong>, 
               labora en nuestra empresa
               {fechaIngresoEmpleado && (
                 <> desde el <strong>{new Date(fechaIngresoEmpleado).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></>
