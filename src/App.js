@@ -2164,6 +2164,16 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         : (empleado?.nombre || usuario?.nombre || '');
       const documento = empleado?.documento || usuario?.usuario || '';
       
+      // DEBUG: Ver qué campos tiene el empleado para tipo de documento
+      console.log('📄 CARTA LABORAL - Datos tipo documento:', {
+        tipodoc: empleado?.tipodoc,
+        tipoDoc: empleado?.tipoDoc,
+        tipo_doc: empleado?.tipo_doc,
+        tipo_documento: empleado?.tipo_documento,
+        tipoDocumento: empleado?.tipoDocumento,
+        empleadoCompleto: empleado
+      });
+      
       // Función para normalizar el tipo de documento del empleado
       const normalizarTipoDocEmpleado = (tipo) => {
         if (!tipo) return 'Cédula de Ciudadanía';
@@ -2192,7 +2202,11 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         return tipo; // Si no coincide, devolver el valor original
       };
       
-      const tipoDocEmpleado = normalizarTipoDocEmpleado(empleado?.tipodoc);
+      // Buscar el tipo de documento en diferentes variantes del campo
+      const tipoDocRaw = empleado?.tipodoc || empleado?.tipoDoc || empleado?.tipo_doc || empleado?.tipo_documento || empleado?.tipoDocumento || '';
+      const tipoDocEmpleado = normalizarTipoDocEmpleado(tipoDocRaw);
+      console.log('📄 CARTA LABORAL - Tipo doc final:', tipoDocEmpleado, '(raw:', tipoDocRaw, ')');
+      
       const cargo = empleado?.cargo || 'Colaborador';
       // Campo correcto: fechaingreso (minúsculas, sin guión)
       const fechaIngreso = empleado?.fechaingreso || empleado?.fecha_ingreso || empleado?.fechaIngreso || '';
