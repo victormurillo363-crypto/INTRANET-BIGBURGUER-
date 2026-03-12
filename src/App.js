@@ -2163,6 +2163,36 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         ? `${empleado.nombres} ${empleado.apellidos}` 
         : (empleado?.nombre || usuario?.nombre || '');
       const documento = empleado?.documento || usuario?.usuario || '';
+      
+      // Función para normalizar el tipo de documento del empleado
+      const normalizarTipoDocEmpleado = (tipo) => {
+        if (!tipo) return 'Cédula de Ciudadanía';
+        const tipoLower = tipo.toLowerCase().trim();
+        if (tipoLower.includes('ppt') || tipoLower.includes('permiso de protección') || tipoLower.includes('permiso de proteccion') || tipoLower.includes('protección temporal') || tipoLower.includes('proteccion temporal')) {
+          return 'Permiso de Protección Temporal PPT';
+        }
+        if (tipoLower === 'cc' || tipoLower.includes('cédula de ciudadanía') || tipoLower.includes('cedula de ciudadania') || (tipoLower.includes('cedula') && tipoLower.includes('ciudadan'))) {
+          return 'Cédula de Ciudadanía';
+        }
+        if (tipoLower === 'ce' || tipoLower.includes('cédula de extranjería') || tipoLower.includes('cedula de extranjeria') || tipoLower.includes('extranjeria') || tipoLower.includes('extranjería')) {
+          return 'Cédula de Extranjería';
+        }
+        if (tipoLower === 'ti' || tipoLower.includes('tarjeta de identidad') || tipoLower.includes('tarjeta identidad')) {
+          return 'Tarjeta de Identidad';
+        }
+        if (tipoLower === 'rc' || tipoLower.includes('registro civil')) {
+          return 'Registro Civil';
+        }
+        if (tipoLower.includes('pasaporte')) {
+          return 'Pasaporte';
+        }
+        if (tipoLower.includes('venezolana') || tipoLower.includes('cedula venezolana') || tipoLower.includes('cédula venezolana')) {
+          return 'Cédula Venezolana';
+        }
+        return tipo; // Si no coincide, devolver el valor original
+      };
+      
+      const tipoDocEmpleado = normalizarTipoDocEmpleado(empleado?.tipodoc);
       const cargo = empleado?.cargo || 'Colaborador';
       // Campo correcto: fechaingreso (minúsculas, sin guión)
       const fechaIngreso = empleado?.fechaingreso || empleado?.fecha_ingreso || empleado?.fechaIngreso || '';
@@ -2287,7 +2317,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
               
               <p style="text-align: center; margin: 30px 0;"><strong>CERTIFICA QUE:</strong></p>
               
-              <p>El (la) Señor(a) <strong>${nombreEmpleado.toUpperCase()}</strong>, identificado(a) con <strong>Cédula de Ciudadanía ${documento}</strong>, labora en nuestra empresa${fechaIngreso ? ` desde el <strong>${new Date(fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>` : ''}, con un contrato <strong>${tipoContrato}</strong>, desempeñando el cargo de <strong>${cargo.toUpperCase()}</strong>${salarioBase > 0 ? `, devengando un salario básico mensual de <strong>${formatearMoneda(salarioBase)}</strong> más auxilio de transporte de <strong>${formatearMoneda(AUXILIO_TRANSPORTE)}</strong>, para un total devengado de <strong>${formatearMoneda(salarioTotal)}</strong> (${numeroALetras(salarioTotal)} PESOS M/CTE)` : ''}.</p>
+              <p>El (la) Señor(a) <strong>${nombreEmpleado.toUpperCase()}</strong>, identificado(a) con <strong>${tipoDocEmpleado} N° ${documento}</strong>, labora en nuestra empresa${fechaIngreso ? ` desde el <strong>${new Date(fechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>` : ''}, con un contrato <strong>${tipoContrato}</strong>, desempeñando el cargo de <strong>${cargo.toUpperCase()}</strong>${salarioBase > 0 ? `, devengando un salario básico mensual de <strong>${formatearMoneda(salarioBase)}</strong> más auxilio de transporte de <strong>${formatearMoneda(AUXILIO_TRANSPORTE)}</strong>, para un total devengado de <strong>${formatearMoneda(salarioTotal)}</strong> (${numeroALetras(salarioTotal)} PESOS M/CTE)` : ''}.</p>
               
               <p>La presente certificación se expide a solicitud del interesado para los fines que estime conveniente.</p>
             </div>
