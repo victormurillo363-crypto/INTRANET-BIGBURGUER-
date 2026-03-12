@@ -3134,6 +3134,14 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
       return `${hora12}:${minutos}${periodo}`;
     };
     
+    // Función para formatear fecha en zona local (evita problemas con UTC)
+    const formatearFechaLocal = (fecha) => {
+      const year = fecha.getFullYear();
+      const month = String(fecha.getMonth() + 1).padStart(2, '0');
+      const day = String(fecha.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
     // Crear mapa de horarios por fecha para acceso rápido
     const horariosPorFecha = {};
     horarios.forEach(h => {
@@ -3199,7 +3207,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
     const semanasSiguiente = generarSemanasDelMes(mesSiguiente.year, mesSiguiente.month);
     
     const renderizarCalendario = (semanas, year, month) => {
-      const hoyStr = hoy.toISOString().split('T')[0];
+      const hoyStr = formatearFechaLocal(hoy);
       
       return (
         <div style={{ marginBottom: 30 }}>
@@ -3245,7 +3253,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
               marginBottom: 2
             }}>
               {semana.map((fecha, diaIdx) => {
-                const fechaStr = fecha.toISOString().split('T')[0];
+                const fechaStr = formatearFechaLocal(fecha);
                 const esDelMes = fecha.getMonth() === month;
                 const esHoy = fechaStr === hoyStr;
                 const horario = horariosPorFecha[fechaStr];
@@ -3374,6 +3382,11 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                               textShadow: '0 0 1px rgba(0,0,0,0.2)'
                             }}>
                               {formatearHora(horario.hora_inicio)}-{formatearHora(horario.hora_fin)}
+                              {horario.sede && (
+                                <div style={{ fontSize: 9, color: '#b71c1c', fontWeight: '600', marginTop: 1 }}>
+                                  📍 {horario.sede}
+                                </div>
+                              )}
                             </div>
                             <div style={{
                               backgroundColor: '#bbdefb',
@@ -3386,6 +3399,11 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                               textShadow: '0 0 1px rgba(0,0,0,0.2)'
                             }}>
                               {formatearHora(horario.segundo_turno.hora_inicio)}-{formatearHora(horario.segundo_turno.hora_fin)}
+                              {horario.segundo_turno.sede && (
+                                <div style={{ fontSize: 9, color: '#0d47a1', fontWeight: '600', marginTop: 1 }}>
+                                  📍 {horario.segundo_turno.sede}
+                                </div>
+                              )}
                             </div>
                             <div style={{ 
                               fontSize: 9, 
@@ -3413,7 +3431,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                             {formatearHora(horario.hora_fin)}
                             {horario.sede && (
                               <div style={{ fontSize: 10, color: '#333', marginTop: 3, fontWeight: '600' }}>
-                                {horario.sede}
+                                📍 {horario.sede}
                               </div>
                             )}
                           </div>
@@ -5951,12 +5969,46 @@ Revise el panel de administracion.`;
 
   // ACTUALIZACIÓN DE DATOS DEL EMPLEADO
   const SeccionActualizacionDatos = () => {
+    // Función para normalizar el tipo de documento al formato correcto
+    const normalizarTipoDocumento = (tipo) => {
+      if (!tipo) return 'Cédula de ciudadanía';
+      const tipoLower = tipo.toLowerCase().trim();
+      
+      // Mapeo de variantes comunes a los valores exactos del select
+      if (tipoLower.includes('ppt') || tipoLower.includes('permiso de protección') || tipoLower.includes('permiso de proteccion') || tipoLower.includes('protección temporal') || tipoLower.includes('proteccion temporal')) {
+        return 'Permiso de protección temporal PPT';
+      }
+      if (tipoLower === 'cc' || tipoLower.includes('cédula de ciudadanía') || tipoLower.includes('cedula de ciudadania') || (tipoLower.includes('cedula') && tipoLower.includes('ciudadan'))) {
+        return 'Cédula de ciudadanía';
+      }
+      if (tipoLower === 'ce' || tipoLower.includes('cédula de extranjería') || tipoLower.includes('cedula de extranjeria') || tipoLower.includes('extranjeria') || tipoLower.includes('extranjería')) {
+        return 'Cédula de extranjería';
+      }
+      if (tipoLower === 'ti' || tipoLower.includes('tarjeta de identidad') || tipoLower.includes('tarjeta identidad')) {
+        return 'Tarjeta de identidad';
+      }
+      if (tipoLower === 'rc' || tipoLower.includes('registro civil')) {
+        return 'Registro civil';
+      }
+      if (tipoLower.includes('pasaporte')) {
+        return 'Pasaporte';
+      }
+      if (tipoLower.includes('venezolana') || tipoLower.includes('cedula venezolana') || tipoLower.includes('cédula venezolana')) {
+        return 'Cédula venezolana';
+      }
+      
+      // Si no coincide, devolver el valor original o el predeterminado
+      const opcionesValidas = ['Cédula de ciudadanía', 'Cédula de extranjería', 'Tarjeta de identidad', 'Registro civil', 'Permiso de protección temporal PPT', 'Pasaporte', 'Cédula venezolana'];
+      const coincidencia = opcionesValidas.find(op => op.toLowerCase() === tipoLower);
+      return coincidencia || 'Cédula de ciudadanía';
+    };
+
     // Mapear campos de la BD (minúsculas sin guiones) a nombres legibles
     const [datosEditados, setDatosEditados] = useState({
       nombres: empleado?.nombres || '',
       apellidos: empleado?.apellidos || '',
       documento: empleado?.documento || '',
-      tipodoc: empleado?.tipodoc || 'Cédula de ciudadanía',
+      tipodoc: normalizarTipoDocumento(empleado?.tipodoc),
       fechanacimiento: empleado?.fechanacimiento || '',
       telefono: empleado?.telefono || '',
       direccion: empleado?.direccion || '',
