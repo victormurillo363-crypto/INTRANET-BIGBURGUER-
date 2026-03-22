@@ -3156,9 +3156,11 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
       '2025-12-25': 'Navidad',
     };
     
-    // Cargar eventos desde horarios
+    // Cargar eventos desde horarios (filtrados por el ID del empleado actual)
     useEffect(() => {
       const cargarEventos = async () => {
+        if (!empleado?.id) return; // Necesitamos el ID del empleado para filtrar
+        
         try {
           const hoy = new Date();
           const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
@@ -3176,17 +3178,22 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
           if (data) {
             const todosEventos = {};
             data.forEach(semana => {
-              // Eventos generales
+              // Eventos generales (aplican a todos)
               if (semana.eventos && typeof semana.eventos === 'object') {
                 Object.entries(semana.eventos).forEach(([fecha, evento]) => {
                   todosEventos[fecha] = evento;
                 });
               }
-              // Eventos por día
+              // Eventos por día - filtrar por el empleado actual
+              // Estructura: { [empleadoId]: { [fecha]: {eventoId, nombre, color} } }
               if (semana.eventos_por_dia && typeof semana.eventos_por_dia === 'object') {
-                Object.entries(semana.eventos_por_dia).forEach(([fecha, evento]) => {
-                  todosEventos[fecha] = evento;
-                });
+                // Buscar eventos para el empleado actual por su ID
+                const eventosEmpleado = semana.eventos_por_dia[empleado.id];
+                if (eventosEmpleado && typeof eventosEmpleado === 'object') {
+                  Object.entries(eventosEmpleado).forEach(([fecha, evento]) => {
+                    todosEventos[fecha] = evento;
+                  });
+                }
               }
             });
             setEventos(todosEventos);
@@ -3196,7 +3203,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         }
       };
       cargarEventos();
-    }, []);
+    }, [empleado?.id]); // Re-cargar cuando cambie el empleado
     
     // Función para convertir hora 24h a formato AM/PM
     const formatearHora = (hora) => {
@@ -3386,16 +3393,18 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                     {/* Evento programado */}
                     {evento && esDelMes && (
                       <div style={{
-                        fontSize: 9,
+                        fontSize: 10,
                         backgroundColor: evento.color || '#9c27b0',
-                        color: 'white',
-                        padding: '2px 4px',
-                        borderRadius: 3,
-                        marginBottom: 3,
+                        color: (evento.color && ['#fff3a6', '#d1f4ff', '#b3e5fc', '#e8ffe1', '#f9d6ff', '#ffe0db'].includes(evento.color)) ? '#333' : 'white',
+                        padding: '3px 5px',
+                        borderRadius: 4,
+                        marginBottom: 4,
                         fontWeight: 'bold',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        border: '2px solid rgba(0,0,0,0.15)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                       }}>
-                        {evento.nombre || evento.titulo || evento}
+                        📌 {evento.nombre || evento.titulo || evento}
                       </div>
                     )}
                     
@@ -3577,8 +3586,28 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                 <span style={{ fontSize: 11 }}>Hoy</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 18, height: 18, backgroundColor: '#9c27b0', borderRadius: 3 }}></div>
-                <span style={{ fontSize: 11 }}>Evento</span>
+                <div style={{ width: 18, height: 18, backgroundColor: '#fff3a6', border: '1px solid #f9a825', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>🧊 Congelador</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#d1f4ff', border: '1px solid #4dd0e1', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>🔔 Campana</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#b3e5fc', border: '1px solid #29b6f6', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>❄️ Refrigerador</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#e8ffe1', border: '1px solid #66bb6a', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>🧹 Aseo</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#f9d6ff', border: '1px solid #ba68c8', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>📦 Inventario</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 18, height: 18, backgroundColor: '#ffe0db', border: '1px solid #ef9a9a', borderRadius: 3 }}></div>
+                <span style={{ fontSize: 11 }}>👥 Reunión</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 18, height: 18, backgroundColor: '#dbeafe', border: '2px solid #3b82f6', borderRadius: 3 }}></div>
