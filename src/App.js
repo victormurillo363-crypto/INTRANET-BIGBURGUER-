@@ -3159,43 +3159,69 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
     // Cargar eventos desde horarios (filtrados por el ID del empleado actual)
     useEffect(() => {
       const cargarEventos = async () => {
-        if (!empleado?.id) return; // Necesitamos el ID del empleado para filtrar
+        if (!empleado?.id) {
+          console.log('⚠️ No hay empleado.id para cargar eventos');
+          return;
+        }
         
         try {
           const hoy = new Date();
           const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
-          const mesSiguiente = new Date(hoy.getFullYear(), hoy.getMonth() + 2, 0); // Fin del mes siguiente
+          const mesSiguiente = new Date(hoy.getFullYear(), hoy.getMonth() + 2, 0);
           const fechaInicio = mesAnterior.toISOString().split('T')[0];
           const fechaFin = mesSiguiente.toISOString().split('T')[0];
           
-          const { data } = await supabase
+          console.log('🔔 Cargando eventos para empleado:', empleado.id, 'Documento:', empleado.documento);
+          
+          const { data, error } = await supabase
             .from('horarios')
             .select('eventos, eventos_por_dia, semana_inicio, semana_fin')
             .gte('semana_fin', fechaInicio)
             .lte('semana_inicio', fechaFin)
             .order('semana_inicio', { ascending: false });
           
+          if (error) {
+            console.error('❌ Error cargando eventos:', error);
+            return;
+          }
+          
+          console.log('📅 Semanas de horarios encontradas:', data?.length || 0);
+          
           if (data) {
             const todosEventos = {};
-            data.forEach(semana => {
+            
+            data.forEach((semana, idx) => {
               // Eventos generales (aplican a todos)
               if (semana.eventos && typeof semana.eventos === 'object') {
                 Object.entries(semana.eventos).forEach(([fecha, evento]) => {
                   todosEventos[fecha] = evento;
                 });
               }
+              
               // Eventos por día - filtrar por el empleado actual
               // Estructura: { [empleadoId]: { [fecha]: {eventoId, nombre, color} } }
               if (semana.eventos_por_dia && typeof semana.eventos_por_dia === 'object') {
-                // Buscar eventos para el empleado actual por su ID
-                const eventosEmpleado = semana.eventos_por_dia[empleado.id];
+                const claves = Object.keys(semana.eventos_por_dia);
+                console.log(`📌 Semana ${idx + 1} (${semana.semana_inicio}): empleados con eventos:`, claves);
+                
+                // Buscar eventos para el empleado actual por su ID o documento
+                let eventosEmpleado = semana.eventos_por_dia[empleado.id];
+                
+                // Si no encuentra por ID, intentar buscar por documento
+                if (!eventosEmpleado && empleado.documento) {
+                  eventosEmpleado = semana.eventos_por_dia[empleado.documento];
+                }
+                
                 if (eventosEmpleado && typeof eventosEmpleado === 'object') {
+                  console.log(`✅ Eventos encontrados para empleado ${empleado.id}:`, Object.keys(eventosEmpleado));
                   Object.entries(eventosEmpleado).forEach(([fecha, evento]) => {
                     todosEventos[fecha] = evento;
                   });
                 }
               }
             });
+            
+            console.log('📆 Total eventos cargados:', Object.keys(todosEventos).length, todosEventos);
             setEventos(todosEventos);
           }
         } catch (e) {
@@ -3203,7 +3229,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         }
       };
       cargarEventos();
-    }, [empleado?.id]); // Re-cargar cuando cambie el empleado
+    }, [empleado?.id, empleado?.documento]);
     
     // Función para convertir hora 24h a formato AM/PM
     const formatearHora = (hora) => {
@@ -3394,17 +3420,17 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                     {evento && esDelMes && (
                       <div style={{
                         fontSize: 10,
-                        backgroundColor: evento.color || '#9c27b0',
+                        backgroundColor: (typeof evento === 'object' ? evento.color : null) || '#9c27b0',
                         color: (evento.color && ['#fff3a6', '#d1f4ff', '#b3e5fc', '#e8ffe1', '#f9d6ff', '#ffe0db'].includes(evento.color)) ? '#333' : 'white',
-                        padding: '3px 5px',
+                        padding: '4px 6px',
                         borderRadius: 4,
                         marginBottom: 4,
                         fontWeight: 'bold',
                         textAlign: 'center',
-                        border: '2px solid rgba(0,0,0,0.15)',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                        border: '2px solid rgba(0,0,0,0.2)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.25)'
                       }}>
-                        📌 {evento.nombre || evento.titulo || evento}
+                        📌 {typeof evento === 'object' ? (evento.nombre || evento.titulo || evento.eventoId || 'Evento') : evento}
                       </div>
                     )}
                     
@@ -3537,6 +3563,11 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
         
         <p style={{ color: '#666', marginBottom: 20, fontSize: 14 }}>
           📅 Calendario de horarios - {esPrimeraQuincena ? 'Mes actual y mes anterior' : 'Mes actual y mes siguiente'}
+          {Object.keys(eventos).length > 0 && (
+            <span style={{ marginLeft: 10, color: '#10b981', fontWeight: 'bold' }}>
+              📌 {Object.keys(eventos).length} evento(s) programado(s)
+            </span>
+          )}
         </p>
         
         {horarios.length === 0 ? (
