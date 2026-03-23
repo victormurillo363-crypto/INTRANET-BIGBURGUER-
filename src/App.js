@@ -6379,21 +6379,65 @@ Revise el panel de administracion.`;
     );
   };
 
+  // Componente de botón "Volver al inicio"
+  const BotonVolverInicio = () => (
+    <button
+      onClick={() => setSeccionActiva('inicio')}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '10px 20px',
+        backgroundColor: '#c62828',
+        color: 'white',
+        border: 'none',
+        borderRadius: 8,
+        fontSize: 14,
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        marginBottom: 20,
+        boxShadow: '0 2px 8px rgba(198, 40, 40, 0.3)',
+        transition: 'all 0.2s'
+      }}
+      onMouseOver={e => {
+        e.currentTarget.style.backgroundColor = '#b71c1c';
+        e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseOut={e => {
+        e.currentTarget.style.backgroundColor = '#c62828';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+    >
+      ← Volver al Inicio
+    </button>
+  );
+
   // Renderizar sección activa
   const renderSeccion = () => {
-    switch (seccionActiva) {
-      case 'inicio': return <SeccionInicio />;
-      case 'desprendible': return <SeccionDesprendible />;
-      case 'prestamos': return <SeccionPrestamos />;
-      case 'carta-laboral': return <SeccionCartaLaboral />;
-      case 'contrato': return <SeccionContrato />;
-      case 'horarios': return <SeccionHorarios />;
-      case 'solicitudes': return <SeccionSolicitudes />;
-      case 'actualizacion-datos': return <SeccionActualizacionDatos />;
-      case 'reglamento': return <SeccionReglamento />;
-      case 'formatos': return <SeccionFormatos />;
-      default: return <SeccionInicio />;
+    // Si es inicio, no mostrar botón de volver
+    if (seccionActiva === 'inicio') {
+      return <SeccionInicio />;
     }
+    
+    // Para otras secciones, mostrar botón de volver
+    const seccionContenido = {
+      'desprendible': <SeccionDesprendible />,
+      'prestamos': <SeccionPrestamos />,
+      'carta-laboral': <SeccionCartaLaboral />,
+      'contrato': <SeccionContrato />,
+      'horarios': <SeccionHorarios />,
+      'solicitudes': <SeccionSolicitudes />,
+      'actualizacion-datos': <SeccionActualizacionDatos />,
+      'reglamento': <SeccionReglamento />,
+      'formatos': <SeccionFormatos />,
+    };
+    
+    return (
+      <div>
+        <BotonVolverInicio />
+        {seccionContenido[seccionActiva] || <SeccionInicio />}
+      </div>
+    );
   };
 
   // ============================================
