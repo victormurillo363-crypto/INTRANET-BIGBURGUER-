@@ -48,6 +48,9 @@ function App() {
   const [avisos, setAvisos] = useState([]);
   const [avisoSeleccionado, setAvisoSeleccionado] = useState(null);
   
+  // Estado para eventos programados del empleado (CONGELADOR, CAMPANA, etc.)
+  const [eventosEmpleado, setEventosEmpleado] = useState({});
+  
   // Estado para ausencias del empleado (incapacidades, vacaciones, permisos)
   const [ausencias, setAusencias] = useState([]);
   
@@ -484,12 +487,39 @@ function App() {
       console.log('📅 Horarios encontrados:', horariosData?.length || 0);
       
       // Procesar los horarios para extraer solo los del empleado
-      const horariosEmpleado = [];
+      const horariosEmpleadoArr = [];
+      
+      // ============================================
+      // EXTRAER EVENTOS PROGRAMADOS PARA EL EMPLEADO
+      // ============================================
+      const todosEventos = {};
       
       if (horariosData) {
         for (const semana of horariosData) {
           const celdas = semana.celdas || {};
           const horarioEmpleado = celdas[empleadoId];
+          
+          // CARGAR EVENTOS DEL EMPLEADO
+          // Estructura eventos_por_dia: { [empleadoId]: { [fecha]: {eventoId, nombre, color} } }
+          const eventosPorDia = semana.eventos_por_dia || {};
+          const eventosDelEmpleado = eventosPorDia[empleadoId];
+          
+          if (eventosDelEmpleado && typeof eventosDelEmpleado === 'object') {
+            console.log('🔔 Eventos encontrados para empleado en semana', semana.semana_inicio, ':', Object.keys(eventosDelEmpleado));
+            Object.entries(eventosDelEmpleado).forEach(([fecha, evento]) => {
+              todosEventos[fecha] = evento;
+            });
+          }
+          
+          // Eventos generales (aplican a todos los empleados)
+          const eventosGenerales = semana.eventos || {};
+          if (eventosGenerales && typeof eventosGenerales === 'object') {
+            Object.entries(eventosGenerales).forEach(([fecha, evento]) => {
+              if (!todosEventos[fecha]) { // No sobrescribir eventos específicos del empleado
+                todosEventos[fecha] = evento;
+              }
+            });
+          }
           
           if (horarioEmpleado) {
             // horarioEmpleado tiene formato: { "0": {turno lunes}, "1": {turno martes}, etc }
@@ -507,7 +537,7 @@ function App() {
                 const esDescanso = turno.tipo === 'DESCANSO' || (!turno.e1 && !turno.s1);
                 
                 if (esDescanso) {
-                  horariosEmpleado.push({
+                  horariosEmpleadoArr.push({
                     fecha: fechaStr,
                     es_descanso: true,
                     sede: null
@@ -520,7 +550,7 @@ function App() {
                   
                   // Si es turno partido, mostrar ambos rangos
                   if (turno.tipo === 'PARTIDO' && turno.e2 && turno.s2) {
-                    horariosEmpleado.push({
+                    horariosEmpleadoArr.push({
                       fecha: fechaStr,
                       hora_inicio: turno.e1,
                       hora_fin: turno.s1,
@@ -534,7 +564,7 @@ function App() {
                       }
                     });
                   } else {
-                    horariosEmpleado.push({
+                    horariosEmpleadoArr.push({
                       fecha: fechaStr,
                       hora_inicio: horaInicio,
                       hora_fin: horaFin,
@@ -550,10 +580,13 @@ function App() {
       }
       
       // Ordenar por fecha descendente (más recientes primero)
-      horariosEmpleado.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      horariosEmpleadoArr.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
       
-      console.log('👤 Horarios del empleado:', horariosEmpleado.length);
-      setHorarios(horariosEmpleado);
+      console.log('👤 Horarios del empleado:', horariosEmpleadoArr.length);
+      console.log('📆 Eventos del empleado encontrados:', Object.keys(todosEventos).length, todosEventos);
+      
+      setHorarios(horariosEmpleadoArr);
+      setEventosEmpleado(todosEventos);
       
     } catch (e) {
       console.error('Error en cargarHorarios:', e);
@@ -942,6 +975,7 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
     setNominas([]);
     setHorarios([]);
     setSolicitudes([]);
+    setEventosEmpleado({});
     setSeccionActiva('inicio');
     // Limpiar campos de login
     setDocumento('');
@@ -3127,7 +3161,8 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
 
   // MIS HORARIOS - Vista tipo Calendario
   const SeccionHorarios = () => {
-    const [eventos, setEventos] = useState({});
+    // Usar eventos del estado global (cargados en cargarHorarios)
+    const eventos = eventosEmpleado;
     const diasSemanaCorto = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     
@@ -3155,81 +3190,6 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
       '2025-12-08': 'Inmaculada Concepción',
       '2025-12-25': 'Navidad',
     };
-    
-    // Cargar eventos desde horarios (filtrados por el ID del empleado actual)
-    useEffect(() => {
-      const cargarEventos = async () => {
-        if (!empleado?.id) {
-          console.log('⚠️ No hay empleado.id para cargar eventos');
-          return;
-        }
-        
-        try {
-          const hoy = new Date();
-          const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
-          const mesSiguiente = new Date(hoy.getFullYear(), hoy.getMonth() + 2, 0);
-          const fechaInicio = mesAnterior.toISOString().split('T')[0];
-          const fechaFin = mesSiguiente.toISOString().split('T')[0];
-          
-          console.log('🔔 Cargando eventos para empleado:', empleado.id, 'Documento:', empleado.documento);
-          
-          const { data, error } = await supabase
-            .from('horarios')
-            .select('eventos, eventos_por_dia, semana_inicio, semana_fin')
-            .gte('semana_fin', fechaInicio)
-            .lte('semana_inicio', fechaFin)
-            .order('semana_inicio', { ascending: false });
-          
-          if (error) {
-            console.error('❌ Error cargando eventos:', error);
-            return;
-          }
-          
-          console.log('📅 Semanas de horarios encontradas:', data?.length || 0);
-          
-          if (data) {
-            const todosEventos = {};
-            
-            data.forEach((semana, idx) => {
-              // Eventos generales (aplican a todos)
-              if (semana.eventos && typeof semana.eventos === 'object') {
-                Object.entries(semana.eventos).forEach(([fecha, evento]) => {
-                  todosEventos[fecha] = evento;
-                });
-              }
-              
-              // Eventos por día - filtrar por el empleado actual
-              // Estructura: { [empleadoId]: { [fecha]: {eventoId, nombre, color} } }
-              if (semana.eventos_por_dia && typeof semana.eventos_por_dia === 'object') {
-                const claves = Object.keys(semana.eventos_por_dia);
-                console.log(`📌 Semana ${idx + 1} (${semana.semana_inicio}): empleados con eventos:`, claves);
-                
-                // Buscar eventos para el empleado actual por su ID o documento
-                let eventosEmpleado = semana.eventos_por_dia[empleado.id];
-                
-                // Si no encuentra por ID, intentar buscar por documento
-                if (!eventosEmpleado && empleado.documento) {
-                  eventosEmpleado = semana.eventos_por_dia[empleado.documento];
-                }
-                
-                if (eventosEmpleado && typeof eventosEmpleado === 'object') {
-                  console.log(`✅ Eventos encontrados para empleado ${empleado.id}:`, Object.keys(eventosEmpleado));
-                  Object.entries(eventosEmpleado).forEach(([fecha, evento]) => {
-                    todosEventos[fecha] = evento;
-                  });
-                }
-              }
-            });
-            
-            console.log('📆 Total eventos cargados:', Object.keys(todosEventos).length, todosEventos);
-            setEventos(todosEventos);
-          }
-        } catch (e) {
-          console.log('Error cargando eventos:', e);
-        }
-      };
-      cargarEventos();
-    }, [empleado?.id, empleado?.documento]);
     
     // Función para convertir hora 24h a formato AM/PM
     const formatearHora = (hora) => {
