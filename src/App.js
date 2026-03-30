@@ -5616,33 +5616,6 @@ Revise el panel de administracion.`;
               </p>
             </div>
 
-            {/* Firma del documento */}
-            {reglamento.firma_incluida && reglamento.firma_imagen && (
-              <div style={{
-                padding: 20,
-                backgroundColor: 'white',
-                border: '1px solid #e0e0e0',
-                borderRadius: 12,
-                textAlign: 'center',
-                marginBottom: 20
-              }}>
-                <p style={{ margin: '0 0 12px', fontSize: 13, color: '#666' }}>
-                  Documento firmado electrónicamente por:
-                </p>
-                <img 
-                  src={reglamento.firma_imagen} 
-                  alt="Firma" 
-                  style={{ maxHeight: 70, marginBottom: 8 }} 
-                />
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#1a1a2e' }}>
-                  {reglamento.firma_nombre}
-                </div>
-                <div style={{ fontSize: 13, color: '#666' }}>
-                  {reglamento.firma_cargo}
-                </div>
-              </div>
-            )}
-
             {/* Modal para ver documento */}
             {viendoDocumento && (
               <div style={{
@@ -5696,29 +5669,6 @@ Revise el panel de administracion.`;
                     title="Reglamento Interno de Trabajo"
                   />
                 </div>
-
-                {/* Footer con firma si existe */}
-                {reglamento.firma_incluida && reglamento.firma_imagen && (
-                  <div style={{
-                    padding: 12,
-                    background: '#1a1a2e',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 20
-                  }}>
-                    <span style={{ color: '#aaa', fontSize: 12 }}>Firmado por:</span>
-                    <img 
-                      src={reglamento.firma_imagen} 
-                      alt="Firma" 
-                      style={{ maxHeight: 40 }} 
-                    />
-                    <div style={{ color: 'white' }}>
-                      <span style={{ fontWeight: 600 }}>{reglamento.firma_nombre}</span>
-                      <span style={{ color: '#aaa', marginLeft: 8 }}>({reglamento.firma_cargo})</span>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
