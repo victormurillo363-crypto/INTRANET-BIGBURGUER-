@@ -5488,72 +5488,59 @@ Revise el panel de administracion.`;
         setCargando(true);
         try {
           // Obtener la sede del empleado logueado
-          const sedeEmpleado = empleado?.sede || empleado?.sede_id || empleado?.sedeId;
+          const sedeIdEmpleado = empleado?.sede_id || empleado?.sedeId;
+          const sedeNombreEmpleado = empleado?.sede; // Nombre de la sede
           const empresaEmpleado = empleado?.empresa_id || empleado?.empresaId;
           
-          console.log('🔍 Buscando reglamento - Sede:', sedeEmpleado, 'Empresa:', empresaEmpleado);
+          console.log('🔍 Buscando reglamento - SedeID:', sedeIdEmpleado, 'SedeNombre:', sedeNombreEmpleado, 'Empresa:', empresaEmpleado);
           
           let reglamentoEncontrado = null;
           
-          // Primero intentar buscar por sede
-          if (sedeEmpleado) {
+          // 1. Primero intentar buscar por sede_id (UUID)
+          if (sedeIdEmpleado) {
             const { data: regSede, error: errSede } = await supabase
               .from('reglamentos_internos')
               .select('*')
-              .eq('sede_id', sedeEmpleado)
+              .eq('sede_id', sedeIdEmpleado)
               .eq('activo', true)
               .order('fecha_publicacion', { ascending: false })
               .limit(1)
               .maybeSingle();
             
-            console.log('📄 Resultado por sede:', regSede, 'Error:', errSede);
+            console.log('📄 Resultado por sede_id:', regSede);
             
             if (regSede && !errSede) {
               reglamentoEncontrado = regSede;
             }
           }
           
-          // Si no encontró por sede, buscar por empresa
-          if (!reglamentoEncontrado && empresaEmpleado) {
-            const { data: regEmpresa, error: errEmpresa } = await supabase
+          // 2. Si no encontró por sede_id, buscar por nombre_sede
+          if (!reglamentoEncontrado && sedeNombreEmpleado) {
+            const { data: regNombre, error: errNombre } = await supabase
               .from('reglamentos_internos')
               .select('*')
-              .eq('empresa_id', empresaEmpleado)
+              .ilike('nombre_sede', `%${sedeNombreEmpleado}%`)
               .eq('activo', true)
               .order('fecha_publicacion', { ascending: false })
               .limit(1)
               .maybeSingle();
             
-            console.log('📄 Resultado por empresa:', regEmpresa, 'Error:', errEmpresa);
+            console.log('📄 Resultado por nombre_sede:', regNombre);
             
-            if (regEmpresa && !errEmpresa) {
-              reglamentoEncontrado = regEmpresa;
+            if (regNombre && !errNombre) {
+              reglamentoEncontrado = regNombre;
             }
           }
           
-          // Si aún no encuentra, buscar cualquier reglamento activo (fallback)
-          if (!reglamentoEncontrado) {
-            const { data: regAny, error: errAny } = await supabase
-              .from('reglamentos_internos')
-              .select('*')
-              .eq('activo', true)
-              .order('fecha_publicacion', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            
-            console.log('📄 Resultado cualquier reglamento:', regAny, 'Error:', errAny);
-            
-            if (regAny && !errAny) {
-              reglamentoEncontrado = regAny;
-            }
-          }
+          // 3. NO buscar fallback - Solo mostrar el reglamento de su sede específica
+          // Si no encuentra por sede, NO mostrar ninguno de otra sede
           
           if (reglamentoEncontrado) {
             console.log('✅ Reglamento encontrado:', reglamentoEncontrado.nombre_sede);
             setReglamento(reglamentoEncontrado);
           } else {
-            console.log('❌ No se encontró ningún reglamento');
-            setDebugInfo(`Sede: ${sedeEmpleado || 'N/A'}, Empresa: ${empresaEmpleado || 'N/A'}`);
+            console.log('❌ No se encontró reglamento para la sede del empleado');
+            setDebugInfo(`Tu sede: ${sedeNombreEmpleado || sedeIdEmpleado || 'No asignada'}`);
           }
         } catch (e) {
           console.error('Error cargando reglamento:', e);
