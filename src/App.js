@@ -5477,39 +5477,212 @@ Revise el panel de administracion.`;
 
   // REGLAMENTO INTERNO
   const SeccionReglamento = () => {
-    const reglamentoUrl = configEmpresa?.reglamento_url;
+    const [reglamento, setReglamento] = useState(null);
+    const [cargando, setCargando] = useState(true);
+    const [viendoDocumento, setViendoDocumento] = useState(false);
+
+    // Cargar reglamento según sede del empleado
+    useEffect(() => {
+      const cargarReglamento = async () => {
+        setCargando(true);
+        try {
+          // Obtener la sede del empleado logueado
+          const sedeEmpleado = empleado?.sede || empleado?.sede_id;
+          const empresaEmpleado = empleado?.empresa_id;
+          
+          let query = supabase
+            .from('reglamentos_internos')
+            .select('*')
+            .eq('activo', true);
+          
+          // Filtrar por sede si el empleado tiene sede asignada
+          if (sedeEmpleado) {
+            query = query.eq('sede_id', sedeEmpleado);
+          } else if (empresaEmpleado) {
+            // Si no tiene sede, buscar por empresa
+            query = query.eq('empresa_id', empresaEmpleado);
+          }
+          
+          const { data, error } = await query.limit(1).single();
+          
+          if (!error && data) {
+            setReglamento(data);
+          }
+        } catch (e) {
+          console.error('Error cargando reglamento:', e);
+        }
+        setCargando(false);
+      };
+      
+      cargarReglamento();
+    }, [empleado]);
+
+    if (cargando) {
+      return (
+        <div style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>⏳</div>
+          <p style={{ color: '#666' }}>Cargando reglamento...</p>
+        </div>
+      );
+    }
     
     return (
       <div>
         <h2 style={{ color: '#c62828', marginBottom: 20 }}>📖 Reglamento Interno de Trabajo</h2>
         
-        {reglamentoUrl ? (
-          <div style={{
-            padding: 24,
-            backgroundColor: '#f5f5f5',
-            borderRadius: 12,
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: 60, marginBottom: 16 }}>📖</div>
-            <h3>Reglamento Interno de Trabajo</h3>
-            <p style={{ color: '#666', marginBottom: 20 }}>
-              Descarga el reglamento interno de trabajo de la empresa.
-            </p>
-            <a
-              href={reglamentoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-block',
-                padding: '12px 24px',
-                backgroundColor: '#c62828',
-                color: 'white',
-                textDecoration: 'none',
-                borderRadius: 8
-              }}
-            >
-              📥 Descargar Reglamento
-            </a>
+        {reglamento ? (
+          <div>
+            {/* Card del reglamento */}
+            <div style={{
+              padding: 24,
+              backgroundColor: '#f5f5f5',
+              borderRadius: 12,
+              textAlign: 'center',
+              marginBottom: 20
+            }}>
+              <div style={{ fontSize: 60, marginBottom: 16 }}>📖</div>
+              <h3>Reglamento Interno de Trabajo</h3>
+              <p style={{ color: '#666', marginBottom: 8 }}>
+                {reglamento.nombre_sede}
+              </p>
+              <p style={{ color: '#999', fontSize: 12, marginBottom: 20 }}>
+                Publicado: {new Date(reglamento.fecha_publicacion).toLocaleDateString('es-CO', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+              
+              <button
+                onClick={() => setViendoDocumento(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '14px 28px',
+                  backgroundColor: '#c62828',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(198, 40, 40, 0.3)'
+                }}
+              >
+                👁️ Ver Reglamento
+              </button>
+              
+              <p style={{ marginTop: 16, fontSize: 12, color: '#888' }}>
+                📌 El documento es únicamente para consulta
+              </p>
+            </div>
+
+            {/* Firma del documento */}
+            {reglamento.firma_incluida && reglamento.firma_imagen && (
+              <div style={{
+                padding: 20,
+                backgroundColor: 'white',
+                border: '1px solid #e0e0e0',
+                borderRadius: 12,
+                textAlign: 'center',
+                marginBottom: 20
+              }}>
+                <p style={{ margin: '0 0 12px', fontSize: 13, color: '#666' }}>
+                  Documento firmado electrónicamente por:
+                </p>
+                <img 
+                  src={reglamento.firma_imagen} 
+                  alt="Firma" 
+                  style={{ maxHeight: 70, marginBottom: 8 }} 
+                />
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#1a1a2e' }}>
+                  {reglamento.firma_nombre}
+                </div>
+                <div style={{ fontSize: 13, color: '#666' }}>
+                  {reglamento.firma_cargo}
+                </div>
+              </div>
+            )}
+
+            {/* Modal para ver documento */}
+            {viendoDocumento && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.85)',
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex: 9999
+              }}>
+                {/* Header del visor */}
+                <div style={{
+                  padding: '12px 20px',
+                  background: 'linear-gradient(135deg, #c62828 0%, #d32f2f 100%)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ color: 'white', fontWeight: 700, fontSize: 16 }}>
+                    📖 Reglamento Interno - {reglamento.nombre_sede}
+                  </div>
+                  <button
+                    onClick={() => setViendoDocumento(false)}
+                    style={{
+                      background: 'rgba(255,255,255,0.2)',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '8px 16px',
+                      color: 'white',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: 14
+                    }}
+                  >
+                    ✕ Cerrar
+                  </button>
+                </div>
+                
+                {/* Visor PDF sin herramientas de descarga */}
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <iframe
+                    src={reglamento.archivo_url + '#toolbar=0&navpanes=0&scrollbar=1&view=FitH'}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: 'none'
+                    }}
+                    title="Reglamento Interno de Trabajo"
+                  />
+                </div>
+
+                {/* Footer con firma si existe */}
+                {reglamento.firma_incluida && reglamento.firma_imagen && (
+                  <div style={{
+                    padding: 12,
+                    background: '#1a1a2e',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 20
+                  }}>
+                    <span style={{ color: '#aaa', fontSize: 12 }}>Firmado por:</span>
+                    <img 
+                      src={reglamento.firma_imagen} 
+                      alt="Firma" 
+                      style={{ maxHeight: 40 }} 
+                    />
+                    <div style={{ color: 'white' }}>
+                      <span style={{ fontWeight: 600 }}>{reglamento.firma_nombre}</span>
+                      <span style={{ color: '#aaa', marginLeft: 8 }}>({reglamento.firma_cargo})</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div style={{
@@ -5521,7 +5694,7 @@ Revise el panel de administracion.`;
             <div style={{ fontSize: 60, marginBottom: 16 }}>📭</div>
             <h3 style={{ color: '#e65100' }}>Reglamento no disponible</h3>
             <p style={{ color: '#666' }}>
-              El reglamento interno aún no ha sido cargado al sistema.<br />
+              El reglamento interno aún no ha sido cargado al sistema para tu sede.<br />
               Por favor, contacta al área de Recursos Humanos.
             </p>
           </div>
