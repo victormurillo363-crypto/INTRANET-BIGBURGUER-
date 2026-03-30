@@ -5480,6 +5480,7 @@ Revise el panel de administracion.`;
     const [reglamento, setReglamento] = useState(null);
     const [cargando, setCargando] = useState(true);
     const [viendoDocumento, setViendoDocumento] = useState(false);
+    const [debugInfo, setDebugInfo] = useState('');
 
     // Cargar reglamento según sede del empleado
     useEffect(() => {
@@ -5487,34 +5488,83 @@ Revise el panel de administracion.`;
         setCargando(true);
         try {
           // Obtener la sede del empleado logueado
-          const sedeEmpleado = empleado?.sede || empleado?.sede_id;
-          const empresaEmpleado = empleado?.empresa_id;
+          const sedeEmpleado = empleado?.sede || empleado?.sede_id || empleado?.sedeId;
+          const empresaEmpleado = empleado?.empresa_id || empleado?.empresaId;
           
-          let query = supabase
-            .from('reglamentos_internos')
-            .select('*')
-            .eq('activo', true);
+          console.log('🔍 Buscando reglamento - Sede:', sedeEmpleado, 'Empresa:', empresaEmpleado);
           
-          // Filtrar por sede si el empleado tiene sede asignada
+          let reglamentoEncontrado = null;
+          
+          // Primero intentar buscar por sede
           if (sedeEmpleado) {
-            query = query.eq('sede_id', sedeEmpleado);
-          } else if (empresaEmpleado) {
-            // Si no tiene sede, buscar por empresa
-            query = query.eq('empresa_id', empresaEmpleado);
+            const { data: regSede, error: errSede } = await supabase
+              .from('reglamentos_internos')
+              .select('*')
+              .eq('sede_id', sedeEmpleado)
+              .eq('activo', true)
+              .order('fecha_publicacion', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            console.log('📄 Resultado por sede:', regSede, 'Error:', errSede);
+            
+            if (regSede && !errSede) {
+              reglamentoEncontrado = regSede;
+            }
           }
           
-          const { data, error } = await query.limit(1).single();
+          // Si no encontró por sede, buscar por empresa
+          if (!reglamentoEncontrado && empresaEmpleado) {
+            const { data: regEmpresa, error: errEmpresa } = await supabase
+              .from('reglamentos_internos')
+              .select('*')
+              .eq('empresa_id', empresaEmpleado)
+              .eq('activo', true)
+              .order('fecha_publicacion', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            console.log('📄 Resultado por empresa:', regEmpresa, 'Error:', errEmpresa);
+            
+            if (regEmpresa && !errEmpresa) {
+              reglamentoEncontrado = regEmpresa;
+            }
+          }
           
-          if (!error && data) {
-            setReglamento(data);
+          // Si aún no encuentra, buscar cualquier reglamento activo (fallback)
+          if (!reglamentoEncontrado) {
+            const { data: regAny, error: errAny } = await supabase
+              .from('reglamentos_internos')
+              .select('*')
+              .eq('activo', true)
+              .order('fecha_publicacion', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            console.log('📄 Resultado cualquier reglamento:', regAny, 'Error:', errAny);
+            
+            if (regAny && !errAny) {
+              reglamentoEncontrado = regAny;
+            }
+          }
+          
+          if (reglamentoEncontrado) {
+            console.log('✅ Reglamento encontrado:', reglamentoEncontrado.nombre_sede);
+            setReglamento(reglamentoEncontrado);
+          } else {
+            console.log('❌ No se encontró ningún reglamento');
+            setDebugInfo(`Sede: ${sedeEmpleado || 'N/A'}, Empresa: ${empresaEmpleado || 'N/A'}`);
           }
         } catch (e) {
           console.error('Error cargando reglamento:', e);
+          setDebugInfo('Error: ' + e.message);
         }
         setCargando(false);
       };
       
-      cargarReglamento();
+      if (empleado) {
+        cargarReglamento();
+      }
     }, [empleado]);
 
     if (cargando) {
@@ -5697,6 +5747,11 @@ Revise el panel de administracion.`;
               El reglamento interno aún no ha sido cargado al sistema para tu sede.<br />
               Por favor, contacta al área de Recursos Humanos.
             </p>
+            {debugInfo && (
+              <p style={{ color: '#999', fontSize: 11, marginTop: 12 }}>
+                Info: {debugInfo}
+              </p>
+            )}
           </div>
         )}
         
