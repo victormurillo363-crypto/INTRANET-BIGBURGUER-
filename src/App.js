@@ -5565,7 +5565,8 @@ Revise el panel de administracion.`;
       if (empleado) {
         cargarReglamento();
       }
-    }, [empleado]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [empleado?.sede, empleado?.sede_id, empleado?.empresa_id]);
 
     if (cargando) {
       return (
