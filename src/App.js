@@ -1938,6 +1938,28 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                           <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.bonificacion)}</td>
                         </tr>
                       )}
+                      {/* Ajuste de nómina a favor del empleado */}
+                      {(() => {
+                        const ajustes = typeof nominaSeleccionada.ajustes_nomina === 'string' 
+                          ? JSON.parse(nominaSeleccionada.ajustes_nomina || '{}') 
+                          : (nominaSeleccionada.ajustes_nomina || {});
+                        if (ajustes.sumaEmpleado > 0) {
+                          return (
+                            <>
+                              <tr>
+                                <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Ajuste de nómina</td>
+                                <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(ajustes.sumaEmpleado)}</td>
+                              </tr>
+                              {(ajustes.detalle || []).filter(a => a.beneficiario === 'empleado').map((a, idx) => (
+                                <tr key={idx}>
+                                  <td colSpan={2} style={{ padding: '2px 4px 2px 16px', fontSize: 9, color: '#666', borderBottom: '1px solid #eee' }}>↳ {a.concepto}</td>
+                                </tr>
+                              ))}
+                            </>
+                          );
+                        }
+                        return null;
+                      })()}
                       <tr style={{ backgroundColor: '#e8f5e9', fontWeight: 'bold' }}>
                         <td style={{ padding: 6 }}>TOTAL</td>
                         <td style={{ padding: 6, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.totaldevengado)}</td>
@@ -1983,6 +2005,28 @@ El empleado ha respondido a un REQUERIMIENTO. Revise el panel de administracion.
                           <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(nominaSeleccionada.otros_descuentos || nominaSeleccionada.descotros)}</td>
                         </tr>
                       )}
+                      {/* Ajuste de nómina a favor de la empresa */}
+                      {(() => {
+                        const ajustes = typeof nominaSeleccionada.ajustes_nomina === 'string' 
+                          ? JSON.parse(nominaSeleccionada.ajustes_nomina || '{}') 
+                          : (nominaSeleccionada.ajustes_nomina || {});
+                        if (ajustes.restaEmpresa > 0) {
+                          return (
+                            <>
+                              <tr>
+                                <td style={{ padding: 4, borderBottom: '1px solid #eee' }}>Ajuste de nómina</td>
+                                <td style={{ padding: 4, textAlign: 'right', borderBottom: '1px solid #eee' }}>{formatearMoneda(ajustes.restaEmpresa)}</td>
+                              </tr>
+                              {(ajustes.detalle || []).filter(a => a.beneficiario === 'empresa').map((a, idx) => (
+                                <tr key={idx}>
+                                  <td colSpan={2} style={{ padding: '2px 4px 2px 16px', fontSize: 9, color: '#666', borderBottom: '1px solid #eee' }}>↳ {a.concepto}</td>
+                                </tr>
+                              ))}
+                            </>
+                          );
+                        }
+                        return null;
+                      })()}
                       <tr style={{ backgroundColor: '#ffebee', fontWeight: 'bold' }}>
                         <td style={{ padding: 6 }}>TOTAL</td>
                         <td style={{ padding: 6, textAlign: 'right' }}>{formatearMoneda(nominaSeleccionada.totaldescuentos)}</td>
