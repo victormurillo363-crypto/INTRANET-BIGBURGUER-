@@ -1,10 +1,8 @@
 // api_fudo_proxy.js - Para Vercel Serverless Functions
-// Ubicación: /api/api_fudo_proxy.js
-
 const FUDO_AUTH = 'https://auth.fu.do/api';
 const FUDO_API = 'https://api.fu.do/v1alpha1';
 
-// IDs de productos de domicilio conocidos
+// IDs de productos de domicilio (los que me mostraste)
 const PRODUCTOS_DOMICILIO = ['150', '151', '152', '153', '154', '155'];
 
 const CREDENCIALES = {
@@ -15,31 +13,18 @@ const CREDENCIALES = {
 };
 
 export default async function handler(req, res) {
-    // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
     const { accion, sede, fecha } = req.query;
     
-    if (!sede) {
-        return res.status(400).json({ success: false, error: 'Sede no especificada' });
-    }
+    if (!sede) return res.status(400).json({ success: false, error: 'Sede no especificada' });
 
-    const sedeUpper = sede.toUpperCase();
-    const creds = CREDENCIALES[sedeUpper];
-    
-    if (!creds) {
-        return res.status(400).json({ 
-            success: false, 
-            error: `Credenciales no configuradas para: ${sede}`,
-            sedesDisponibles: Object.keys(CREDENCIALES)
-        });
-    }
+    const creds = CREDENCIALES[sede.toUpperCase()];
+    if (!creds) return res.status(400).json({ success: false, error: `Sede no configurada: ${sede}` });
 
     try {
         // Obtener token
@@ -48,62 +33,29 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ apiKey: creds.apiKey, apiSecret: creds.apiSecret })
         });
-        
         const tokenData = await tokenRes.json();
         
-        if (!tokenData.token) {
-            return res.json({ success: false, error: 'No se obtuvo token', data: tokenData });
-        }
+        if (!tokenData.token) return res.json({ success: false, error: 'No se obtuvo token' });
 
-        if (accion === 'test' || accion === 'obtener_token') {
+        if (accion === 'test') {
             return res.json({ success: true, mensaje: 'Conexión exitosa', sede });
         }
 
-        // Consultar pedidos CON ITEMS Y PRODUCTS incluidos
+        // Consultar pedidos con items (sin products para evitar timeout)
         const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
         let todosLosPedidos = [];
-        let todosLosIncluded = [];
-        let pagina = 1;
-        let hayMasPaginas = true;
-
-        while (hayMasPaginas && pagina <= 20) {
-            // IMPORTANTE: include=items,products para obtener productos con nombres
-            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items,products`;
-            
-            const pedidosRes = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${tokenData.token}` }
-            });
-            
-            const pedidosData = await pedidosRes.json();
-            
-            if (pedidosData.data && Array.isArray(pedidosData.data)) {
-                todosLosPedidos = todosLosPedidos.concat(pedidosData.data);
-            }
-            
-            if (pedidosData.included && Array.isArray(pedidosData.included)) {
-                todosLosIncluded = todosLosIncluded.concat(pedidosData.included);
-            }
-            
-            if (!pedidosData.data || pedidosData.data.length < 500) {
-                hayMasPaginas = false;
-            } else {
-                pagina++;
-            }
-        }
-
-        // Separar Items y Products del included
-        const items = todosLosIncluded.filter(inc => inc.type === 'Item');
-        const products = todosLosIncluded.filter(inc => inc.type === 'Product');
-
-        // Crear mapa de productos por ID
-        const productosMap = {};
-        products.forEach(prod => {
-            productosMap[prod.id] = {
-                id: prod.id,
-                nombre: prod.attributes?.name || prod.attributes?.productName || '',
-                precio: prod.attributes?.price || 0
-            };
+        let todosLosItems = [];
+        
+        // Solo 1 página para probar rápido
+        const url = `${FUDO_API}/sales?page[size]=500&page[number]=1&include=items`;
+        
+        const pedidosRes = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${tokenData.token}` }
         });
+        const pedidosData = await pedidosRes.json();
+        
+        if (pedidosData.data) todosLosPedidos = pedidosData.data;
+        if (pedidosData.included) todosLosItems = pedidosData.included.filter(i => i.type === 'Item');
 
         if (accion === 'consultar_pedidos') {
             return res.json({
@@ -111,76 +63,41 @@ export default async function handler(req, res) {
                 fecha: fechaFiltro,
                 sede,
                 totalPedidos: todosLosPedidos.length,
-                totalItems: items.length,
-                totalProducts: products.length,
-                pedidos: todosLosPedidos.slice(0, 3),
-                items: items.slice(0, 10),
-                products: products.slice(0, 20), // Muestra algunos productos para ver estructura
-                productosMap: Object.fromEntries(Object.entries(productosMap).slice(0, 20))
+                totalItems: todosLosItems.length,
+                pedidos: todosLosPedidos.slice(0, 5),
+                items: todosLosItems.slice(0, 10)
             });
         }
 
         if (accion === 'traer_domicilios') {
             // Filtrar pedidos por fecha
-            const pedidosFecha = todosLosPedidos.filter(pedido => {
-                const fechaPedido = pedido.attributes?.closedAt?.split('T')[0] || 
-                                    pedido.attributes?.createdAt?.split('T')[0] || '';
-                return fechaPedido === fechaFiltro;
+            const pedidosFecha = todosLosPedidos.filter(p => {
+                const fp = p.attributes?.closedAt?.split('T')[0] || p.attributes?.createdAt?.split('T')[0] || '';
+                return fp === fechaFiltro;
             });
 
-            const domiciliosEncontrados = [];
+            const domicilios = [];
             
             for (const pedido of pedidosFecha) {
-                const pedidoId = pedido.id;
-                const fechaPedido = pedido.attributes?.closedAt?.split('T')[0] || 
-                                    pedido.attributes?.createdAt?.split('T')[0] || '';
-                const totalPedido = pedido.attributes?.total || 0;
-                const saleType = pedido.attributes?.saleType || '';
+                const itemsRef = pedido.relationships?.items?.data || [];
                 
-                // Obtener items de este pedido
-                const itemsDelPedido = pedido.relationships?.items?.data || [];
-                
-                for (const itemRef of itemsDelPedido) {
-                    // Buscar el item completo en included
-                    const itemCompleto = items.find(it => it.id === itemRef.id);
+                for (const ref of itemsRef) {
+                    const item = todosLosItems.find(i => i.id === ref.id);
+                    if (!item) continue;
                     
-                    if (itemCompleto) {
-                        // Obtener el product ID
-                        const productId = itemCompleto.relationships?.product?.data?.id;
-                        
-                        // Verificar si es un producto de domicilio (por ID conocido)
-                        if (productId && PRODUCTOS_DOMICILIO.includes(productId)) {
-                            const producto = productosMap[productId] || {};
-                            
-                            domiciliosEncontrados.push({
-                                pedidoId: pedidoId,
-                                fecha: fechaPedido,
-                                valorPedido: totalPedido,
-                                saleType: saleType,
-                                itemId: itemCompleto.id,
-                                productId: productId,
-                                nombreDomicilio: producto.nombre || `Domicilio (ID: ${productId})`,
-                                precioDomicilio: itemCompleto.attributes?.price || 0,
-                                cantidad: itemCompleto.attributes?.quantity || 1
-                            });
-                        }
-                        // También buscar por nombre si el producto está disponible
-                        else if (productId && productosMap[productId]) {
-                            const nombreProd = (productosMap[productId].nombre || '').toLowerCase();
-                            if (nombreProd.includes('domicilio')) {
-                                domiciliosEncontrados.push({
-                                    pedidoId: pedidoId,
-                                    fecha: fechaPedido,
-                                    valorPedido: totalPedido,
-                                    saleType: saleType,
-                                    itemId: itemCompleto.id,
-                                    productId: productId,
-                                    nombreDomicilio: productosMap[productId].nombre,
-                                    precioDomicilio: itemCompleto.attributes?.price || 0,
-                                    cantidad: itemCompleto.attributes?.quantity || 1
-                                });
-                            }
-                        }
+                    const productId = item.relationships?.product?.data?.id;
+                    
+                    // Verificar si es producto de domicilio por ID
+                    if (productId && PRODUCTOS_DOMICILIO.includes(productId)) {
+                        domicilios.push({
+                            pedidoId: pedido.id,
+                            fecha: pedido.attributes?.closedAt?.split('T')[0] || '',
+                            hora: pedido.attributes?.closedAt?.split('T')[1]?.substring(0,5) || '',
+                            valorPedido: pedido.attributes?.total || 0,
+                            productId: productId,
+                            precioDomicilio: item.attributes?.price || 0,
+                            cantidad: item.attributes?.quantity || 1
+                        });
                     }
                 }
             }
@@ -190,28 +107,15 @@ export default async function handler(req, res) {
                 fecha: fechaFiltro,
                 sede,
                 totalPedidosEnFecha: pedidosFecha.length,
-                totalDomiciliosEncontrados: domiciliosEncontrados.length,
-                domicilios: domiciliosEncontrados,
-                // Debug info
-                _debug: {
-                    totalPedidosTotales: todosLosPedidos.length,
-                    totalItems: items.length,
-                    totalProducts: products.length,
-                    productosDomicilioIds: PRODUCTOS_DOMICILIO
-                }
+                totalDomicilios: domicilios.length,
+                domicilios,
+                _debug: { totalPedidosTotales: todosLosPedidos.length }
             });
         }
 
-        return res.status(400).json({ 
-            success: false, 
-            error: 'Acción no válida',
-            accionesDisponibles: ['test', 'obtener_token', 'consultar_pedidos', 'traer_domicilios']
-        });
+        return res.status(400).json({ success: false, error: 'Acción no válida' });
 
     } catch (error) {
-        return res.status(500).json({ 
-            success: false, 
-            error: error.message 
-        });
+        return res.status(500).json({ success: false, error: error.message });
     }
 }
