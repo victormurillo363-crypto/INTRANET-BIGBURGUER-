@@ -2,7 +2,6 @@
 const FUDO_AUTH = 'https://auth.fu.do/api';
 const FUDO_API = 'https://api.fu.do/v1alpha1';
 
-// IDs de productos de domicilio (los que me mostraste)
 const PRODUCTOS_DOMICILIO = ['150', '151', '152', '153', '154', '155'];
 
 const CREDENCIALES = {
@@ -41,38 +40,82 @@ export default async function handler(req, res) {
             return res.json({ success: true, mensaje: 'Conexión exitosa', sede });
         }
 
-        // Consultar pedidos con items (sin products para evitar timeout)
         const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
         let todosLosPedidos = [];
         let todosLosItems = [];
         
-        // Solo 1 página para probar rápido
-        const url = `${FUDO_API}/sales?page[size]=500&page[number]=1&include=items`;
+        // CAMBIO: Ordenar por closedAt descendente para traer los más recientes primero
+        // Y traer varias páginas hasta encontrar la fecha
+        let pagina = 1;
+        let encontrada = false;
         
-        const pedidosRes = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${tokenData.token}` }
-        });
-        const pedidosData = await pedidosRes.json();
-        
-        if (pedidosData.data) todosLosPedidos = pedidosData.data;
-        if (pedidosData.included) todosLosItems = pedidosData.included.filter(i => i.type === 'Item');
+        while (pagina <= 15 && !encontrada) {
+            // Probar con sort=-closedAt para orden descendente
+            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items&sort=-closedAt`;
+            
+            const pedidosRes = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${tokenData.token}` }
+            });
+            const pedidosData = await pedidosRes.json();
+            
+            if (pedidosData.data && pedidosData.data.length > 0) {
+                // Agregar pedidos
+                todosLosPedidos = todosLosPedidos.concat(pedidosData.data);
+                
+                if (pedidosData.included) {
+                    todosLosItems = todosLosItems.concat(
+                        pedidosData.included.filter(i => i.type === 'Item')
+                    );
+                }
+                
+                // Ver si ya tenemos pedidos de la fecha que buscamos
+                const tienesFecha = pedidosData.data.some(p => {
+                    const fp = p.attributes?.closedAt?.split('T')[0] || '';
+                    return fp === fechaFiltro;
+                });
+                
+                if (tienesFecha) encontrada = true;
+                
+                // Ver la fecha del último pedido de esta página
+                const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.closedAt?.split('T')[0] || '';
+                
+                // Si la última fecha es anterior a la que buscamos, ya pasamos
+                if (ultimaFecha && ultimaFecha < fechaFiltro) {
+                    break;
+                }
+            } else {
+                break;
+            }
+            
+            pagina++;
+        }
 
         if (accion === 'consultar_pedidos') {
+            // Mostrar los más recientes para debug
+            const primerasFechas = todosLosPedidos.slice(0, 10).map(p => ({
+                id: p.id,
+                closedAt: p.attributes?.closedAt,
+                total: p.attributes?.total
+            }));
+            
             return res.json({
                 success: true,
                 fecha: fechaFiltro,
                 sede,
                 totalPedidos: todosLosPedidos.length,
                 totalItems: todosLosItems.length,
-                pedidos: todosLosPedidos.slice(0, 5),
-                items: todosLosItems.slice(0, 10)
+                paginasConsultadas: pagina,
+                primerasFechas,  // Para ver qué fechas están viniendo
+                pedidos: todosLosPedidos.slice(0, 3),
+                items: todosLosItems.slice(0, 5)
             });
         }
 
         if (accion === 'traer_domicilios') {
-            // Filtrar pedidos por fecha
+            // Filtrar pedidos por fecha exacta
             const pedidosFecha = todosLosPedidos.filter(p => {
-                const fp = p.attributes?.closedAt?.split('T')[0] || p.attributes?.createdAt?.split('T')[0] || '';
+                const fp = p.attributes?.closedAt?.split('T')[0] || 
+                           p.attributes?.createdAt?.split('T')[0] || '';
                 return fp === fechaFiltro;
             });
 
@@ -87,7 +130,6 @@ export default async function handler(req, res) {
                     
                     const productId = item.relationships?.product?.data?.id;
                     
-                    // Verificar si es producto de domicilio por ID
                     if (productId && PRODUCTOS_DOMICILIO.includes(productId)) {
                         domicilios.push({
                             pedidoId: pedido.id,
@@ -109,7 +151,11 @@ export default async function handler(req, res) {
                 totalPedidosEnFecha: pedidosFecha.length,
                 totalDomicilios: domicilios.length,
                 domicilios,
-                _debug: { totalPedidosTotales: todosLosPedidos.length }
+                _debug: {
+                    totalPedidosTotales: todosLosPedidos.length,
+                    paginasConsultadas: pagina,
+                    primeraFechaEncontrada: todosLosPedidos[0]?.attributes?.closedAt || 'ninguna'
+                }
             });
         }
 
