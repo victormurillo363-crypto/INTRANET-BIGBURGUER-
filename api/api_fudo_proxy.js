@@ -2,8 +2,6 @@
 const FUDO_AUTH = 'https://auth.fu.do/api';
 const FUDO_API = 'https://api.fu.do/v1alpha1';
 
-const PRODUCTOS_DOMICILIO = ['150', '151', '152', '153', '154', '155'];
-
 const CREDENCIALES = {
     'CORALES': {
         apiKey: 'MUA0MzI4OA==',
@@ -41,13 +39,14 @@ export default async function handler(req, res) {
 
         const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
         let todosLosPedidos = [];
-        let todosLosItems = [];
+        let todosLosIncluded = [];
         
         let pagina = 1;
         let continuar = true;
         
         while (pagina <= 30 && continuar) {
-            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items&sort=-createdAt`;
+            // Incluir items y shippingCosts
+            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items,shippingCosts&sort=-createdAt`;
             
             const pedidosRes = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${tokenData.token}` }
@@ -58,24 +57,21 @@ export default async function handler(req, res) {
                 todosLosPedidos = todosLosPedidos.concat(pedidosData.data);
                 
                 if (pedidosData.included) {
-                    todosLosItems = todosLosItems.concat(
-                        pedidosData.included.filter(i => i.type === 'Item')
-                    );
+                    todosLosIncluded = todosLosIncluded.concat(pedidosData.included);
                 }
                 
-                // Ver la fecha del último pedido de esta página
                 const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt?.split('T')[0] || '';
-                
-                // Si ya pasamos la fecha buscada, detenemos
-                if (ultimaFecha && ultimaFecha < fechaFiltro) {
-                    continuar = false;
-                }
+                if (ultimaFecha && ultimaFecha < fechaFiltro) continuar = false;
             } else {
                 continuar = false;
             }
             
             pagina++;
         }
+
+        // Separar items y shippingCosts
+        const items = todosLosIncluded.filter(i => i.type === 'Item');
+        const shippingCosts = todosLosIncluded.filter(i => i.type === 'ShippingCost');
 
         if (accion === 'consultar_pedidos') {
             const primerasFechas = todosLosPedidos.slice(0, 10).map(p => ({
@@ -91,14 +87,15 @@ export default async function handler(req, res) {
                 fechaBuscada: fechaFiltro,
                 sede,
                 totalPedidos: todosLosPedidos.length,
-                totalItems: todosLosItems.length,
+                totalItems: items.length,
+                totalShippingCosts: shippingCosts.length,
                 paginasConsultadas: pagina - 1,
-                primerasFechas
+                primerasFechas,
+                shippingCostsMuestra: shippingCosts.slice(0, 5)
             });
         }
 
         if (accion === 'traer_domicilios') {
-            // Filtrar pedidos DELIVERY de la fecha, solo CLOSED
             const pedidosFecha = todosLosPedidos.filter(p => {
                 const fp = p.attributes?.createdAt?.split('T')[0] || '';
                 const esFecha = fp === fechaFiltro;
@@ -110,20 +107,14 @@ export default async function handler(req, res) {
             const domicilios = [];
             
             for (const pedido of pedidosFecha) {
-                const itemsRef = pedido.relationships?.items?.data || [];
-                let precioDomicilio = 0;
-                let productIdDomicilio = null;
+                // Buscar el costo de envío
+                let valorDomicilio = 0;
+                const shippingRef = pedido.relationships?.shippingCosts?.data || [];
                 
-                // Buscar si hay producto de domicilio en los items
-                for (const ref of itemsRef) {
-                    const item = todosLosItems.find(i => i.id === ref.id);
-                    if (!item) continue;
-                    
-                    const productId = item.relationships?.product?.data?.id;
-                    
-                    if (productId && PRODUCTOS_DOMICILIO.includes(productId)) {
-                        precioDomicilio = item.attributes?.price || 0;
-                        productIdDomicilio = productId;
+                for (const ref of shippingRef) {
+                    const shipping = shippingCosts.find(s => s.id === ref.id);
+                    if (shipping) {
+                        valorDomicilio = shipping.attributes?.amount || shipping.attributes?.price || 0;
                         break;
                     }
                 }
@@ -133,9 +124,9 @@ export default async function handler(req, res) {
                     fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
                     hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
                     valorPedido: pedido.attributes?.total || 0,
-                    precioDomicilio: precioDomicilio,
-                    productIdDomicilio: productIdDomicilio,
-                    customerName: pedido.attributes?.customerName || '',
+                    valorDomicilio: valorDomicilio,
+                    customerName: pedido.attributes?.customerName || pedido.attributes?.anonymousCustomer?.name || '',
+                    telefono: pedido.attributes?.anonymousCustomer?.phone || '',
                     direccion: pedido.attributes?.anonymousCustomer?.address || ''
                 });
             }
@@ -144,7 +135,6 @@ export default async function handler(req, res) {
                 success: true,
                 fechaBuscada: fechaFiltro,
                 sede,
-                totalPedidosEnFecha: pedidosFecha.length,
                 totalDomicilios: domicilios.length,
                 domicilios,
                 _debug: {
