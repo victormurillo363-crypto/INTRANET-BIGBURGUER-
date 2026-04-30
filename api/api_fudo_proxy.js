@@ -1,76 +1,89 @@
-// api/fudo-proxy.js
 export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  const FUDO_AUTH_URL = 'https://auth.fu.do/api';
-  const FUDO_API_URL = 'https://api.fu.do/v1alpha1';
+  const FUDO_AUTH = 'https://auth.fu.do/api';
+  const FUDO_API = 'https://api.fu.do/v1alpha1';
 
   const credenciales = {
     'CORALES': { apiKey: 'MUA0MzI4OA==', apiSecret: 'm77IGbUCfx1ndxSUTrmiIj5RrRc2Snlu' }
   };
 
-  const body = req.body || {};
-  const query = req.query || {};
-  const accion = body.accion || query.accion || '';
-  const sede = (body.sede || query.sede || '').toUpperCase();
-  const fecha = body.fecha || query.fecha || new Date().toISOString().split('T')[0];
+  const { accion, sede, fecha } = { ...req.query, ...req.body };
+  const fechaHoy = fecha || new Date().toISOString().split('T')[0];
 
-  if (!sede) return res.status(400).json({ success: false, error: 'Sede no especificada' });
-  
-  const cred = credenciales[sede];
-  if (!cred) return res.status(400).json({ success: false, error: `Sede ${sede} no configurada` });
-
-  async function getToken() {
-    const r = await fetch(FUDO_AUTH_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: cred.apiKey, apiSecret: cred.apiSecret })
-    });
-    return r.json();
+  if (!sede || !credenciales[sede.toUpperCase()]) {
+    return res.json({ success: false, error: 'Sede no válida', sedes: Object.keys(credenciales) });
   }
 
+  const creds = credenciales[sede.toUpperCase()];
+
+  // Obtener token
+  async function getToken() {
+    const r = await fetch(FUDO_AUTH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: creds.apiKey, apiSecret: creds.apiSecret })
+    });
+    const data = await r.json();
+    return data.token;
+  }
+
+  // Obtener pedidos
   async function getPedidos(token) {
-    const r = await fetch(`${FUDO_API_URL}/sales?page[size]=500`, {
+    const r = await fetch(`${FUDO_API}/sales?page[size]=500`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    return r.json();
+    return await r.json();
   }
 
   try {
     if (accion === 'test') {
-      const t = await getToken();
-      return res.json({ success: !!t.token, mensaje: t.token ? 'Conexión exitosa' : 'Error', sede });
+      const token = await getToken();
+      return res.json({ success: !!token, mensaje: token ? 'Conexión exitosa' : 'Error', sede });
     }
 
     if (accion === 'traer_domicilios' || accion === 'consultar_pedidos') {
-      const t = await getToken();
-      if (!t.token) return res.status(401).json({ success: false, error: 'Auth fallida' });
-      
-      let pedidos = await getPedidos(t.token);
-      if (pedidos.data) pedidos = pedidos.data;
-      
-      if (accion === 'traer_domicilios') {
-        const domicilios = (pedidos || []).filter(p => {
-          const n = (p.name || '').toLowerCase();
-          return n.includes('domicilio');
-        }).map(p => ({
-          id: p.id,
-          numero: p.name || '',
-          total: p.total || 0,
-          estado: p.status || '',
-          fecha: p.date || ''
-        }));
-        return res.json({ success: true, fecha, sede, totalDomicilios: domicilios.length, domicilios });
+      const token = await getToken();
+      const resultado = await getPedidos(token);
+      const pedidos = resultado.data || [];
+
+      if (accion === 'consultar_pedidos') {
+        return res.json({ success: true, fecha: fechaHoy, sede, total: pedidos.length, pedidos });
       }
-      return res.json({ success: true, fecha, sede, total: pedidos?.length || 0, pedidos });
+
+      // FILTRAR DOMICILIOS - CORREGIDO
+      const domicilios = pedidos.filter(p => {
+        const customerName = (p.attributes?.customerName || '').toLowerCase();
+        return customerName.includes('domicilio');
+      }).map(p => ({
+        id: p.id,
+        numero: p.attributes?.customerName || '',
+        total: p.attributes?.total || 0,
+        fecha: p.attributes?.createdAt || '',
+        saleType: p.attributes?.saleType || '',
+        _raw: p.attributes
+      }));
+
+      return res.json({
+        success: true,
+        fecha: fechaHoy,
+        sede,
+        totalPedidos: pedidos.length,
+        totalDomicilios: domicilios.length,
+        domicilios
+      });
     }
 
-    return res.status(400).json({ success: false, error: 'Acción no válida' });
-  } catch (e) {
-    return res.status(500).json({ success: false, error: e.message });
+    return res.json({ success: false, error: 'Acción no válida', acciones: ['test', 'consultar_pedidos', 'traer_domicilios'] });
+
+  } catch (error) {
+    return res.json({ success: false, error: error.message });
   }
 }
