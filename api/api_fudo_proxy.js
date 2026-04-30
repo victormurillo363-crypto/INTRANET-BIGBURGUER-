@@ -4,6 +4,9 @@
 const FUDO_AUTH = 'https://auth.fu.do/api';
 const FUDO_API = 'https://api.fu.do/v1alpha1';
 
+// IDs de productos de domicilio conocidos
+const PRODUCTOS_DOMICILIO = ['150', '151', '152', '153', '154', '155'];
+
 const CREDENCIALES = {
     'CORALES': {
         apiKey: 'MUA0MzI4OA==',
@@ -56,16 +59,16 @@ export default async function handler(req, res) {
             return res.json({ success: true, mensaje: 'Conexión exitosa', sede });
         }
 
-        // Consultar pedidos CON ITEMS incluidos
+        // Consultar pedidos CON ITEMS Y PRODUCTS incluidos
         const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
         let todosLosPedidos = [];
         let todosLosIncluded = [];
         let pagina = 1;
         let hayMasPaginas = true;
 
-        while (hayMasPaginas && pagina <= 10) {
-            // IMPORTANTE: include=items para obtener los productos
-            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items`;
+        while (hayMasPaginas && pagina <= 20) {
+            // IMPORTANTE: include=items,products para obtener productos con nombres
+            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items,products`;
             
             const pedidosRes = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${tokenData.token}` }
@@ -77,12 +80,10 @@ export default async function handler(req, res) {
                 todosLosPedidos = todosLosPedidos.concat(pedidosData.data);
             }
             
-            // Guardar los items incluidos
             if (pedidosData.included && Array.isArray(pedidosData.included)) {
                 todosLosIncluded = todosLosIncluded.concat(pedidosData.included);
             }
             
-            // Verificar si hay más páginas
             if (!pedidosData.data || pedidosData.data.length < 500) {
                 hayMasPaginas = false;
             } else {
@@ -90,63 +91,95 @@ export default async function handler(req, res) {
             }
         }
 
+        // Separar Items y Products del included
+        const items = todosLosIncluded.filter(inc => inc.type === 'Item');
+        const products = todosLosIncluded.filter(inc => inc.type === 'Product');
+
+        // Crear mapa de productos por ID
+        const productosMap = {};
+        products.forEach(prod => {
+            productosMap[prod.id] = {
+                id: prod.id,
+                nombre: prod.attributes?.name || prod.attributes?.productName || '',
+                precio: prod.attributes?.price || 0
+            };
+        });
+
         if (accion === 'consultar_pedidos') {
             return res.json({
                 success: true,
                 fecha: fechaFiltro,
                 sede,
                 totalPedidos: todosLosPedidos.length,
-                totalItemsIncluded: todosLosIncluded.length,
-                pedidos: todosLosPedidos.slice(0, 5), // Muestra solo 5 para ver estructura
-                included: todosLosIncluded.slice(0, 20) // Muestra 20 items para ver estructura
+                totalItems: items.length,
+                totalProducts: products.length,
+                pedidos: todosLosPedidos.slice(0, 3),
+                items: items.slice(0, 10),
+                products: products.slice(0, 20), // Muestra algunos productos para ver estructura
+                productosMap: Object.fromEntries(Object.entries(productosMap).slice(0, 20))
             });
         }
 
         if (accion === 'traer_domicilios') {
             // Filtrar pedidos por fecha
             const pedidosFecha = todosLosPedidos.filter(pedido => {
-                const fechaPedido = pedido.attributes?.date || 
+                const fechaPedido = pedido.attributes?.closedAt?.split('T')[0] || 
                                     pedido.attributes?.createdAt?.split('T')[0] || '';
                 return fechaPedido === fechaFiltro;
             });
 
-            // Buscar items de domicilio en "included"
-            const itemsDomicilio = todosLosIncluded.filter(item => {
-                if (item.type !== 'items' && item.type !== 'saleItems' && item.type !== 'sale-items') {
-                    return false;
-                }
-                const nombreItem = (item.attributes?.name || item.attributes?.productName || '').toLowerCase();
-                return nombreItem.includes('domicilio');
-            });
-
-            // Crear mapa de items por pedido
             const domiciliosEncontrados = [];
             
             for (const pedido of pedidosFecha) {
                 const pedidoId = pedido.id;
-                const fechaPedido = pedido.attributes?.date || pedido.attributes?.createdAt?.split('T')[0] || '';
-                const totalPedido = pedido.attributes?.total || pedido.attributes?.amount || 0;
+                const fechaPedido = pedido.attributes?.closedAt?.split('T')[0] || 
+                                    pedido.attributes?.createdAt?.split('T')[0] || '';
+                const totalPedido = pedido.attributes?.total || 0;
+                const saleType = pedido.attributes?.saleType || '';
                 
-                // Buscar items de domicilio relacionados con este pedido
-                const itemsRelacionados = pedido.relationships?.items?.data || [];
+                // Obtener items de este pedido
+                const itemsDelPedido = pedido.relationships?.items?.data || [];
                 
-                for (const itemRef of itemsRelacionados) {
-                    const itemCompleto = todosLosIncluded.find(inc => 
-                        inc.id === itemRef.id && (inc.type === itemRef.type || inc.type === 'items')
-                    );
+                for (const itemRef of itemsDelPedido) {
+                    // Buscar el item completo en included
+                    const itemCompleto = items.find(it => it.id === itemRef.id);
                     
                     if (itemCompleto) {
-                        const nombreItem = (itemCompleto.attributes?.name || '').toLowerCase();
-                        if (nombreItem.includes('domicilio')) {
+                        // Obtener el product ID
+                        const productId = itemCompleto.relationships?.product?.data?.id;
+                        
+                        // Verificar si es un producto de domicilio (por ID conocido)
+                        if (productId && PRODUCTOS_DOMICILIO.includes(productId)) {
+                            const producto = productosMap[productId] || {};
+                            
                             domiciliosEncontrados.push({
                                 pedidoId: pedidoId,
                                 fecha: fechaPedido,
                                 valorPedido: totalPedido,
+                                saleType: saleType,
                                 itemId: itemCompleto.id,
-                                nombreDomicilio: itemCompleto.attributes?.name || '',
-                                precioDomicilio: itemCompleto.attributes?.price || itemCompleto.attributes?.unitPrice || 0,
+                                productId: productId,
+                                nombreDomicilio: producto.nombre || `Domicilio (ID: ${productId})`,
+                                precioDomicilio: itemCompleto.attributes?.price || 0,
                                 cantidad: itemCompleto.attributes?.quantity || 1
                             });
+                        }
+                        // También buscar por nombre si el producto está disponible
+                        else if (productId && productosMap[productId]) {
+                            const nombreProd = (productosMap[productId].nombre || '').toLowerCase();
+                            if (nombreProd.includes('domicilio')) {
+                                domiciliosEncontrados.push({
+                                    pedidoId: pedidoId,
+                                    fecha: fechaPedido,
+                                    valorPedido: totalPedido,
+                                    saleType: saleType,
+                                    itemId: itemCompleto.id,
+                                    productId: productId,
+                                    nombreDomicilio: productosMap[productId].nombre,
+                                    precioDomicilio: itemCompleto.attributes?.price || 0,
+                                    cantidad: itemCompleto.attributes?.quantity || 1
+                                });
+                            }
                         }
                     }
                 }
@@ -158,10 +191,14 @@ export default async function handler(req, res) {
                 sede,
                 totalPedidosEnFecha: pedidosFecha.length,
                 totalDomiciliosEncontrados: domiciliosEncontrados.length,
-                totalItemsIncluded: todosLosIncluded.length,
                 domicilios: domiciliosEncontrados,
-                // Debug: mostrar algunos items para verificar estructura
-                _debug_items_muestra: todosLosIncluded.slice(0, 5)
+                // Debug info
+                _debug: {
+                    totalPedidosTotales: todosLosPedidos.length,
+                    totalItems: items.length,
+                    totalProducts: products.length,
+                    productosDomicilioIds: PRODUCTOS_DOMICILIO
+                }
             });
         }
 
