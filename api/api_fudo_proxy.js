@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   };
 
   const { accion, sede, fecha } = { ...req.query, ...req.body };
-  const fechaHoy = fecha || new Date().toISOString().split('T')[0];
+  const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
 
   if (!sede || !credenciales[sede.toUpperCase()]) {
     return res.json({ success: false, error: 'Sede no válida', sedes: Object.keys(credenciales) });
@@ -24,7 +24,6 @@ export default async function handler(req, res) {
 
   const creds = credenciales[sede.toUpperCase()];
 
-  // Obtener token
   async function getToken() {
     const r = await fetch(FUDO_AUTH, {
       method: 'POST',
@@ -35,9 +34,10 @@ export default async function handler(req, res) {
     return data.token;
   }
 
-  // Obtener pedidos
-  async function getPedidos(token) {
-    const r = await fetch(`${FUDO_API}/sales?page[size]=500`, {
+  // Obtener pedidos CON items incluidos
+  async function getPedidos(token, pagina = 1) {
+    const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items`;
+    const r = await fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     return await r.json();
@@ -49,35 +49,79 @@ export default async function handler(req, res) {
       return res.json({ success: !!token, mensaje: token ? 'Conexión exitosa' : 'Error', sede });
     }
 
-    if (accion === 'traer_domicilios' || accion === 'consultar_pedidos') {
+    if (accion === 'consultar_pedidos') {
+      const token = await getToken();
+      const resultado = await getPedidos(token);
+      return res.json({ 
+        success: true, 
+        fecha: fechaFiltro, 
+        sede, 
+        total: resultado.data?.length || 0, 
+        pedidos: resultado.data || [],
+        included: resultado.included || []
+      });
+    }
+
+    if (accion === 'traer_domicilios') {
       const token = await getToken();
       const resultado = await getPedidos(token);
       const pedidos = resultado.data || [];
+      const included = resultado.included || [];
 
-      if (accion === 'consultar_pedidos') {
-        return res.json({ success: true, fecha: fechaHoy, sede, total: pedidos.length, pedidos });
-      }
+      // Crear mapa de items por ID
+      const itemsMap = {};
+      included.forEach(item => {
+        if (item.type === 'Item' || item.type === 'SaleItem') {
+          itemsMap[item.id] = item;
+        }
+      });
 
-      // FILTRAR DOMICILIOS - CORREGIDO
-      const domicilios = pedidos.filter(p => {
-        const customerName = (p.attributes?.customerName || '').toLowerCase();
-        return customerName.includes('domicilio');
-      }).map(p => ({
-        id: p.id,
-        numero: p.attributes?.customerName || '',
-        total: p.attributes?.total || 0,
-        fecha: p.attributes?.createdAt || '',
-        saleType: p.attributes?.saleType || '',
-        _raw: p.attributes
-      }));
+      // Filtrar pedidos por fecha y que tengan producto "domicilio"
+      const domicilios = [];
+
+      pedidos.forEach(pedido => {
+        const fechaPedido = (pedido.attributes?.createdAt || '').split('T')[0];
+        
+        // Filtrar por fecha
+        if (fechaPedido !== fechaFiltro) return;
+
+        // Buscar items del pedido
+        const itemsRefs = pedido.relationships?.items?.data || [];
+        
+        itemsRefs.forEach(ref => {
+          const item = itemsMap[ref.id];
+          if (item) {
+            const nombreItem = (item.attributes?.name || '').toLowerCase();
+            
+            // Si el item contiene "domicilio"
+            if (nombreItem.includes('domicilio')) {
+              domicilios.push({
+                pedidoId: pedido.id,
+                itemId: item.id,
+                nombreProducto: item.attributes?.name || '',
+                precioProducto: item.attributes?.price || item.attributes?.total || 0,
+                totalPedido: pedido.attributes?.total || 0,
+                fechaPedido: pedido.attributes?.createdAt || '',
+                customerName: pedido.attributes?.customerName || '',
+                _rawItem: item.attributes,
+                _rawPedido: pedido.attributes
+              });
+            }
+          }
+        });
+      });
 
       return res.json({
         success: true,
-        fecha: fechaHoy,
+        fecha: fechaFiltro,
         sede,
         totalPedidos: pedidos.length,
         totalDomicilios: domicilios.length,
-        domicilios
+        domicilios,
+        debug: {
+          totalIncluded: included.length,
+          tiposIncluded: [...new Set(included.map(i => i.type))]
+        }
       });
     }
 
