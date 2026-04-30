@@ -44,10 +44,9 @@ export default async function handler(req, res) {
         let todosLosItems = [];
         
         let pagina = 1;
-        let encontrada = false;
+        let continuar = true;
         
-        while (pagina <= 20 && !encontrada) {
-            // CAMBIO: Ordenar por createdAt descendente
+        while (pagina <= 30 && continuar) {
             const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items&sort=-createdAt`;
             
             const pedidosRes = await fetch(url, {
@@ -64,20 +63,15 @@ export default async function handler(req, res) {
                     );
                 }
                 
-                // Ver si tenemos pedidos de la fecha buscada (usando createdAt)
-                const tienesFecha = pedidosData.data.some(p => {
-                    const fp = p.attributes?.createdAt?.split('T')[0] || '';
-                    return fp === fechaFiltro;
-                });
-                
-                if (tienesFecha) encontrada = true;
-                
-                // Ver la fecha del último pedido
+                // Ver la fecha del último pedido de esta página
                 const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt?.split('T')[0] || '';
                 
-                if (ultimaFecha && ultimaFecha < fechaFiltro) break;
+                // Si ya pasamos la fecha buscada, detenemos
+                if (ultimaFecha && ultimaFecha < fechaFiltro) {
+                    continuar = false;
+                }
             } else {
-                break;
+                continuar = false;
             }
             
             pagina++;
@@ -98,26 +92,29 @@ export default async function handler(req, res) {
                 sede,
                 totalPedidos: todosLosPedidos.length,
                 totalItems: todosLosItems.length,
-                paginasConsultadas: pagina,
+                paginasConsultadas: pagina - 1,
                 primerasFechas
             });
         }
 
         if (accion === 'traer_domicilios') {
-            // Filtrar por fecha usando createdAt
+            // Filtrar pedidos DELIVERY de la fecha, solo CLOSED
             const pedidosFecha = todosLosPedidos.filter(p => {
                 const fp = p.attributes?.createdAt?.split('T')[0] || '';
-                return fp === fechaFiltro;
+                const esFecha = fp === fechaFiltro;
+                const esCerrado = p.attributes?.saleState === 'CLOSED';
+                const esDelivery = p.attributes?.saleType === 'DELIVERY';
+                return esFecha && esCerrado && esDelivery;
             });
 
             const domicilios = [];
             
             for (const pedido of pedidosFecha) {
-                // Solo pedidos CLOSED (completados)
-                if (pedido.attributes?.saleState !== 'CLOSED') continue;
-                
                 const itemsRef = pedido.relationships?.items?.data || [];
+                let precioDomicilio = 0;
+                let productIdDomicilio = null;
                 
+                // Buscar si hay producto de domicilio en los items
                 for (const ref of itemsRef) {
                     const item = todosLosItems.find(i => i.id === ref.id);
                     if (!item) continue;
@@ -125,18 +122,22 @@ export default async function handler(req, res) {
                     const productId = item.relationships?.product?.data?.id;
                     
                     if (productId && PRODUCTOS_DOMICILIO.includes(productId)) {
-                        domicilios.push({
-                            pedidoId: pedido.id,
-                            fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
-                            hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
-                            valorPedido: pedido.attributes?.total || 0,
-                            saleType: pedido.attributes?.saleType,
-                            productId: productId,
-                            precioDomicilio: item.attributes?.price || 0,
-                            cantidad: item.attributes?.quantity || 1
-                        });
+                        precioDomicilio = item.attributes?.price || 0;
+                        productIdDomicilio = productId;
+                        break;
                     }
                 }
+                
+                domicilios.push({
+                    pedidoId: pedido.id,
+                    fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
+                    hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
+                    valorPedido: pedido.attributes?.total || 0,
+                    precioDomicilio: precioDomicilio,
+                    productIdDomicilio: productIdDomicilio,
+                    customerName: pedido.attributes?.customerName || '',
+                    direccion: pedido.attributes?.anonymousCustomer?.address || ''
+                });
             }
 
             return res.json({
@@ -148,8 +149,7 @@ export default async function handler(req, res) {
                 domicilios,
                 _debug: {
                     totalPedidosTotales: todosLosPedidos.length,
-                    paginasConsultadas: pagina,
-                    fechaMasReciente: todosLosPedidos[0]?.attributes?.createdAt || 'ninguna'
+                    paginasConsultadas: pagina - 1
                 }
             });
         }
