@@ -2,6 +2,16 @@
 const FUDO_AUTH = 'https://auth.fu.do/api';
 const FUDO_API = 'https://api.fu.do/v1alpha1';
 
+// IDs de productos de domicilio
+const PRODUCTOS_DOMICILIO = {
+    '150': { nombre: 'Domicilio 0', precio: 0 },
+    '151': { nombre: 'Domicilio 6', precio: 6000 },
+    '152': { nombre: 'Domicilio 9', precio: 9000 },
+    '153': { nombre: 'Domicilio 11', precio: 11000 },
+    '154': { nombre: 'Domicilio 13', precio: 13000 },
+    '155': { nombre: 'Domicilio 16', precio: 16000 }
+};
+
 const CREDENCIALES = {
     'CORALES': {
         apiKey: 'MUA0MzI4OA==',
@@ -39,14 +49,13 @@ export default async function handler(req, res) {
 
         const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
         let todosLosPedidos = [];
-        let todosLosIncluded = [];
+        let todosLosItems = [];
         
         let pagina = 1;
         let continuar = true;
         
         while (pagina <= 30 && continuar) {
-            // Incluir items y shippingCosts
-            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items,shippingCosts&sort=-createdAt`;
+            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items&sort=-createdAt`;
             
             const pedidosRes = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${tokenData.token}` }
@@ -57,7 +66,9 @@ export default async function handler(req, res) {
                 todosLosPedidos = todosLosPedidos.concat(pedidosData.data);
                 
                 if (pedidosData.included) {
-                    todosLosIncluded = todosLosIncluded.concat(pedidosData.included);
+                    todosLosItems = todosLosItems.concat(
+                        pedidosData.included.filter(i => i.type === 'Item')
+                    );
                 }
                 
                 const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt?.split('T')[0] || '';
@@ -68,10 +79,6 @@ export default async function handler(req, res) {
             
             pagina++;
         }
-
-        // Separar items y shippingCosts
-        const items = todosLosIncluded.filter(i => i.type === 'Item');
-        const shippingCosts = todosLosIncluded.filter(i => i.type === 'ShippingCost');
 
         if (accion === 'consultar_pedidos') {
             const primerasFechas = todosLosPedidos.slice(0, 10).map(p => ({
@@ -87,59 +94,66 @@ export default async function handler(req, res) {
                 fechaBuscada: fechaFiltro,
                 sede,
                 totalPedidos: todosLosPedidos.length,
-                totalItems: items.length,
-                totalShippingCosts: shippingCosts.length,
+                totalItems: todosLosItems.length,
                 paginasConsultadas: pagina - 1,
-                primerasFechas,
-                shippingCostsMuestra: shippingCosts.slice(0, 5)
+                primerasFechas
             });
         }
 
         if (accion === 'traer_domicilios') {
+            // Filtrar pedidos por fecha y CLOSED (sin importar saleType)
             const pedidosFecha = todosLosPedidos.filter(p => {
                 const fp = p.attributes?.createdAt?.split('T')[0] || '';
                 const esFecha = fp === fechaFiltro;
                 const esCerrado = p.attributes?.saleState === 'CLOSED';
-                const esDelivery = p.attributes?.saleType === 'DELIVERY';
-                return esFecha && esCerrado && esDelivery;
+                return esFecha && esCerrado;
             });
 
             const domicilios = [];
             
             for (const pedido of pedidosFecha) {
-                // Buscar el costo de envío
-                let valorDomicilio = 0;
-                const shippingRef = pedido.relationships?.shippingCosts?.data || [];
+                const itemsRef = pedido.relationships?.items?.data || [];
                 
-                for (const ref of shippingRef) {
-                    const shipping = shippingCosts.find(s => s.id === ref.id);
-                    if (shipping) {
-                        valorDomicilio = shipping.attributes?.amount || shipping.attributes?.price || 0;
+                // Buscar si algún item es un producto de domicilio (150-155)
+                for (const ref of itemsRef) {
+                    const item = todosLosItems.find(i => i.id === ref.id);
+                    if (!item) continue;
+                    
+                    const productId = item.relationships?.product?.data?.id;
+                    
+                    // Si es un producto de domicilio
+                    if (productId && PRODUCTOS_DOMICILIO[productId]) {
+                        const infoDomicilio = PRODUCTOS_DOMICILIO[productId];
+                        
+                        domicilios.push({
+                            pedidoId: pedido.id,
+                            fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
+                            hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
+                            valorPedido: pedido.attributes?.total || 0,
+                            valorDomicilio: item.attributes?.price || infoDomicilio.precio,
+                            tipoDomicilio: infoDomicilio.nombre,
+                            productId: productId,
+                            saleType: pedido.attributes?.saleType,
+                            customerName: pedido.attributes?.customerName || pedido.attributes?.anonymousCustomer?.name || ''
+                        });
+                        
+                        // Solo un domicilio por pedido
                         break;
                     }
                 }
-                
-                domicilios.push({
-                    pedidoId: pedido.id,
-                    fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
-                    hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
-                    valorPedido: pedido.attributes?.total || 0,
-                    valorDomicilio: valorDomicilio,
-                    customerName: pedido.attributes?.customerName || pedido.attributes?.anonymousCustomer?.name || '',
-                    telefono: pedido.attributes?.anonymousCustomer?.phone || '',
-                    direccion: pedido.attributes?.anonymousCustomer?.address || ''
-                });
             }
 
             return res.json({
                 success: true,
                 fechaBuscada: fechaFiltro,
                 sede,
+                totalPedidosCerrados: pedidosFecha.length,
                 totalDomicilios: domicilios.length,
                 domicilios,
                 _debug: {
                     totalPedidosTotales: todosLosPedidos.length,
-                    paginasConsultadas: pagina - 1
+                    paginasConsultadas: pagina - 1,
+                    productosdomicilioBuscados: Object.keys(PRODUCTOS_DOMICILIO)
                 }
             });
         }
