@@ -81,13 +81,10 @@ export default async function handler(req, res) {
         }
 
         if (accion === 'consultar_pedidos') {
-            const primerasFechas = todosLosPedidos.slice(0, 10).map(p => ({
-                id: p.id,
-                createdAt: p.attributes?.createdAt,
-                saleType: p.attributes?.saleType,
-                saleState: p.attributes?.saleState,
-                total: p.attributes?.total
-            }));
+            // Mostrar los Product IDs únicos para debug
+            const productIdsUnicos = [...new Set(
+                todosLosItems.map(item => item.relationships?.product?.data?.id).filter(Boolean)
+            )].sort((a, b) => Number(a) - Number(b));
             
             return res.json({
                 success: true,
@@ -96,12 +93,25 @@ export default async function handler(req, res) {
                 totalPedidos: todosLosPedidos.length,
                 totalItems: todosLosItems.length,
                 paginasConsultadas: pagina - 1,
-                primerasFechas
+                productIdsUnicos: productIdsUnicos,
+                // Mostrar items con Product IDs cercanos a 150-155
+                itemsCercanos: todosLosItems
+                    .filter(item => {
+                        const pid = item.relationships?.product?.data?.id;
+                        return pid && Number(pid) >= 140 && Number(pid) <= 170;
+                    })
+                    .slice(0, 10)
+                    .map(item => ({
+                        itemId: item.id,
+                        productId: item.relationships?.product?.data?.id,
+                        price: item.attributes?.price,
+                        saleId: item.relationships?.sale?.data?.id
+                    }))
             });
         }
 
         if (accion === 'traer_domicilios') {
-            // Filtrar pedidos por fecha y CLOSED (sin importar saleType)
+            // Filtrar pedidos por fecha y CLOSED
             const pedidosFecha = todosLosPedidos.filter(p => {
                 const fp = p.attributes?.createdAt?.split('T')[0] || '';
                 const esFecha = fp === fechaFiltro;
@@ -109,17 +119,27 @@ export default async function handler(req, res) {
                 return esFecha && esCerrado;
             });
 
+            // Obtener IDs de los pedidos de la fecha
+            const pedidosFechaIds = pedidosFecha.map(p => p.id);
+            
+            // Filtrar items que pertenecen a pedidos de la fecha
+            const itemsDeFecha = todosLosItems.filter(item => {
+                const saleId = item.relationships?.sale?.data?.id;
+                return pedidosFechaIds.includes(saleId);
+            });
+
             const domicilios = [];
+            const productIdsEncontrados = [];
             
             for (const pedido of pedidosFecha) {
                 const itemsRef = pedido.relationships?.items?.data || [];
                 
-                // Buscar si algún item es un producto de domicilio (150-155)
                 for (const ref of itemsRef) {
                     const item = todosLosItems.find(i => i.id === ref.id);
                     if (!item) continue;
                     
                     const productId = item.relationships?.product?.data?.id;
+                    if (productId) productIdsEncontrados.push(productId);
                     
                     // Si es un producto de domicilio
                     if (productId && PRODUCTOS_DOMICILIO[productId]) {
@@ -134,26 +154,31 @@ export default async function handler(req, res) {
                             tipoDomicilio: infoDomicilio.nombre,
                             productId: productId,
                             saleType: pedido.attributes?.saleType,
-                            customerName: pedido.attributes?.customerName || pedido.attributes?.anonymousCustomer?.name || ''
+                            customerName: pedido.attributes?.customerName || ''
                         });
                         
-                        // Solo un domicilio por pedido
                         break;
                     }
                 }
             }
+
+            // Product IDs únicos encontrados en pedidos de la fecha
+            const productIdsUnicosFecha = [...new Set(productIdsEncontrados)].sort((a, b) => Number(a) - Number(b));
 
             return res.json({
                 success: true,
                 fechaBuscada: fechaFiltro,
                 sede,
                 totalPedidosCerrados: pedidosFecha.length,
+                totalItemsEnFecha: itemsDeFecha.length,
                 totalDomicilios: domicilios.length,
                 domicilios,
                 _debug: {
                     totalPedidosTotales: todosLosPedidos.length,
+                    totalItemsTotales: todosLosItems.length,
                     paginasConsultadas: pagina - 1,
-                    productosdomicilioBuscados: Object.keys(PRODUCTOS_DOMICILIO)
+                    productIdsBuscados: Object.keys(PRODUCTOS_DOMICILIO),
+                    productIdsEncontradosEnFecha: productIdsUnicosFecha
                 }
             });
         }
