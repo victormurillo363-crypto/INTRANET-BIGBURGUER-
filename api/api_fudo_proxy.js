@@ -303,11 +303,15 @@ export default async function handler(req, res) {
                 totalTransferencias: transferencias.length,
                 pedidosRappiExcluidos: pedidosRappi,
                 transferencias,
-                _debug: {
-                    paginasConsultadas: pag - 1,
-                    totalPayments: payments.length,
-                    metodosEncontrados: [...new Set(payments.map(p => p.attributes?.paymentMethod || p.attributes?.method || 'sin_metodo'))]
-                }
+              _debug: {
+    paginasConsultadas: pag - 1,
+    totalPayments: payments.length,
+    metodosEncontrados: [...new Set(payments.map(p => p.attributes?.paymentMethod || p.attributes?.method || 'sin_metodo'))],
+    // Muestra la estructura completa de un payment de ejemplo
+    ejemploPayment: payments.length > 0 ? payments[0] : null,
+    // Muestra todos los atributos disponibles
+    atributosDisponibles: payments.length > 0 ? Object.keys(payments[0].attributes || {}) : []
+}
             });
         }
 
