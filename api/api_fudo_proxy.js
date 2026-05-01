@@ -315,6 +315,26 @@ export default async function handler(req, res) {
             });
         }
 
+        if (accion === 'debug_payments') {
+            // Consultar con payments incluidos
+            const url = `${FUDO_API}/sales?page[size]=10&page[number]=1&include=payments&sort=-createdAt`;
+            
+            const pedidosRes = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${tokenData.token}` }
+            });
+            const pedidosData = await pedidosRes.json();
+            
+            const payments = (pedidosData.included || []).filter(i => i.type === 'Payment');
+            
+            return res.json({
+                success: true,
+                mensaje: 'Debug de estructura de payments',
+                totalPayments: payments.length,
+                payments: payments.slice(0, 5),
+                primerPedido: pedidosData.data?.[0] || null
+            });
+        }
+
         return res.status(400).json({ success: false, error: 'Acción no válida' });
 
     } catch (error) {
