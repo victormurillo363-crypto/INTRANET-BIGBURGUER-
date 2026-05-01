@@ -208,7 +208,8 @@ export default async function handler(req, res) {
             let seguir = true;
             
             while (pag <= 30 && seguir) {
-                const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pag}&include=payments&sort=-createdAt`;
+                // Incluir payments Y paymentMethod
+                const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pag}&include=payments,payments.paymentMethod&sort=-createdAt`;
                 
                 const pedidosRes = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${tokenData.token}` }
@@ -232,6 +233,7 @@ export default async function handler(req, res) {
             }
 
             const payments = pagosIncluidos.filter(i => i.type === 'Payment');
+            const paymentMethods = pagosIncluidos.filter(i => i.type === 'PaymentMethod');
 
             const pedidosFecha = pedidosConPagos.filter(p => {
                 const fp = p.attributes?.createdAt?.split('T')[0] || '';
@@ -243,15 +245,15 @@ export default async function handler(req, res) {
 
             const transferencias = [];
             
-            const METODOS_TRANSFERENCIA = {
-                'BANCOLOMBIA': 'Bancolombia',
-                'DAVIVIENDA': 'Davivienda', 
-                'DAVIPLATA': 'Daviplata',
-                'NEQUI': 'Nequi',
-                'TRANSFERENCIA': 'Transferencia',
-                'TRANSFER': 'Transferencia',
-                'BANK_TRANSFER': 'Transferencia'
+            // Mapeo de IDs de métodos de pago a bancos
+            const METODOS_POR_ID = {
+                '7': 'Bancolombia',
+                '10': 'Daviplata',
+                '11': 'Davivienda'
             };
+            
+            // IDs que son transferencias (no efectivo, no datáfono)
+            const IDS_TRANSFERENCIAS = ['7', '10', '11'];
             
             for (const pedido of pedidosFecha) {
                 const paymentsRef = pedido.relationships?.payments?.data || [];
@@ -260,29 +262,20 @@ export default async function handler(req, res) {
                     const payment = payments.find(p => p.id === ref.id);
                     if (!payment) continue;
                     
-                    const metodo = (payment.attributes?.paymentMethod || payment.attributes?.method || '').toUpperCase();
-                    const nombre = payment.attributes?.name || payment.attributes?.paymentMethodName || metodo;
+                    // Obtener el ID del método de pago
+                    const paymentMethodId = payment.relationships?.paymentMethod?.data?.id;
                     
-                    const esEfectivo = metodo.includes('CASH') || metodo.includes('EFECTIVO');
-                    const esDatafono = metodo.includes('CARD') || metodo.includes('TARJETA') || metodo.includes('DATAFONO') || metodo.includes('POS');
-                    
-                    if (!esEfectivo && !esDatafono) {
-                        let banco = 'Otro';
-                        
-                        for (const [clave, valor] of Object.entries(METODOS_TRANSFERENCIA)) {
-                            if (metodo.includes(clave) || nombre.toUpperCase().includes(clave)) {
-                                banco = valor;
-                                break;
-                            }
-                        }
+                    // Solo incluir si es una transferencia conocida
+                    if (paymentMethodId && IDS_TRANSFERENCIAS.includes(paymentMethodId)) {
+                        const banco = METODOS_POR_ID[paymentMethodId] || 'Otro';
                         
                         transferencias.push({
                             pedidoId: pedido.id,
                             fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
                             hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
                             banco: banco,
-                            metodoOriginal: nombre || metodo,
-                            valor: payment.attributes?.amount || payment.attributes?.total || 0,
+                            paymentMethodId: paymentMethodId,
+                            valor: payment.attributes?.amount || 0,
                             valorPedido: pedido.attributes?.total || 0,
                             customerName: pedido.attributes?.customerName || ''
                         });
@@ -303,21 +296,18 @@ export default async function handler(req, res) {
                 totalTransferencias: transferencias.length,
                 pedidosRappiExcluidos: pedidosRappi,
                 transferencias,
-              _debug: {
-    paginasConsultadas: pag - 1,
-    totalPayments: payments.length,
-    metodosEncontrados: [...new Set(payments.map(p => p.attributes?.paymentMethod || p.attributes?.method || 'sin_metodo'))],
-    // Muestra la estructura completa de un payment de ejemplo
-    ejemploPayment: payments.length > 0 ? payments[0] : null,
-    // Muestra todos los atributos disponibles
-    atributosDisponibles: payments.length > 0 ? Object.keys(payments[0].attributes || {}) : []
-}
+                _debug: {
+                    paginasConsultadas: pag - 1,
+                    totalPayments: payments.length,
+                    totalPaymentMethods: paymentMethods.length,
+                    metodosUsados: [...new Set(transferencias.map(t => t.banco))]
+                }
             });
         }
 
         if (accion === 'debug_payments') {
-            // Consultar con payments incluidos
-            const url = `${FUDO_API}/sales?page[size]=10&page[number]=1&include=payments&sort=-createdAt`;
+            // Consultar con payments Y paymentMethods incluidos
+            const url = `${FUDO_API}/sales?page[size]=10&page[number]=1&include=payments,payments.paymentMethod&sort=-createdAt`;
             
             const pedidosRes = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${tokenData.token}` }
@@ -325,12 +315,15 @@ export default async function handler(req, res) {
             const pedidosData = await pedidosRes.json();
             
             const payments = (pedidosData.included || []).filter(i => i.type === 'Payment');
+            const paymentMethods = (pedidosData.included || []).filter(i => i.type === 'PaymentMethod');
             
             return res.json({
                 success: true,
                 mensaje: 'Debug de estructura de payments',
                 totalPayments: payments.length,
+                totalPaymentMethods: paymentMethods.length,
                 payments: payments.slice(0, 5),
+                paymentMethods: paymentMethods,
                 primerPedido: pedidosData.data?.[0] || null
             });
         }
