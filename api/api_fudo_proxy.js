@@ -1,118 +1,319 @@
-if (accion === 'traer_transferencias') {
-    // Necesitamos consultar con payments incluidos
-    let pedidosConPagos = [];
-    let pagosIncluidos = [];
+// api_fudo_proxy.js - Para Vercel Serverless Functions
+const FUDO_AUTH = 'https://auth.fu.do/api';
+const FUDO_API = 'https://api.fu.do/v1alpha1';
+
+// IDs de productos de domicilio
+const PRODUCTOS_DOMICILIO = {
+    '548': { nombre: 'Domicilio 0', precio: 0 },
+    '516': { nombre: 'Domicilio 6', precio: 6000 },
+    '544': { nombre: 'Domicilio 9', precio: 9000 },
+    '545': { nombre: 'Domicilio 11', precio: 11000 },
+    '546': { nombre: 'Domicilio 13', precio: 13000 },
+    '547': { nombre: 'Domicilio 16', precio: 16000 },
+    '745': { nombre: 'Domicilio 17', precio: 17000 },
+    '746': { nombre: 'Domicilio 18', precio: 18000 }
+};
+
+const CREDENCIALES = {
+    'CORALES': {
+        apiKey: 'MUA0MzI4OA==',
+        apiSecret: 'm77IGbUCfx1ndxSUTrmiIj5RrRc2Snlu'
+    }
+};
+
+// Función para verificar si un pedido es de Rappi (para excluirlo)
+function esDeRappi(pedido) {
+    const customerName = (pedido.attributes?.customerName || '').toLowerCase();
+    const comment = (pedido.attributes?.comment || '').toLowerCase();
+    const anonName = (pedido.attributes?.anonymousCustomer?.name || '').toLowerCase();
     
-    let pag = 1;
-    let seguir = true;
+    return customerName.includes('rappi') || 
+           comment.includes('rappi') || 
+           anonName.includes('rappi') ||
+           customerName.includes('online rappi');
+}
+
+export default async function handler(req, res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    while (pag <= 30 && seguir) {
-        const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pag}&include=payments&sort=-createdAt`;
-        
-        const pedidosRes = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${tokenData.token}` }
+    if (req.method === 'OPTIONS') return res.status(200).end();
+
+    const { accion, sede, fecha } = req.query;
+    
+    if (!sede) return res.status(400).json({ success: false, error: 'Sede no especificada' });
+
+    const creds = CREDENCIALES[sede.toUpperCase()];
+    if (!creds) return res.status(400).json({ success: false, error: `Sede no configurada: ${sede}` });
+
+    try {
+        const tokenRes = await fetch(FUDO_AUTH, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: creds.apiKey, apiSecret: creds.apiSecret })
         });
-        const pedidosData = await pedidosRes.json();
+        const tokenData = await tokenRes.json();
         
-        if (pedidosData.data && pedidosData.data.length > 0) {
-            pedidosConPagos = pedidosConPagos.concat(pedidosData.data);
+        if (!tokenData.token) return res.json({ success: false, error: 'No se obtuvo token' });
+
+        if (accion === 'test') {
+            return res.json({ success: true, mensaje: 'Conexión exitosa', sede });
+        }
+
+        const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
+        let todosLosPedidos = [];
+        let todosLosIncluded = [];
+        
+        let pagina = 1;
+        let continuar = true;
+        
+        while (pagina <= 30 && continuar) {
+            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items,shippingCosts&sort=-createdAt`;
             
-            if (pedidosData.included) {
-                pagosIncluidos = pagosIncluidos.concat(pedidosData.included);
+            const pedidosRes = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${tokenData.token}` }
+            });
+            const pedidosData = await pedidosRes.json();
+            
+            if (pedidosData.data && pedidosData.data.length > 0) {
+                todosLosPedidos = todosLosPedidos.concat(pedidosData.data);
+                
+                if (pedidosData.included) {
+                    todosLosIncluded = todosLosIncluded.concat(pedidosData.included);
+                }
+                
+                const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt?.split('T')[0] || '';
+                if (ultimaFecha && ultimaFecha < fechaFiltro) continuar = false;
+            } else {
+                continuar = false;
             }
             
-            const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt?.split('T')[0] || '';
-            if (ultimaFecha && ultimaFecha < fechaFiltro) seguir = false;
-        } else {
-            seguir = false;
+            pagina++;
         }
-        
-        pag++;
-    }
 
-    // Filtrar solo payments
-    const payments = pagosIncluidos.filter(i => i.type === 'Payment');
+        const items = todosLosIncluded.filter(i => i.type === 'Item');
+        const shippingCosts = todosLosIncluded.filter(i => i.type === 'ShippingCost');
 
-    // Filtrar pedidos por fecha y CLOSED, EXCLUYENDO RAPPI
-    const pedidosFecha = pedidosConPagos.filter(p => {
-        const fp = p.attributes?.createdAt?.split('T')[0] || '';
-        const esFecha = fp === fechaFiltro;
-        const esCerrado = p.attributes?.saleState === 'CLOSED';
-        const noEsRappi = !esDeRappi(p);
-        return esFecha && esCerrado && noEsRappi;
-    });
+        if (accion === 'consultar_pedidos') {
+            const primerasFechas = todosLosPedidos.slice(0, 10).map(p => ({
+                id: p.id,
+                createdAt: p.attributes?.createdAt,
+                saleType: p.attributes?.saleType,
+                saleState: p.attributes?.saleState,
+                customerName: p.attributes?.customerName,
+                total: p.attributes?.total
+            }));
+            
+            return res.json({
+                success: true,
+                fechaBuscada: fechaFiltro,
+                sede,
+                totalPedidos: todosLosPedidos.length,
+                totalItems: items.length,
+                totalShippingCosts: shippingCosts.length,
+                paginasConsultadas: pagina - 1,
+                primerasFechas,
+                shippingCostsMuestra: shippingCosts.slice(0, 5)
+            });
+        }
 
-    const transferencias = [];
-    
-    // Mapeo de métodos de pago a bancos
-    const METODOS_TRANSFERENCIA = {
-        'BANCOLOMBIA': 'Bancolombia',
-        'DAVIVIENDA': 'Davivienda', 
-        'DAVIPLATA': 'Daviplata',
-        'NEQUI': 'Nequi',
-        'TRANSFERENCIA': 'Transferencia',
-        'TRANSFER': 'Transferencia',
-        'BANK_TRANSFER': 'Transferencia'
-    };
-    
-    for (const pedido of pedidosFecha) {
-        const paymentsRef = pedido.relationships?.payments?.data || [];
-        
-        for (const ref of paymentsRef) {
-            const payment = payments.find(p => p.id === ref.id);
-            if (!payment) continue;
+        if (accion === 'traer_domicilios') {
+            const pedidosFecha = todosLosPedidos.filter(p => {
+                const fp = p.attributes?.createdAt?.split('T')[0] || '';
+                const esFecha = fp === fechaFiltro;
+                const esCerrado = p.attributes?.saleState === 'CLOSED';
+                const noEsRappi = !esDeRappi(p);
+                return esFecha && esCerrado && noEsRappi;
+            });
+
+            const domicilios = [];
             
-            const metodo = (payment.attributes?.paymentMethod || payment.attributes?.method || '').toUpperCase();
-            const nombre = payment.attributes?.name || payment.attributes?.paymentMethodName || metodo;
-            
-            // Verificar si es una transferencia (no efectivo, no datáfono)
-            const esEfectivo = metodo.includes('CASH') || metodo.includes('EFECTIVO');
-            const esDatafono = metodo.includes('CARD') || metodo.includes('TARJETA') || metodo.includes('DATAFONO') || metodo.includes('POS');
-            
-            if (!esEfectivo && !esDatafono) {
-                // Es transferencia o pago digital
-                let banco = 'Otro';
+            for (const pedido of pedidosFecha) {
+                let valorDomicilio = 0;
+                let tipoDomicilio = '';
+                let origenDomicilio = '';
+                let productId = null;
                 
-                // Detectar banco por nombre del método
-                for (const [clave, valor] of Object.entries(METODOS_TRANSFERENCIA)) {
-                    if (metodo.includes(clave) || nombre.toUpperCase().includes(clave)) {
-                        banco = valor;
+                const itemsRef = pedido.relationships?.items?.data || [];
+                for (const ref of itemsRef) {
+                    const item = items.find(i => i.id === ref.id);
+                    if (!item) continue;
+                    
+                    const pid = item.relationships?.product?.data?.id;
+                    
+                    if (pid && PRODUCTOS_DOMICILIO[pid]) {
+                        valorDomicilio = item.attributes?.price || PRODUCTOS_DOMICILIO[pid].precio;
+                        tipoDomicilio = PRODUCTOS_DOMICILIO[pid].nombre;
+                        origenDomicilio = 'producto';
+                        productId = pid;
                         break;
                     }
                 }
                 
-                transferencias.push({
-                    pedidoId: pedido.id,
-                    fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
-                    hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
-                    banco: banco,
-                    metodoOriginal: nombre || metodo,
-                    valor: payment.attributes?.amount || payment.attributes?.total || 0,
-                    valorPedido: pedido.attributes?.total || 0,
-                    customerName: pedido.attributes?.customerName || ''
-                });
+                if (!valorDomicilio) {
+                    const shippingRef = pedido.relationships?.shippingCosts?.data || [];
+                    for (const ref of shippingRef) {
+                        const shipping = shippingCosts.find(s => s.id === ref.id);
+                        if (shipping) {
+                            valorDomicilio = shipping.attributes?.amount || shipping.attributes?.price || 0;
+                            tipoDomicilio = 'Costo de envío';
+                            origenDomicilio = 'costo_envio';
+                            break;
+                        }
+                    }
+                }
+                
+                if (valorDomicilio > 0 || origenDomicilio) {
+                    domicilios.push({
+                        pedidoId: pedido.id,
+                        fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
+                        hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
+                        valorPedido: pedido.attributes?.total || 0,
+                        valorDomicilio: valorDomicilio,
+                        tipoDomicilio: tipoDomicilio,
+                        origenDomicilio: origenDomicilio,
+                        productId: productId,
+                        saleType: pedido.attributes?.saleType,
+                        customerName: pedido.attributes?.customerName || ''
+                    });
+                }
             }
+
+            const pedidosRappi = todosLosPedidos.filter(p => {
+                const fp = p.attributes?.createdAt?.split('T')[0] || '';
+                return fp === fechaFiltro && p.attributes?.saleState === 'CLOSED' && esDeRappi(p);
+            }).length;
+
+            return res.json({
+                success: true,
+                fechaBuscada: fechaFiltro,
+                sede,
+                totalPedidosCerrados: pedidosFecha.length,
+                totalDomicilios: domicilios.length,
+                pedidosRappiExcluidos: pedidosRappi,
+                domicilios,
+                _debug: {
+                    paginasConsultadas: pagina - 1,
+                    productIdsBuscados: Object.keys(PRODUCTOS_DOMICILIO)
+                }
+            });
         }
+
+        if (accion === 'traer_transferencias') {
+            let pedidosConPagos = [];
+            let pagosIncluidos = [];
+            
+            let pag = 1;
+            let seguir = true;
+            
+            while (pag <= 30 && seguir) {
+                const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pag}&include=payments&sort=-createdAt`;
+                
+                const pedidosRes = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${tokenData.token}` }
+                });
+                const pedidosData = await pedidosRes.json();
+                
+                if (pedidosData.data && pedidosData.data.length > 0) {
+                    pedidosConPagos = pedidosConPagos.concat(pedidosData.data);
+                    
+                    if (pedidosData.included) {
+                        pagosIncluidos = pagosIncluidos.concat(pedidosData.included);
+                    }
+                    
+                    const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt?.split('T')[0] || '';
+                    if (ultimaFecha && ultimaFecha < fechaFiltro) seguir = false;
+                } else {
+                    seguir = false;
+                }
+                
+                pag++;
+            }
+
+            const payments = pagosIncluidos.filter(i => i.type === 'Payment');
+
+            const pedidosFecha = pedidosConPagos.filter(p => {
+                const fp = p.attributes?.createdAt?.split('T')[0] || '';
+                const esFecha = fp === fechaFiltro;
+                const esCerrado = p.attributes?.saleState === 'CLOSED';
+                const noEsRappi = !esDeRappi(p);
+                return esFecha && esCerrado && noEsRappi;
+            });
+
+            const transferencias = [];
+            
+            const METODOS_TRANSFERENCIA = {
+                'BANCOLOMBIA': 'Bancolombia',
+                'DAVIVIENDA': 'Davivienda', 
+                'DAVIPLATA': 'Daviplata',
+                'NEQUI': 'Nequi',
+                'TRANSFERENCIA': 'Transferencia',
+                'TRANSFER': 'Transferencia',
+                'BANK_TRANSFER': 'Transferencia'
+            };
+            
+            for (const pedido of pedidosFecha) {
+                const paymentsRef = pedido.relationships?.payments?.data || [];
+                
+                for (const ref of paymentsRef) {
+                    const payment = payments.find(p => p.id === ref.id);
+                    if (!payment) continue;
+                    
+                    const metodo = (payment.attributes?.paymentMethod || payment.attributes?.method || '').toUpperCase();
+                    const nombre = payment.attributes?.name || payment.attributes?.paymentMethodName || metodo;
+                    
+                    const esEfectivo = metodo.includes('CASH') || metodo.includes('EFECTIVO');
+                    const esDatafono = metodo.includes('CARD') || metodo.includes('TARJETA') || metodo.includes('DATAFONO') || metodo.includes('POS');
+                    
+                    if (!esEfectivo && !esDatafono) {
+                        let banco = 'Otro';
+                        
+                        for (const [clave, valor] of Object.entries(METODOS_TRANSFERENCIA)) {
+                            if (metodo.includes(clave) || nombre.toUpperCase().includes(clave)) {
+                                banco = valor;
+                                break;
+                            }
+                        }
+                        
+                        transferencias.push({
+                            pedidoId: pedido.id,
+                            fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
+                            hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
+                            banco: banco,
+                            metodoOriginal: nombre || metodo,
+                            valor: payment.attributes?.amount || payment.attributes?.total || 0,
+                            valorPedido: pedido.attributes?.total || 0,
+                            customerName: pedido.attributes?.customerName || ''
+                        });
+                    }
+                }
+            }
+
+            const pedidosRappi = pedidosConPagos.filter(p => {
+                const fp = p.attributes?.createdAt?.split('T')[0] || '';
+                return fp === fechaFiltro && p.attributes?.saleState === 'CLOSED' && esDeRappi(p);
+            }).length;
+
+            return res.json({
+                success: true,
+                fechaBuscada: fechaFiltro,
+                sede,
+                totalPedidosCerrados: pedidosFecha.length,
+                totalTransferencias: transferencias.length,
+                pedidosRappiExcluidos: pedidosRappi,
+                transferencias,
+                _debug: {
+                    paginasConsultadas: pag - 1,
+                    totalPayments: payments.length,
+                    metodosEncontrados: [...new Set(payments.map(p => p.attributes?.paymentMethod || p.attributes?.method || 'sin_metodo'))]
+                }
+            });
+        }
+
+        return res.status(400).json({ success: false, error: 'Acción no válida' });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
     }
-
-    // Contar excluidos por Rappi
-    const pedidosRappi = pedidosConPagos.filter(p => {
-        const fp = p.attributes?.createdAt?.split('T')[0] || '';
-        return fp === fechaFiltro && p.attributes?.saleState === 'CLOSED' && esDeRappi(p);
-    }).length;
-
-    return res.json({
-        success: true,
-        fechaBuscada: fechaFiltro,
-        sede,
-        totalPedidosCerrados: pedidosFecha.length,
-        totalTransferencias: transferencias.length,
-        pedidosRappiExcluidos: pedidosRappi,
-        transferencias,
-        _debug: {
-            paginasConsultadas: pag - 1,
-            totalPayments: payments.length,
-            metodosEncontrados: [...new Set(payments.map(p => p.attributes?.paymentMethod || p.attributes?.method || 'sin_metodo'))]
-        }
-    });
 }
