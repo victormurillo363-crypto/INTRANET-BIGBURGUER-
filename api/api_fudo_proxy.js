@@ -2,6 +2,45 @@
 const FUDO_AUTH = 'https://auth.fu.do/api';
 const FUDO_API = 'https://api.fu.do/v1alpha1';
 
+// 🕐 CONSTANTE: Colombia está en UTC-5 (no tiene horario de verano)
+const OFFSET_COLOMBIA_MS = 5 * 60 * 60 * 1000; // 5 horas en milisegundos
+
+// 🕐 Función para convertir fecha UTC a fecha Colombia (UTC-5)
+// FUDO devuelve fechas en UTC, pero Colombia está en UTC-5
+// Ejemplo: Pedido 11:30PM Colombia = 2026-05-03T04:30:00Z en FUDO
+// Sin conversión, ese pedido del 2 de mayo aparecería como del 3 de mayo
+function fechaUTCaColombia(fechaISO) {
+    if (!fechaISO) return '';
+    try {
+        // Parsear la fecha ISO
+        const fechaUTC = new Date(fechaISO);
+        // Restar 5 horas usando milisegundos (más seguro que setHours)
+        const fechaColombia = new Date(fechaUTC.getTime() - OFFSET_COLOMBIA_MS);
+        // Extraer año, mes, día del objeto Date
+        const year = fechaColombia.getUTCFullYear();
+        const month = String(fechaColombia.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(fechaColombia.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    } catch (e) {
+        console.error('Error convirtiendo fecha:', fechaISO, e);
+        return fechaISO.split('T')[0] || '';
+    }
+}
+
+// Función para obtener hora en Colombia
+function horaUTCaColombia(fechaISO) {
+    if (!fechaISO) return '';
+    try {
+        const fechaUTC = new Date(fechaISO);
+        const fechaColombia = new Date(fechaUTC.getTime() - OFFSET_COLOMBIA_MS);
+        const hours = String(fechaColombia.getUTCHours()).padStart(2, '0');
+        const minutes = String(fechaColombia.getUTCMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    } catch (e) {
+        return fechaISO.split('T')[1]?.substring(0, 5) || '';
+    }
+}
+
 // IDs de productos de domicilio
 const PRODUCTOS_DOMICILIO = {
     '548': { nombre: 'Domicilio 0', precio: 0 },
@@ -83,7 +122,7 @@ export default async function handler(req, res) {
                     todosLosIncluded = todosLosIncluded.concat(pedidosData.included);
                 }
                 
-                const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt?.split('T')[0] || '';
+                const ultimaFecha = fechaUTCaColombia(pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt);
                 if (ultimaFecha && ultimaFecha < fechaFiltro) continuar = false;
             } else {
                 continuar = false;
@@ -120,7 +159,8 @@ export default async function handler(req, res) {
 
         if (accion === 'traer_domicilios') {
             const pedidosFecha = todosLosPedidos.filter(p => {
-                const fp = p.attributes?.createdAt?.split('T')[0] || '';
+                // 🔐 IMPORTANTE: Convertir UTC a Colombia antes de comparar
+                const fp = fechaUTCaColombia(p.attributes?.createdAt);
                 const esFecha = fp === fechaFiltro;
                 const esCerrado = p.attributes?.saleState === 'CLOSED';
                 const noEsRappi = !esDeRappi(p);
@@ -167,8 +207,9 @@ export default async function handler(req, res) {
                 if (valorDomicilio > 0 || origenDomicilio) {
                     domicilios.push({
                         pedidoId: pedido.id,
-                        fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
-                        hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
+                        fecha: fechaUTCaColombia(pedido.attributes?.createdAt),
+                        hora: horaUTCaColombia(pedido.attributes?.createdAt),
+                        fechaOriginalUTC: pedido.attributes?.createdAt, // Para verificación en cliente
                         valorPedido: pedido.attributes?.total || 0,
                         valorDomicilio: valorDomicilio,
                         tipoDomicilio: tipoDomicilio,
@@ -181,7 +222,7 @@ export default async function handler(req, res) {
             }
 
             const pedidosRappi = todosLosPedidos.filter(p => {
-                const fp = p.attributes?.createdAt?.split('T')[0] || '';
+                const fp = fechaUTCaColombia(p.attributes?.createdAt);
                 return fp === fechaFiltro && p.attributes?.saleState === 'CLOSED' && esDeRappi(p);
             }).length;
 
@@ -223,7 +264,7 @@ export default async function handler(req, res) {
                         pagosIncluidos = pagosIncluidos.concat(pedidosData.included);
                     }
                     
-                    const ultimaFecha = pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt?.split('T')[0] || '';
+                    const ultimaFecha = fechaUTCaColombia(pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt);
                     if (ultimaFecha && ultimaFecha < fechaFiltro) seguir = false;
                 } else {
                     seguir = false;
@@ -236,7 +277,8 @@ export default async function handler(req, res) {
             const paymentMethods = pagosIncluidos.filter(i => i.type === 'PaymentMethod');
 
             const pedidosFecha = pedidosConPagos.filter(p => {
-                const fp = p.attributes?.createdAt?.split('T')[0] || '';
+                // 🔐 IMPORTANTE: Convertir UTC a Colombia antes de comparar
+                const fp = fechaUTCaColombia(p.attributes?.createdAt);
                 const esFecha = fp === fechaFiltro;
                 const esCerrado = p.attributes?.saleState === 'CLOSED';
                 const noEsRappi = !esDeRappi(p);
@@ -271,8 +313,9 @@ export default async function handler(req, res) {
                         
                         transferencias.push({
                             pedidoId: pedido.id,
-                            fecha: pedido.attributes?.createdAt?.split('T')[0] || '',
-                            hora: pedido.attributes?.createdAt?.split('T')[1]?.substring(0,5) || '',
+                            fecha: fechaUTCaColombia(pedido.attributes?.createdAt),
+                            hora: horaUTCaColombia(pedido.attributes?.createdAt),
+                            fechaOriginalUTC: pedido.attributes?.createdAt, // Para verificación en cliente
                             banco: banco,
                             paymentMethodId: paymentMethodId,
                             valor: payment.attributes?.amount || 0,
@@ -284,7 +327,7 @@ export default async function handler(req, res) {
             }
 
             const pedidosRappi = pedidosConPagos.filter(p => {
-                const fp = p.attributes?.createdAt?.split('T')[0] || '';
+                const fp = fechaUTCaColombia(p.attributes?.createdAt);
                 return fp === fechaFiltro && p.attributes?.saleState === 'CLOSED' && esDeRappi(p);
             }).length;
 
@@ -325,6 +368,52 @@ export default async function handler(req, res) {
                 payments: payments.slice(0, 5),
                 paymentMethods: paymentMethods,
                 primerPedido: pedidosData.data?.[0] || null
+            });
+        }
+
+        // 🔍 DEBUG: Verificar conversión de fechas UTC a Colombia
+        if (accion === 'debug_fechas') {
+            const url = `${FUDO_API}/sales?page[size]=20&page[number]=1&sort=-createdAt`;
+            
+            const pedidosRes = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${tokenData.token}` }
+            });
+            const pedidosData = await pedidosRes.json();
+            
+            const pedidosConFechas = (pedidosData.data || []).map(p => {
+                const fechaUTC = p.attributes?.createdAt || '';
+                const fechaColombia = fechaUTCaColombia(fechaUTC);
+                const horaColombia = horaUTCaColombia(fechaUTC);
+                return {
+                    pedidoId: p.id,
+                    fechaUTC_original: fechaUTC,
+                    fechaColombia_convertida: fechaColombia,
+                    horaColombia: horaColombia,
+                    coincideConFiltro: fechaColombia === fechaFiltro,
+                    saleState: p.attributes?.saleState,
+                    customerName: p.attributes?.customerName
+                };
+            });
+            
+            // Hora actual del servidor
+            const ahoraUTC = new Date().toISOString();
+            const ahoraColombia = fechaUTCaColombia(ahoraUTC);
+            const horaColombiaNow = horaUTCaColombia(ahoraUTC);
+            
+            return res.json({
+                success: true,
+                mensaje: 'Debug de conversión de fechas UTC → Colombia',
+                fechaBuscada: fechaFiltro,
+                horaServidorUTC: ahoraUTC,
+                fechaServidorColombia: ahoraColombia,
+                horaServidorColombia: horaColombiaNow,
+                offsetUsado: '-5 horas (UTC-5)',
+                pedidos: pedidosConFechas,
+                resumen: {
+                    totalPedidos: pedidosConFechas.length,
+                    coincidentes: pedidosConFechas.filter(p => p.coincideConFiltro).length,
+                    noCoincidentes: pedidosConFechas.filter(p => !p.coincideConFiltro).length
+                }
             });
         }
 
