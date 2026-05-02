@@ -348,6 +348,106 @@ export default async function handler(req, res) {
             });
         }
 
+        // 💰 TRAER TOTALES DE VENTAS (Efectivo y Online Rappi)
+        if (accion === 'traer_totales_ventas') {
+            let pedidosConPagos = [];
+            let pagosIncluidos = [];
+            
+            let pag = 1;
+            let seguir = true;
+            
+            while (pag <= 30 && seguir) {
+                const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pag}&include=payments,payments.paymentMethod&sort=-createdAt`;
+                
+                const pedidosRes = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${tokenData.token}` }
+                });
+                const pedidosData = await pedidosRes.json();
+                
+                if (pedidosData.data && pedidosData.data.length > 0) {
+                    pedidosConPagos = pedidosConPagos.concat(pedidosData.data);
+                    
+                    if (pedidosData.included) {
+                        pagosIncluidos = pagosIncluidos.concat(pedidosData.included);
+                    }
+                    
+                    const ultimaFecha = fechaUTCaColombia(pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt);
+                    if (ultimaFecha && ultimaFecha < fechaFiltro) seguir = false;
+                } else {
+                    seguir = false;
+                }
+                
+                pag++;
+            }
+
+            const payments = pagosIncluidos.filter(i => i.type === 'Payment');
+
+            // Filtrar solo pedidos de la fecha (en hora Colombia) y CERRADOS
+            const pedidosFecha = pedidosConPagos.filter(p => {
+                const fp = fechaUTCaColombia(p.attributes?.createdAt);
+                const esFecha = fp === fechaFiltro;
+                const esCerrado = p.attributes?.saleState === 'CLOSED';
+                return esFecha && esCerrado;
+            });
+
+            // IDs de métodos de pago
+            const ID_EFECTIVO = '1';
+            const ID_ONLINE_RAPPI = '12';
+            const ID_DATAFONO = '4';
+            
+            let totalEfectivo = 0;
+            let totalOnlineRappi = 0;
+            let totalDatafono = 0;
+            let pedidosEfectivo = 0;
+            let pedidosRappi = 0;
+            let pedidosDatafono = 0;
+
+            for (const pedido of pedidosFecha) {
+                const paymentsRef = pedido.relationships?.payments?.data || [];
+                
+                for (const ref of paymentsRef) {
+                    const payment = payments.find(p => p.id === ref.id);
+                    if (!payment) continue;
+                    
+                    const paymentMethodId = payment.relationships?.paymentMethod?.data?.id;
+                    const monto = payment.attributes?.amount || 0;
+                    
+                    if (paymentMethodId === ID_EFECTIVO) {
+                        totalEfectivo += monto;
+                        pedidosEfectivo++;
+                    } else if (paymentMethodId === ID_ONLINE_RAPPI) {
+                        totalOnlineRappi += monto;
+                        pedidosRappi++;
+                    } else if (paymentMethodId === ID_DATAFONO) {
+                        totalDatafono += monto;
+                        pedidosDatafono++;
+                    }
+                }
+            }
+
+            return res.json({
+                success: true,
+                fechaBuscada: fechaFiltro,
+                fechaHoraColombia: `${fechaUTCaColombia(new Date().toISOString())} ${horaUTCaColombia(new Date().toISOString())}`,
+                sede,
+                totalPedidosCerrados: pedidosFecha.length,
+                totales: {
+                    efectivo: totalEfectivo,
+                    onlineRappi: totalOnlineRappi,
+                    datafono: totalDatafono
+                },
+                detalles: {
+                    pagosEfectivo: pedidosEfectivo,
+                    pagosOnlineRappi: pedidosRappi,
+                    pagosDatafono: pedidosDatafono
+                },
+                _debug: {
+                    paginasConsultadas: pag - 1,
+                    totalPayments: payments.length
+                }
+            });
+        }
+
         if (accion === 'debug_payments') {
             // Consultar con payments Y paymentMethods incluidos
             const url = `${FUDO_API}/sales?page[size]=10&page[number]=1&include=payments,payments.paymentMethod&sort=-createdAt`;
