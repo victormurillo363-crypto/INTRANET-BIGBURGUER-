@@ -417,6 +417,127 @@ export default async function handler(req, res) {
             });
         }
 
+        // 🔍 EXPLORAR: Buscar endpoints de resumen/reportes en FUDO
+        if (accion === 'explorar_endpoints') {
+            const endpointsAProbar = [
+                '/reports',
+                '/reports/sales',
+                '/reports/daily',
+                '/sales/summary',
+                '/sales-summary',
+                '/daily-summary',
+                '/cash-registers',
+                '/cash-register',
+                '/closures',
+                '/shifts',
+                '/payment-methods',
+                '/payment-summary',
+                '/totals',
+                '/statistics',
+                '/dashboard'
+            ];
+            
+            const resultados = [];
+            
+            for (const endpoint of endpointsAProbar) {
+                try {
+                    const url = `${FUDO_API}${endpoint}?page[size]=1`;
+                    const respuesta = await fetch(url, {
+                        headers: { 'Authorization': `Bearer ${tokenData.token}` }
+                    });
+                    const status = respuesta.status;
+                    let data = null;
+                    try {
+                        data = await respuesta.json();
+                    } catch (e) {
+                        data = { error: 'No es JSON' };
+                    }
+                    
+                    resultados.push({
+                        endpoint,
+                        status,
+                        existe: status === 200,
+                        tieneData: !!(data?.data),
+                        campos: data?.data?.[0] ? Object.keys(data.data[0]) : [],
+                        atributos: data?.data?.[0]?.attributes ? Object.keys(data.data[0].attributes) : [],
+                        muestra: data?.data?.[0] || data?.errors?.[0] || null
+                    });
+                } catch (e) {
+                    resultados.push({
+                        endpoint,
+                        status: 'error',
+                        error: e.message
+                    });
+                }
+            }
+            
+            return res.json({
+                success: true,
+                mensaje: 'Exploración de endpoints FUDO',
+                endpointsEncontrados: resultados.filter(r => r.existe).map(r => r.endpoint),
+                detalles: resultados
+            });
+        }
+
+        // 🔍 EXPLORAR: Ver estructura de un pedido cerrado con todos sus pagos
+        if (accion === 'explorar_pagos') {
+            // Obtener algunos pedidos cerrados con sus pagos
+            const url = `${FUDO_API}/sales?page[size]=20&page[number]=1&include=payments,payments.paymentMethod&sort=-createdAt`;
+            
+            const respuesta = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${tokenData.token}` }
+            });
+            const data = await respuesta.json();
+            
+            const payments = (data.included || []).filter(i => i.type === 'Payment');
+            const paymentMethods = (data.included || []).filter(i => i.type === 'PaymentMethod');
+            
+            // Agrupar pagos por método
+            const pagosPorMetodo = {};
+            for (const pm of paymentMethods) {
+                pagosPorMetodo[pm.id] = {
+                    id: pm.id,
+                    nombre: pm.attributes?.name || 'Sin nombre',
+                    atributos: pm.attributes,
+                    totalPagos: 0,
+                    sumaMonto: 0
+                };
+            }
+            
+            for (const pago of payments) {
+                const metodoId = pago.relationships?.paymentMethod?.data?.id;
+                if (metodoId && pagosPorMetodo[metodoId]) {
+                    pagosPorMetodo[metodoId].totalPagos++;
+                    pagosPorMetodo[metodoId].sumaMonto += pago.attributes?.amount || 0;
+                }
+            }
+            
+            // Buscar pedidos Rappi
+            const pedidosRappi = (data.data || []).filter(p => {
+                const nombre = (p.attributes?.customerName || '').toLowerCase();
+                const comment = (p.attributes?.comment || '').toLowerCase();
+                return nombre.includes('rappi') || comment.includes('rappi');
+            });
+            
+            return res.json({
+                success: true,
+                mensaje: 'Exploración de métodos de pago',
+                totalPedidos: (data.data || []).length,
+                totalPayments: payments.length,
+                metodosEncontrados: Object.values(pagosPorMetodo),
+                pedidosRappiEncontrados: pedidosRappi.length,
+                muestraRappi: pedidosRappi.slice(0, 3).map(p => ({
+                    id: p.id,
+                    customerName: p.attributes?.customerName,
+                    total: p.attributes?.total,
+                    comment: p.attributes?.comment
+                })),
+                // Mostrar todos los IDs de métodos de pago únicos
+                idsMetodosPago: [...new Set(payments.map(p => p.relationships?.paymentMethod?.data?.id))],
+                nombresMetodosPago: paymentMethods.map(pm => ({ id: pm.id, nombre: pm.attributes?.name }))
+            });
+        }
+
         return res.status(400).json({ success: false, error: 'Acción no válida' });
 
     } catch (error) {
