@@ -582,6 +582,120 @@ export default async function handler(req, res) {
             });
         }
 
+        // 🔍 DEBUG: Ver todos los pedidos de domicilio y por qué algunos no se incluyen
+        if (accion === 'debug_domicilios') {
+            // Todos los pedidos tipo DELIVERY de la fecha
+            const pedidosFecha = todosLosPedidos.filter(p => {
+                const fp = fechaUTCaColombia(p.attributes?.createdAt);
+                return fp === fechaFiltro;
+            });
+
+            const analisis = [];
+            
+            for (const pedido of pedidosFecha) {
+                const estado = pedido.attributes?.saleState;
+                const saleType = pedido.attributes?.saleType;
+                const esRappi = esDeRappi(pedido);
+                const esEstadoValido = estado === 'CLOSED' || estado === 'IN_PROGRESS';
+                
+                // Buscar producto de domicilio
+                let valorDomicilio = 0;
+                let tipoDomicilio = '';
+                let origenDomicilio = '';
+                let productId = null;
+                let productosEncontrados = [];
+                
+                const itemsRef = pedido.relationships?.items?.data || [];
+                for (const ref of itemsRef) {
+                    const item = items.find(i => i.id === ref.id);
+                    if (!item) continue;
+                    
+                    const pid = item.relationships?.product?.data?.id;
+                    productosEncontrados.push(pid);
+                    
+                    if (pid && PRODUCTOS_DOMICILIO[pid]) {
+                        valorDomicilio = item.attributes?.price || PRODUCTOS_DOMICILIO[pid].precio;
+                        tipoDomicilio = PRODUCTOS_DOMICILIO[pid].nombre;
+                        origenDomicilio = 'producto';
+                        productId = pid;
+                    }
+                }
+                
+                // Buscar costo de envío
+                let shippingValue = 0;
+                const shippingRef = pedido.relationships?.shippingCosts?.data || [];
+                for (const ref of shippingRef) {
+                    const shipping = shippingCosts.find(s => s.id === ref.id);
+                    if (shipping) {
+                        shippingValue = shipping.attributes?.amount || shipping.attributes?.price || 0;
+                        if (!valorDomicilio) {
+                            valorDomicilio = shippingValue;
+                            tipoDomicilio = 'Costo de envío';
+                            origenDomicilio = 'costo_envio';
+                        }
+                    }
+                }
+                
+                // Determinar si se incluye y por qué no
+                let seIncluye = true;
+                let razonExclusion = '';
+                
+                if (!esEstadoValido) {
+                    seIncluye = false;
+                    razonExclusion = `Estado no válido: ${estado}`;
+                } else if (esRappi) {
+                    seIncluye = false;
+                    razonExclusion = 'Es pedido de Rappi';
+                } else if (valorDomicilio === 0 && !origenDomicilio) {
+                    seIncluye = false;
+                    razonExclusion = 'Sin producto domicilio ni costo envío';
+                }
+                
+                analisis.push({
+                    pedidoId: pedido.id,
+                    hora: horaUTCaColombia(pedido.attributes?.createdAt),
+                    estado: estado,
+                    saleType: saleType,
+                    customerName: pedido.attributes?.customerName || 'Sin nombre',
+                    total: pedido.attributes?.total || 0,
+                    esRappi: esRappi,
+                    valorDomicilio: valorDomicilio,
+                    tipoDomicilio: tipoDomicilio,
+                    origenDomicilio: origenDomicilio,
+                    shippingValue: shippingValue,
+                    productIds: productosEncontrados,
+                    seIncluye: seIncluye,
+                    razonExclusion: razonExclusion
+                });
+            }
+            
+            // Ordenar por hora
+            analisis.sort((a, b) => a.hora.localeCompare(b.hora));
+            
+            const incluidos = analisis.filter(a => a.seIncluye);
+            const excluidos = analisis.filter(a => !a.seIncluye);
+            
+            return res.json({
+                success: true,
+                mensaje: 'Análisis de domicilios',
+                fechaBuscada: fechaFiltro,
+                sede,
+                resumen: {
+                    totalPedidosFecha: analisis.length,
+                    incluidos: incluidos.length,
+                    excluidos: excluidos.length
+                },
+                productosReconocidos: Object.keys(PRODUCTOS_DOMICILIO),
+                pedidosIncluidos: incluidos,
+                pedidosExcluidos: excluidos,
+                _debug: {
+                    paginasConsultadas: pagina - 1,
+                    totalItems: items.length,
+                    totalShippingCosts: shippingCosts.length
+                }
+            });
+        }
+
         // 🔍 DEBUG: Verificar conversión de fechas UTC a Colombia
         if (accion === 'debug_fechas') {
             const url = `${FUDO_API}/sales?page[size]=20&page[number]=1&sort=-createdAt`;
