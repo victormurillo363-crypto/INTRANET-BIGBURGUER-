@@ -467,7 +467,13 @@ export default async function handler(req, res) {
                 mensaje: 'Debug de estructura de payments',
                 totalPayments: payments.length,
                 totalPaymentMethods: paymentMethods.length,
-                payments: payments.slice(0, 5),
+                // Mostrar estructura COMPLETA de payments para encontrar campo de estado
+                paymentsCompletos: payments.slice(0, 10).map(p => ({
+                    id: p.id,
+                    type: p.type,
+                    attributes: p.attributes, // TODOS los atributos
+                    relationships: p.relationships
+                })),
                 paymentMethods: paymentMethods,
                 primerPedido: pedidosData.data?.[0] || null
             });
