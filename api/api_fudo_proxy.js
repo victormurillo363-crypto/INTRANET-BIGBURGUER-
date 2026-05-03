@@ -473,6 +473,100 @@ export default async function handler(req, res) {
             });
         }
 
+        // 🔍 DEBUG: Ver detalle de pagos por datáfono para verificar diferencias
+        if (accion === 'debug_datafono') {
+            let pedidosConPagos = [];
+            let pagosIncluidos = [];
+            
+            let pag = 1;
+            let seguir = true;
+            
+            while (pag <= 30 && seguir) {
+                const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pag}&include=payments,payments.paymentMethod&sort=-createdAt`;
+                
+                const pedidosRes = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${tokenData.token}` }
+                });
+                const pedidosData = await pedidosRes.json();
+                
+                if (pedidosData.data && pedidosData.data.length > 0) {
+                    pedidosConPagos = pedidosConPagos.concat(pedidosData.data);
+                    
+                    if (pedidosData.included) {
+                        pagosIncluidos = pagosIncluidos.concat(pedidosData.included);
+                    }
+                    
+                    const ultimaFecha = fechaUTCaColombia(pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt);
+                    if (ultimaFecha && ultimaFecha < fechaFiltro) seguir = false;
+                } else {
+                    seguir = false;
+                }
+                
+                pag++;
+            }
+
+            const payments = pagosIncluidos.filter(i => i.type === 'Payment');
+            const ID_DATAFONO = '4';
+
+            // Filtrar solo pedidos de la fecha y CERRADOS
+            const pedidosFecha = pedidosConPagos.filter(p => {
+                const fp = fechaUTCaColombia(p.attributes?.createdAt);
+                const esFecha = fp === fechaFiltro;
+                const esCerrado = p.attributes?.saleState === 'CLOSED';
+                return esFecha && esCerrado;
+            });
+
+            const pagosDatafono = [];
+            let totalDatafono = 0;
+
+            for (const pedido of pedidosFecha) {
+                const paymentsRef = pedido.relationships?.payments?.data || [];
+                
+                for (const ref of paymentsRef) {
+                    const payment = payments.find(p => p.id === ref.id);
+                    if (!payment) continue;
+                    
+                    const paymentMethodId = payment.relationships?.paymentMethod?.data?.id;
+                    const monto = payment.attributes?.amount || 0;
+                    
+                    if (paymentMethodId === ID_DATAFONO) {
+                        totalDatafono += monto;
+                        pagosDatafono.push({
+                            pedidoId: pedido.id,
+                            fechaUTC: pedido.attributes?.createdAt,
+                            fechaColombia: fechaUTCaColombia(pedido.attributes?.createdAt),
+                            horaColombia: horaUTCaColombia(pedido.attributes?.createdAt),
+                            estado: pedido.attributes?.saleState,
+                            cliente: pedido.attributes?.customerName || 'Sin nombre',
+                            totalPedido: pedido.attributes?.total || 0,
+                            montoDatafono: monto,
+                            paymentId: payment.id
+                        });
+                    }
+                }
+            }
+
+            // Ordenar por hora
+            pagosDatafono.sort((a, b) => a.horaColombia.localeCompare(b.horaColombia));
+
+            return res.json({
+                success: true,
+                mensaje: 'Detalle de pagos con Datáfono',
+                fechaBuscada: fechaFiltro,
+                sede,
+                totalPedidosCerrados: pedidosFecha.length,
+                resumen: {
+                    cantidadPagosDatafono: pagosDatafono.length,
+                    totalDatafono: totalDatafono
+                },
+                pagosDatafono: pagosDatafono,
+                _debug: {
+                    paginasConsultadas: pag - 1,
+                    idMetodoDatafono: ID_DATAFONO
+                }
+            });
+        }
+
         // 🔍 DEBUG: Verificar conversión de fechas UTC a Colombia
         if (accion === 'debug_fechas') {
             const url = `${FUDO_API}/sales?page[size]=20&page[number]=1&sort=-createdAt`;
