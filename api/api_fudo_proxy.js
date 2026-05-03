@@ -158,13 +158,16 @@ export default async function handler(req, res) {
         }
 
         if (accion === 'traer_domicilios') {
+            // Estados válidos para domicilios (excluye Rappi)
+            const ESTADOS_DOMICILIO_VALIDOS = ['CLOSED', 'IN_PROGRESS', 'IN-COURSE', 'DELIVERY-SENT'];
+            
             const pedidosFecha = todosLosPedidos.filter(p => {
                 // 🔐 IMPORTANTE: Convertir UTC a Colombia antes de comparar
                 const fp = fechaUTCaColombia(p.attributes?.createdAt);
                 const esFecha = fp === fechaFiltro;
-                // ✅ DOMICILIOS: Traer CERRADOS y EN PROCESO
+                // ✅ DOMICILIOS: Traer CERRADOS, EN PROCESO, EN CURSO y ENVIADOS
                 const estado = p.attributes?.saleState;
-                const esEstadoValido = estado === 'CLOSED' || estado === 'IN_PROGRESS';
+                const esEstadoValido = ESTADOS_DOMICILIO_VALIDOS.includes(estado);
                 const noEsRappi = !esDeRappi(p);
                 return esFecha && esEstadoValido && noEsRappi;
             });
@@ -584,6 +587,9 @@ export default async function handler(req, res) {
 
         // 🔍 DEBUG: Ver todos los pedidos de domicilio y por qué algunos no se incluyen
         if (accion === 'debug_domicilios') {
+            // Estados válidos para domicilios (excluye Rappi)
+            const ESTADOS_DOMICILIO_VALIDOS = ['CLOSED', 'IN_PROGRESS', 'IN-COURSE', 'DELIVERY-SENT'];
+            
             // Todos los pedidos tipo DELIVERY de la fecha
             const pedidosFecha = todosLosPedidos.filter(p => {
                 const fp = fechaUTCaColombia(p.attributes?.createdAt);
@@ -596,7 +602,7 @@ export default async function handler(req, res) {
                 const estado = pedido.attributes?.saleState;
                 const saleType = pedido.attributes?.saleType;
                 const esRappi = esDeRappi(pedido);
-                const esEstadoValido = estado === 'CLOSED' || estado === 'IN_PROGRESS';
+                const esEstadoValido = ESTADOS_DOMICILIO_VALIDOS.includes(estado);
                 
                 // Buscar producto de domicilio
                 let valorDomicilio = 0;
