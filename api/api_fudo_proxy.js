@@ -306,6 +306,9 @@ export default async function handler(req, res) {
                     const payment = payments.find(p => p.id === ref.id);
                     if (!payment) continue;
                     
+                    // 🚫 IMPORTANTE: Ignorar pagos cancelados (cuando cambian método de pago)
+                    if (payment.attributes?.canceled === true) continue;
+                    
                     // Obtener el ID del método de pago
                     const paymentMethodId = payment.relationships?.paymentMethod?.data?.id;
                     
@@ -410,6 +413,9 @@ export default async function handler(req, res) {
                 for (const ref of paymentsRef) {
                     const payment = payments.find(p => p.id === ref.id);
                     if (!payment) continue;
+                    
+                    // 🚫 IMPORTANTE: Ignorar pagos cancelados (cuando cambian método de pago)
+                    if (payment.attributes?.canceled === true) continue;
                     
                     const paymentMethodId = payment.relationships?.paymentMethod?.data?.id;
                     const monto = payment.attributes?.amount || 0;
@@ -531,6 +537,9 @@ export default async function handler(req, res) {
                 for (const ref of paymentsRef) {
                     const payment = payments.find(p => p.id === ref.id);
                     if (!payment) continue;
+                    
+                    // 🚫 IMPORTANTE: Ignorar pagos cancelados (cuando cambian método de pago)
+                    if (payment.attributes?.canceled === true) continue;
                     
                     const paymentMethodId = payment.relationships?.paymentMethod?.data?.id;
                     const monto = payment.attributes?.amount || 0;
