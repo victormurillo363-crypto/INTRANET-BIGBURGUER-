@@ -162,9 +162,11 @@ export default async function handler(req, res) {
                 // 🔐 IMPORTANTE: Convertir UTC a Colombia antes de comparar
                 const fp = fechaUTCaColombia(p.attributes?.createdAt);
                 const esFecha = fp === fechaFiltro;
-                const esCerrado = p.attributes?.saleState === 'CLOSED';
+                // ✅ DOMICILIOS: Traer CERRADOS y EN PROCESO
+                const estado = p.attributes?.saleState;
+                const esEstadoValido = estado === 'CLOSED' || estado === 'IN_PROGRESS';
                 const noEsRappi = !esDeRappi(p);
-                return esFecha && esCerrado && noEsRappi;
+                return esFecha && esEstadoValido && noEsRappi;
             });
 
             const domicilios = [];
