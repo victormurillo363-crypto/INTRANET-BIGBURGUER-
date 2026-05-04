@@ -869,6 +869,143 @@ export default async function handler(req, res) {
             });
         }
 
+        // 🔍 DEBUG: Explorar pedidos cancelados, eliminados y productos eliminados
+        if (accion === 'debug_cancelados') {
+            let todosPedidos = [];
+            let todosIncluded = [];
+            
+            let pag = 1;
+            let seguir = true;
+            
+            // Traer pedidos con items incluidos
+            while (pag <= 10 && seguir) {
+                const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pag}&include=items,payments,voidedItems&sort=-createdAt`;
+                
+                const pedidosRes = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${tokenData.token}` }
+                });
+                const pedidosData = await pedidosRes.json();
+                
+                if (pedidosData.data && pedidosData.data.length > 0) {
+                    todosPedidos = todosPedidos.concat(pedidosData.data);
+                    
+                    if (pedidosData.included) {
+                        todosIncluded = todosIncluded.concat(pedidosData.included);
+                    }
+                    
+                    const ultimaFecha = fechaUTCaColombia(pedidosData.data[pedidosData.data.length - 1]?.attributes?.createdAt);
+                    if (ultimaFecha && ultimaFecha < fechaFiltro) seguir = false;
+                } else {
+                    seguir = false;
+                }
+                
+                pag++;
+            }
+
+            // Filtrar pedidos de la fecha
+            const pedidosFecha = todosPedidos.filter(p => {
+                const fp = fechaUTCaColombia(p.attributes?.createdAt);
+                return fp === fechaFiltro;
+            });
+
+            // Buscar todos los estados únicos
+            const estadosUnicos = [...new Set(pedidosFecha.map(p => p.attributes?.saleState))];
+            
+            // Buscar pedidos con estado diferente a CLOSED
+            const pedidosNoCerrados = pedidosFecha.filter(p => p.attributes?.saleState !== 'CLOSED');
+            
+            // Buscar pedidos que tengan campos de cancelación/eliminación
+            const pedidosConCancelacion = pedidosFecha.filter(p => 
+                p.attributes?.canceled || 
+                p.attributes?.cancelled ||
+                p.attributes?.voided ||
+                p.attributes?.deleted ||
+                p.attributes?.removed
+            );
+
+            // Items y VoidedItems
+            const items = todosIncluded.filter(i => i.type === 'Item');
+            const voidedItems = todosIncluded.filter(i => i.type === 'VoidedItem');
+            const payments = todosIncluded.filter(i => i.type === 'Payment');
+            
+            // Pagos cancelados
+            const pagosCancelados = payments.filter(p => p.attributes?.canceled === true);
+
+            // Estructura de un pedido para ver todos los campos disponibles
+            const muestraPedido = pedidosFecha[0] || null;
+            const muestraItem = items[0] || null;
+            const muestraVoidedItem = voidedItems[0] || null;
+
+            // Buscar relaciones de voidedItems en pedidos
+            const pedidosConVoidedItems = pedidosFecha.filter(p => 
+                p.relationships?.voidedItems?.data?.length > 0
+            );
+
+            return res.json({
+                success: true,
+                mensaje: 'Exploración de pedidos cancelados y productos eliminados',
+                fechaBuscada: fechaFiltro,
+                sede,
+                resumen: {
+                    totalPedidosFecha: pedidosFecha.length,
+                    estadosEncontrados: estadosUnicos,
+                    pedidosNoCerrados: pedidosNoCerrados.length,
+                    pedidosConCamposCancelacion: pedidosConCancelacion.length,
+                    pedidosConVoidedItems: pedidosConVoidedItems.length,
+                    totalItems: items.length,
+                    totalVoidedItems: voidedItems.length,
+                    pagosCancelados: pagosCancelados.length
+                },
+                // Muestra de estructura completa de un pedido
+                estructuraPedido: muestraPedido ? {
+                    id: muestraPedido.id,
+                    type: muestraPedido.type,
+                    todosLosAtributos: muestraPedido.attributes,
+                    todasLasRelaciones: Object.keys(muestraPedido.relationships || {})
+                } : null,
+                // Muestra de estructura de un Item
+                estructuraItem: muestraItem ? {
+                    id: muestraItem.id,
+                    type: muestraItem.type,
+                    todosLosAtributos: muestraItem.attributes,
+                    todasLasRelaciones: Object.keys(muestraItem.relationships || {})
+                } : null,
+                // VoidedItems encontrados
+                voidedItemsEncontrados: voidedItems.slice(0, 10).map(v => ({
+                    id: v.id,
+                    type: v.type,
+                    atributos: v.attributes,
+                    relaciones: v.relationships
+                })),
+                // Pedidos no cerrados (posibles cancelados)
+                pedidosNoCerradosDetalle: pedidosNoCerrados.slice(0, 10).map(p => ({
+                    id: p.id,
+                    estado: p.attributes?.saleState,
+                    fecha: fechaUTCaColombia(p.attributes?.createdAt),
+                    hora: horaUTCaColombia(p.attributes?.createdAt),
+                    total: p.attributes?.total,
+                    cliente: p.attributes?.customerName,
+                    todosAtributos: p.attributes
+                })),
+                // Pagos cancelados detalle
+                pagosCanceladosDetalle: pagosCancelados.slice(0, 10).map(p => ({
+                    id: p.id,
+                    atributos: p.attributes
+                })),
+                // Pedidos con voidedItems
+                pedidosConVoidedItemsDetalle: pedidosConVoidedItems.slice(0, 5).map(p => ({
+                    pedidoId: p.id,
+                    estado: p.attributes?.saleState,
+                    total: p.attributes?.total,
+                    voidedItemsIds: p.relationships?.voidedItems?.data?.map(v => v.id)
+                })),
+                _debug: {
+                    paginasConsultadas: pag - 1,
+                    tiposEnIncluded: [...new Set(todosIncluded.map(i => i.type))]
+                }
+            });
+        }
+
         return res.status(400).json({ success: false, error: 'Acción no válida' });
 
     } catch (error) {
