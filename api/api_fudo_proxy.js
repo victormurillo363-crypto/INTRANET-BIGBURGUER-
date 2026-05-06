@@ -91,8 +91,13 @@ const PRODUCTOS_DOMICILIO_POR_SEDE = {
         '746': { nombre: 'Domicilio 18', precio: 18000 }
     },
     'VILLA DEL PRADO': {
-        // TODO: Agregar IDs de productos de domicilio de Villa del Prado
-        // Por ahora usa los mismos que CORALES (ajustar después)
+        '564': { nombre: 'Domicilio 0', precio: 0 },
+        '565': { nombre: 'Domicilio 6', precio: 6000 },
+        '566': { nombre: 'Domicilio 9', precio: 9000 },
+        '567': { nombre: 'Domicilio 10', precio: 10000 },
+        '568': { nombre: 'Domicilio 11', precio: 11000 },
+        '569': { nombre: 'Domicilio 8', precio: 8000 },
+        '751': { nombre: 'Domicilio 7', precio: 7000 }
     }
 };
 
