@@ -851,6 +851,60 @@ export default async function handler(req, res) {
             });
         }
 
+        // 🔍 EXPLORAR: Ver todos los productos de la sede (para encontrar IDs de domicilios)
+        if (accion === 'explorar_productos') {
+            let todosProductos = [];
+            let pag = 1;
+            let seguir = true;
+            
+            // Buscar productos (máximo 5 páginas)
+            while (pag <= 5 && seguir) {
+                const url = `${FUDO_API}/products?page[size]=500&page[number]=${pag}`;
+                
+                const respuesta = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${tokenData.token}` }
+                });
+                const data = await respuesta.json();
+                
+                if (data.data && data.data.length > 0) {
+                    todosProductos = todosProductos.concat(data.data);
+                } else {
+                    seguir = false;
+                }
+                pag++;
+            }
+            
+            // Buscar productos que contengan "domicilio" o "direccion" en el nombre
+            const productosDomicilio = todosProductos.filter(p => {
+                const nombre = (p.attributes?.name || '').toLowerCase();
+                return nombre.includes('domicilio') || nombre.includes('direccion') || nombre.includes('envio') || nombre.includes('delivery');
+            });
+            
+            return res.json({
+                success: true,
+                mensaje: 'Exploración de productos',
+                sede,
+                totalProductos: todosProductos.length,
+                productosDomicilioEncontrados: productosDomicilio.length,
+                productosDomicilio: productosDomicilio.map(p => ({
+                    id: p.id,
+                    nombre: p.attributes?.name,
+                    precio: p.attributes?.price,
+                    activo: p.attributes?.active,
+                    atributos: p.attributes
+                })),
+                // Muestra de todos los productos (primeros 50)
+                todosProductosMuestra: todosProductos.slice(0, 50).map(p => ({
+                    id: p.id,
+                    nombre: p.attributes?.name,
+                    precio: p.attributes?.price
+                })),
+                _debug: {
+                    paginasConsultadas: pag - 1
+                }
+            });
+        }
+
         // 🔍 EXPLORAR: Ver estructura de un pedido cerrado con todos sus pagos
         if (accion === 'explorar_pagos') {
             // Obtener algunos pedidos cerrados con sus pagos
