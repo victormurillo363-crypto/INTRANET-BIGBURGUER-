@@ -39,18 +39,6 @@ function horaUTCaColombia(fechaISO) {
     } catch (e) {
         return fechaISO.split('T')[1]?.substring(0, 5) || '';
     }
-}
-
-// IDs de productos de domicilio
-const PRODUCTOS_DOMICILIO = {
-    '548': { nombre: 'Domicilio 0', precio: 0 },
-    '516': { nombre: 'Domicilio 6', precio: 6000 },
-    '544': { nombre: 'Domicilio 9', precio: 9000 },
-    '545': { nombre: 'Domicilio 11', precio: 11000 },
-    '546': { nombre: 'Domicilio 13', precio: 13000 },
-    '547': { nombre: 'Domicilio 16', precio: 16000 },
-    '745': { nombre: 'Domicilio 17', precio: 17000 },
-    '746': { nombre: 'Domicilio 18', precio: 18000 }
 };
 
 const CREDENCIALES = {
@@ -61,6 +49,50 @@ const CREDENCIALES = {
     'VILLA DEL PRADO': {
         apiKey: 'MUAyMzQ0Mjc=',
         apiSecret: 'sEsPDjN9IPvDvOqP69QrAcPvDWsLReZz'
+    }
+};
+
+// 💳 IDs de métodos de pago POR SEDE (cada sede tiene IDs diferentes en FUDO)
+const METODOS_PAGO = {
+    'CORALES': {
+        efectivo: '1',
+        datafono: '4',
+        bancolombia: '7',
+        daviplata: '10',
+        davivienda: '11',
+        onlineRappi: '12',
+        // IDs que son transferencias bancarias
+        transferencias: ['7', '10', '11'],
+        nombreTransferencias: { '7': 'Bancolombia', '10': 'Daviplata', '11': 'Davivienda' }
+    },
+    'VILLA DEL PRADO': {
+        efectivo: '1',
+        datafono: '4',
+        bancolombia: '6',
+        davivienda: '7',
+        daviplata: '8',
+        onlineRappi: '10',
+        // IDs que son transferencias bancarias
+        transferencias: ['6', '7', '8'],
+        nombreTransferencias: { '6': 'Bancolombia', '7': 'Davivienda', '8': 'Daviplata' }
+    }
+};
+
+// 📦 IDs de productos de domicilio POR SEDE
+const PRODUCTOS_DOMICILIO_POR_SEDE = {
+    'CORALES': {
+        '548': { nombre: 'Domicilio 0', precio: 0 },
+        '516': { nombre: 'Domicilio 6', precio: 6000 },
+        '544': { nombre: 'Domicilio 9', precio: 9000 },
+        '545': { nombre: 'Domicilio 11', precio: 11000 },
+        '546': { nombre: 'Domicilio 13', precio: 13000 },
+        '547': { nombre: 'Domicilio 16', precio: 16000 },
+        '745': { nombre: 'Domicilio 17', precio: 17000 },
+        '746': { nombre: 'Domicilio 18', precio: 18000 }
+    },
+    'VILLA DEL PRADO': {
+        // TODO: Agregar IDs de productos de domicilio de Villa del Prado
+        // Por ahora usa los mismos que CORALES (ajustar después)
     }
 };
 
@@ -165,6 +197,9 @@ export default async function handler(req, res) {
             // Estados válidos para domicilios (excluye Rappi)
             const ESTADOS_DOMICILIO_VALIDOS = ['CLOSED', 'IN_PROGRESS', 'IN-COURSE', 'DELIVERY-SENT'];
             
+            // Obtener productos de domicilio para esta sede
+            const productosDomicilio = PRODUCTOS_DOMICILIO_POR_SEDE[sede.toUpperCase()] || PRODUCTOS_DOMICILIO_POR_SEDE['CORALES'];
+            
             const pedidosFecha = todosLosPedidos.filter(p => {
                 // 🔐 IMPORTANTE: Convertir UTC a Colombia antes de comparar
                 const fp = fechaUTCaColombia(p.attributes?.createdAt);
@@ -191,9 +226,9 @@ export default async function handler(req, res) {
                     
                     const pid = item.relationships?.product?.data?.id;
                     
-                    if (pid && PRODUCTOS_DOMICILIO[pid]) {
-                        valorDomicilio = item.attributes?.price || PRODUCTOS_DOMICILIO[pid].precio;
-                        tipoDomicilio = PRODUCTOS_DOMICILIO[pid].nombre;
+                    if (pid && productosDomicilio[pid]) {
+                        valorDomicilio = item.attributes?.price || productosDomicilio[pid].precio;
+                        tipoDomicilio = productosDomicilio[pid].nombre;
                         origenDomicilio = 'producto';
                         productId = pid;
                         break;
@@ -245,7 +280,7 @@ export default async function handler(req, res) {
                 domicilios,
                 _debug: {
                     paginasConsultadas: pagina - 1,
-                    productIdsBuscados: Object.keys(PRODUCTOS_DOMICILIO)
+                    productIdsBuscados: Object.keys(productosDomicilio)
                 }
             });
         }
@@ -296,15 +331,12 @@ export default async function handler(req, res) {
 
             const transferencias = [];
             
-            // Mapeo de IDs de métodos de pago a bancos
-            const METODOS_POR_ID = {
-                '7': 'Bancolombia',
-                '10': 'Daviplata',
-                '11': 'Davivienda'
-            };
+            // Obtener configuración de métodos de pago para esta sede
+            const metodosSede = METODOS_PAGO[sede.toUpperCase()] || METODOS_PAGO['CORALES'];
             
-            // IDs que son transferencias (no efectivo, no datáfono)
-            const IDS_TRANSFERENCIAS = ['7', '10', '11'];
+            // IDs que son transferencias para esta sede
+            const IDS_TRANSFERENCIAS = metodosSede.transferencias;
+            const METODOS_POR_ID = metodosSede.nombreTransferencias;
             
             for (const pedido of pedidosFecha) {
                 const paymentsRef = pedido.relationships?.payments?.data || [];
@@ -402,10 +434,11 @@ export default async function handler(req, res) {
                 return esFecha && esCerrado;
             });
 
-            // IDs de métodos de pago
-            const ID_EFECTIVO = '1';
-            const ID_ONLINE_RAPPI = '12';
-            const ID_DATAFONO = '4';
+            // IDs de métodos de pago para esta sede
+            const metodosSede = METODOS_PAGO[sede.toUpperCase()] || METODOS_PAGO['CORALES'];
+            const ID_EFECTIVO = metodosSede.efectivo;
+            const ID_ONLINE_RAPPI = metodosSede.onlineRappi;
+            const ID_DATAFONO = metodosSede.datafono;
             
             let totalEfectivo = 0;
             let totalOnlineRappi = 0;
@@ -525,7 +558,8 @@ export default async function handler(req, res) {
             }
 
             const payments = pagosIncluidos.filter(i => i.type === 'Payment');
-            const ID_DATAFONO = '4';
+            const metodosSede = METODOS_PAGO[sede.toUpperCase()] || METODOS_PAGO['CORALES'];
+            const ID_DATAFONO = metodosSede.datafono;
 
             // Filtrar solo pedidos de la fecha y CERRADOS
             const pedidosFecha = pedidosConPagos.filter(p => {
@@ -594,6 +628,9 @@ export default async function handler(req, res) {
             // Estados válidos para domicilios (excluye Rappi)
             const ESTADOS_DOMICILIO_VALIDOS = ['CLOSED', 'IN_PROGRESS', 'IN-COURSE', 'DELIVERY-SENT'];
             
+            // Obtener productos de domicilio para esta sede
+            const productosDomicilio = PRODUCTOS_DOMICILIO_POR_SEDE[sede.toUpperCase()] || PRODUCTOS_DOMICILIO_POR_SEDE['CORALES'];
+            
             // Todos los pedidos tipo DELIVERY de la fecha
             const pedidosFecha = todosLosPedidos.filter(p => {
                 const fp = fechaUTCaColombia(p.attributes?.createdAt);
@@ -623,9 +660,9 @@ export default async function handler(req, res) {
                     const pid = item.relationships?.product?.data?.id;
                     productosEncontrados.push(pid);
                     
-                    if (pid && PRODUCTOS_DOMICILIO[pid]) {
-                        valorDomicilio = item.attributes?.price || PRODUCTOS_DOMICILIO[pid].precio;
-                        tipoDomicilio = PRODUCTOS_DOMICILIO[pid].nombre;
+                    if (pid && productosDomicilio[pid]) {
+                        valorDomicilio = item.attributes?.price || productosDomicilio[pid].precio;
+                        tipoDomicilio = productosDomicilio[pid].nombre;
                         origenDomicilio = 'producto';
                         productId = pid;
                     }
@@ -695,7 +732,7 @@ export default async function handler(req, res) {
                     incluidos: incluidos.length,
                     excluidos: excluidos.length
                 },
-                productosReconocidos: Object.keys(PRODUCTOS_DOMICILIO),
+                productosReconocidos: Object.keys(productosDomicilio),
                 pedidosIncluidos: incluidos,
                 pedidosExcluidos: excluidos,
                 _debug: {
