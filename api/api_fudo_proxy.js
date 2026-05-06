@@ -49,6 +49,10 @@ const CREDENCIALES = {
     'VILLA DEL PRADO': {
         apiKey: 'MUAyMzQ0Mjc=',
         apiSecret: 'sEsPDjN9IPvDvOqP69QrAcPvDWsLReZz'
+    },
+    'AV SUR': {
+        apiKey: 'MUAzMTA1NzE=',
+        apiSecret: 'AAAse6dnFe5FoTdho5dEziWgmg4dogoO'
     }
 };
 
