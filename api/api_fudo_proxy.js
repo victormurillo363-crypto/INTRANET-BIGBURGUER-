@@ -57,6 +57,10 @@ const CREDENCIALES = {
     'CORALES': {
         apiKey: 'MUA0MzI4OA==',
         apiSecret: 'm77IGbUCfx1ndxSUTrmiIj5RrRc2Snlu'
+    },
+    'VILLA DEL PRADO': {
+        apiKey: 'MUAyMzQ0Mjc=',
+        apiSecret: 'sEsPDjN9IPvDvOqP69QrAcPvDWsLReZz'
     }
 };
 
