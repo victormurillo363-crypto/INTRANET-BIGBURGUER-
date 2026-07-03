@@ -289,6 +289,8 @@ export default async function handler(req, res) {
                 for (const ref of itemsRef) {
                     const item = items.find(i => i.id === ref.id);
                     if (!item) continue;
+                    // 🚫 Ignorar ítems anulados/borrados en FUDO: siguen viniendo en items con canceled:true
+                    if (item.attributes?.canceled === true) continue;
                     
                     const pid = item.relationships?.product?.data?.id;
                     const producto = products.find(pr => pr.id === pid);
@@ -735,6 +737,8 @@ export default async function handler(req, res) {
                 for (const ref of itemsRef) {
                     const item = items.find(i => i.id === ref.id);
                     if (!item) continue;
+                    // 🚫 Ignorar ítems anulados/borrados en FUDO: siguen viniendo en items con canceled:true
+                    if (item.attributes?.canceled === true) continue;
                     
                     const pid = item.relationships?.product?.data?.id;
                     const producto = products.find(pr => pr.id === pid);
