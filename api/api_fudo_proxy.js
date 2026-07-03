@@ -438,6 +438,7 @@ export default async function handler(req, res) {
                         
                         transferencias.push({
                             pedidoId: pedido.id,
+                            paymentId: payment.id, // 🔑 ID único del pago (permite varias transferencias por pedido)
                             fecha: fechaUTCaColombia(pedido.attributes?.createdAt),
                             hora: horaUTCaColombia(pedido.attributes?.createdAt),
                             fechaOriginalUTC: pedido.attributes?.createdAt, // Para verificación en cliente
