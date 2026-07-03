@@ -136,6 +136,42 @@ function esDeRappi(pedido) {
            customerName.includes('online rappi');
 }
 
+// 📦 Detectar si el nombre de un producto corresponde a un domicilio/envío
+// Se usa para auto-detectar domicilios aunque en FUDO les hayan cambiado el nombre o el ID
+function esNombreDomicilio(nombre) {
+    const n = (nombre || '').toLowerCase().trim();
+    if (!n) return false;
+    return n.includes('domicilio') ||
+           n.includes('envio') ||
+           n.includes('envío') ||
+           n.includes('delivery') ||
+           n.includes('direccion') ||
+           n.includes('dirección');
+}
+
+// 🏠 Extraer/normalizar la dirección de un domicilio. FUDO la entrega de varias formas:
+//   - Producto "Domicilio X": la dirección va como leyenda en el campo comment del ítem (texto plano)
+//   - Envío/Delivery: va en anonymousCustomer.address como array en JSON string:
+//        ["Calle 25 #86-71, Pereira...", ". ", "Torre 2 Apto 505"]
+//   - A veces como objeto { street, number }
+function parseDireccionFudo(raw) {
+    if (!raw) return '';
+    if (typeof raw === 'object') {
+        const partes = [raw.street, raw.number].filter(Boolean).map(x => String(x).trim());
+        return partes.filter(x => x && x !== '.').join(' ');
+    }
+    const s = String(raw).trim();
+    if (s.startsWith('[')) {
+        try {
+            const arr = JSON.parse(s);
+            return arr.map(x => String(x).trim()).filter(x => x && x !== '.' && x !== '. ').join(', ');
+        } catch (e) {
+            return s;
+        }
+    }
+    return s;
+}
+
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -172,7 +208,7 @@ export default async function handler(req, res) {
         let continuar = true;
         
         while (pagina <= 30 && continuar) {
-            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items,shippingCosts&sort=-createdAt`;
+            const url = `${FUDO_API}/sales?page[size]=500&page[number]=${pagina}&include=items,items.product,shippingCosts&sort=-createdAt`;
             
             const pedidosRes = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${tokenData.token}` }
@@ -197,6 +233,7 @@ export default async function handler(req, res) {
 
         const items = todosLosIncluded.filter(i => i.type === 'Item');
         const shippingCosts = todosLosIncluded.filter(i => i.type === 'ShippingCost');
+        const products = todosLosIncluded.filter(i => i.type === 'Product');
 
         if (accion === 'consultar_pedidos') {
             const primerasFechas = todosLosPedidos.slice(0, 10).map(p => ({
@@ -246,6 +283,7 @@ export default async function handler(req, res) {
                 let tipoDomicilio = '';
                 let origenDomicilio = '';
                 let productId = null;
+                let direccion = '';
                 
                 const itemsRef = pedido.relationships?.items?.data || [];
                 for (const ref of itemsRef) {
@@ -253,12 +291,19 @@ export default async function handler(req, res) {
                     if (!item) continue;
                     
                     const pid = item.relationships?.product?.data?.id;
+                    const producto = products.find(pr => pr.id === pid);
+                    const nombreProducto = producto?.attributes?.name || '';
+                    const enListaFija = pid && productosDomicilio[pid];
                     
-                    if (pid && productosDomicilio[pid]) {
-                        valorDomicilio = item.attributes?.price || productosDomicilio[pid].precio;
-                        tipoDomicilio = productosDomicilio[pid].nombre;
+                    // ✅ Es domicilio si el nombre real del producto lo indica (auto-detección)
+                    // o si el ID está en la lista fija (respaldo)
+                    if (enListaFija || esNombreDomicilio(nombreProducto)) {
+                        valorDomicilio = item.attributes?.price || producto?.attributes?.price || (enListaFija ? productosDomicilio[pid].precio : 0);
+                        tipoDomicilio = nombreProducto || (enListaFija ? productosDomicilio[pid].nombre : 'Domicilio');
                         origenDomicilio = 'producto';
                         productId = pid;
+                        // 🏠 La dirección viene como leyenda en el comment del ítem
+                        direccion = (item.attributes?.comment || '').trim();
                         break;
                     }
                 }
@@ -276,6 +321,11 @@ export default async function handler(req, res) {
                     }
                 }
                 
+                // 🏠 Si aún no hay dirección (caso envío o leyenda vacía), tomar la del cliente del pedido
+                if (!direccion) {
+                    direccion = parseDireccionFudo(pedido.attributes?.anonymousCustomer?.address);
+                }
+                
                 if (valorDomicilio > 0 || origenDomicilio) {
                     domicilios.push({
                         pedidoId: pedido.id,
@@ -287,6 +337,7 @@ export default async function handler(req, res) {
                         tipoDomicilio: tipoDomicilio,
                         origenDomicilio: origenDomicilio,
                         productId: productId,
+                        direccion: direccion,
                         saleType: pedido.attributes?.saleType,
                         customerName: pedido.attributes?.customerName || ''
                     });
@@ -686,12 +737,16 @@ export default async function handler(req, res) {
                     if (!item) continue;
                     
                     const pid = item.relationships?.product?.data?.id;
-                    productosEncontrados.push(pid);
+                    const producto = products.find(pr => pr.id === pid);
+                    const nombreProducto = producto?.attributes?.name || '';
+                    productosEncontrados.push({ id: pid, nombre: nombreProducto });
+                    const enListaFija = pid && productosDomicilio[pid];
                     
-                    if (pid && productosDomicilio[pid]) {
-                        valorDomicilio = item.attributes?.price || productosDomicilio[pid].precio;
-                        tipoDomicilio = productosDomicilio[pid].nombre;
-                        origenDomicilio = 'producto';
+                    // ✅ Es domicilio si el nombre real del producto lo indica o si el ID está en la lista fija
+                    if (enListaFija || esNombreDomicilio(nombreProducto)) {
+                        valorDomicilio = item.attributes?.price || producto?.attributes?.price || (enListaFija ? productosDomicilio[pid].precio : 0);
+                        tipoDomicilio = nombreProducto || (enListaFija ? productosDomicilio[pid].nombre : 'Domicilio');
+                        origenDomicilio = enListaFija ? 'producto' : 'producto_por_nombre';
                         productId = pid;
                     }
                 }
